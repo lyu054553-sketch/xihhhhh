@@ -1,71 +1,6 @@
-const fallbackRisks = [
-  { id: 1, sku: "SKU-88310", product: "钙维生素D软胶囊", store: "西湖文三店", sales_30: 12, comparison: [18, 22, 26, 30, 30, 34, 38, 42], inventory_qty: 120, unit_cost: 80, days_to_sell: 168, risk_type: "调拨", priority: "紧急", observation: "近30天销量低于同规格对照门店中位数 60%；原因待核查。", evidence_level: "partial", evidence_label: "部分支持", missing_fields: ["shelf_availability", "stockout_records"], proposal_id: "PROP-AC10-001", proposal_status: "pending_approval" },
-  { id: 3, sku: "SKU-34106", product: "藿香正气口服液", store: "拱墅运河店", sales_30: 16, comparison: [18, 22, 25], inventory_qty: 90, unit_cost: 76, days_to_sell: 146, risk_type: "促销", priority: "紧急", observation: "近效期批次预计无法在当前速度下售完；需求与效期证据部分支持。", evidence_level: "partial", evidence_label: "部分支持", missing_fields: ["sellable_days"] },
-  { id: 2, sku: "SKU-10428", product: "阿胶块 250g", store: "余杭未来店", sales_30: 8, comparison: [12, 18, 20, 25], inventory_qty: 110, unit_cost: 80, days_to_sell: 214, risk_type: "退供", priority: "高", observation: "库存覆盖天数偏高；采购量与退换条件待核查。", evidence_level: "insufficient", evidence_label: "信息不足", missing_fields: ["supplier_return_terms"] },
-  { id: 4, sku: "SKU-55091", product: "乳酸菌素片 32片", store: "上城庆春店", sales_30: 14, comparison: [19, 20, 23], inventory_qty: 80, unit_cost: 59, days_to_sell: 137, risk_type: "采购刹车", priority: "高", observation: "销量下降但在途采购状态待核查。", evidence_level: "insufficient", evidence_label: "信息不足", missing_fields: ["purchase_order_status"] },
-  { id: 5, sku: "SKU-79033", product: "血糖试纸 50片", store: "临平东湖店", sales_30: 20, comparison: [24, 28, 30], inventory_qty: 70, unit_cost: 55, days_to_sell: 119, risk_type: "调拨", priority: "中", observation: "门店间销量差异需结合规模和可售天数核查。", evidence_level: "insufficient", evidence_label: "信息不足", missing_fields: ["store_scale", "sellable_days"] },
-];
-
-const caseCategories = [
-  { id: "all", label: "全部案例" },
-  { id: "transfer", label: "跨店调拨" },
-  { id: "expiry", label: "近效期处置" },
-  { id: "procurement", label: "采购调整" },
-  { id: "return", label: "退供回款" },
-  { id: "display", label: "陈列改善" },
-  { id: "launch", label: "新品上市" },
-];
-
-const featuredCases = [
-  {
-    id: "CASE-TRANSFER-01", featured: true, tags: ["transfer"], image: "assets/cases/cross-store-transfer.png",
-    category: "跨店调拨", title: "西湖文三店：积压商品跨店调拨后完成销售",
-    summary: "钙维生素D软胶囊在西湖文三店积压，通过调拨至余杭未来店，30天内实现销售，有效减少库存占用。",
-    metrics: [["120 件", "调出数量"], ["28 天", "完成销售"], ["¥9,600", "减少库存占用"]],
-    scenario: "单店积压、其他门店需求较好", impact: 9600, speed: 28, route: "transfer",
-  },
-  {
-    id: "CASE-EXPIRY-01", featured: true, tags: ["expiry"], image: "assets/cases/expiry-clearance.png",
-    category: "近效期处置", title: "古荡店：近效期商品促销清库存",
-    summary: "针对45天内到期的藿香正气口服液，制定门店促销方案，2周内完成销售，避免报损。",
-    metrics: [["85%", "库存周转提升"], ["45 天", "清仓周期"], ["¥6,800", "避免报损"]],
-    scenario: "近效期商品、季节性商品", impact: 6800, speed: 14, route: "expiry-rescue",
-  },
-  {
-    id: "CASE-RETURN-01", featured: true, tags: ["return"], image: "assets/cases/supplier-return.png",
-    category: "退供回款", title: "余杭未来店：退供流程优化，退款快速到账",
-    summary: "针对滞销的阿胶块，核实退供政策并与供应商沟通，完成80盒退货，6天内退款到账。",
-    metrics: [["80 盒", "退货数量"], ["6 天", "处理周期"], ["¥6,400", "退款到账"]],
-    scenario: "供应商支持退供、近效期或滞销商品", impact: 6400, speed: 6, route: "risks",
-  },
-  {
-    id: "CASE-PROCUREMENT-01", featured: true, tags: ["procurement"], image: "assets/cases/procurement-adjustment.png",
-    category: "采购调整", title: "上城区庆春店：调整采购计划，避免重复补货",
-    summary: "通过分析近3个月动销，发现部分商品采购频次过高，调整后采购量下降，库存占用明显减少。",
-    metrics: [["32%", "采购量下降"], ["¥12,000", "库存占用减少"], ["0 件", "未发生缺货"]],
-    scenario: "动销下降、重复补货风险", impact: 12000, speed: 30, route: "procurement-brake",
-  },
-  {
-    id: "CASE-DISPLAY-01", featured: true, tags: ["display"], image: "assets/cases/display-improvement.png",
-    category: "陈列改善", title: "蒋村店：恢复陈列后销量明显提升",
-    summary: "经门店核查，该商品曾有20天未上架。恢复陈列并优化货架位置后，30天销量较上月提升2.3倍。",
-    metrics: [["2.3 倍", "销量提升"], ["30 天", "观察周期"], ["0 件", "现有积压"]],
-    scenario: "销量异常、疑似未上架或陈列不佳", impact: 9200, speed: 30, route: "slow-diagnosis",
-  },
-  {
-    id: "CASE-LAUNCH-01", featured: true, tags: ["launch", "display"], image: "assets/cases/new-product-launch.png",
-    category: "新品上市", title: "滨江店：新品试点上市快速打开销量",
-    summary: "参考历史相似商品的成功经验，选择高需求门店试点上新，首月完成85%的铺货销量。",
-    metrics: [["85%", "首月动销率"], ["14 天", "完成铺货"], ["¥18,000", "首月销售额"]],
-    scenario: "新品上市、重点门店试点", impact: 18000, speed: 14, route: "slow-diagnosis",
-  },
-  { id: "CASE-TRANSFER-02", tags: ["transfer"], image: "assets/cases/cross-store-transfer.png", category: "跨店调拨", title: "临平东湖店：慢销商品调至商圈店", summary: "按门店动销差异完成同城调拨，21天内消化库存。", metrics: [["68 件", "调出数量"], ["21 天", "完成销售"], ["¥7,480", "减少占用"]], scenario: "门店间需求差异明显", impact: 7480, speed: 21, route: "transfer" },
-  { id: "CASE-TRANSFER-03", tags: ["transfer"], image: "assets/cases/cross-store-transfer.png", category: "跨店调拨", title: "拱墅运河店：季节品跨区补位", summary: "将低需求门店库存转移至活动商圈，避免旺季后积压。", metrics: [["96 件", "调出数量"], ["19 天", "完成销售"], ["¥8,160", "减少占用"]], scenario: "季节需求错配", impact: 8160, speed: 19, route: "transfer" },
-  { id: "CASE-TRANSFER-04", tags: ["transfer"], image: "assets/cases/cross-store-transfer.png", category: "跨店调拨", title: "萧山北干店：跨店补货替代新采购", summary: "优先使用邻店余量补货，避免新增采购并保持安全库存。", metrics: [["54 件", "调出数量"], ["12 天", "完成销售"], ["¥5,940", "避免采购"]], scenario: "一店积压、一店缺货", impact: 5940, speed: 12, route: "transfer" },
-  { id: "CASE-EXPIRY-02", tags: ["expiry"], image: "assets/cases/expiry-clearance.png", category: "近效期处置", title: "钱塘下沙店：组合处置降低报损", summary: "调拨、门店促销与退供组合执行，在到期前完成处置。", metrics: [["92%", "处置完成率"], ["18 天", "处理周期"], ["¥9,200", "避免报损"]], scenario: "多批次临期库存", impact: 9200, speed: 18, route: "expiry-rescue" },
-  { id: "CASE-EXPIRY-03", tags: ["expiry"], image: "assets/cases/expiry-clearance.png", category: "近效期处置", title: "富阳银湖店：提前预警完成清仓", summary: "在60天窗口触发预警，分阶段完成门店间调配和促销。", metrics: [["100%", "处置完成率"], ["32 天", "清仓周期"], ["¥5,760", "避免报损"]], scenario: "可售时间快速缩短", impact: 5760, speed: 32, route: "expiry-rescue" },
-  { id: "CASE-JOINT-01", tags: ["procurement", "return"], image: "assets/cases/supplier-return.png", category: "采购调整", title: "西湖古荡店：暂停补货并完成退供", summary: "联动采购暂停与供应商退供，阻止库存继续增加。", metrics: [["40%", "采购下降"], ["8 天", "处理周期"], ["¥10,400", "现金回收"]], scenario: "在途采购与高库存并存", impact: 10400, speed: 8, route: "procurement-brake" },
-];
+import { buildDataCenterView, downloadTemplate, downloadSample } from "./assets/js/data-center.mjs";
+import { createApiClient } from "./assets/js/api-client.mjs";
+import { createRequestState } from "./assets/js/request-state.mjs";
 
 const API_BASE = window.location.protocol === "file:" ? null : "/api/v1";
 const validRoutes = new Set([
@@ -73,12 +8,12 @@ const validRoutes = new Set([
   "risks", "tasks", "approvals", "execution", "simulation", "cases", "data", "settings",
 ]);
 const state = {
-  risks: [...fallbackRisks],
+  risks: [],
   dashboard: null,
-  selectedId: 1,
+  selectedId: null,
   riskTotal: 0,
   detail: null,
-  diagnosisRiskId: 1,
+  diagnosisRiskId: null,
   diagnosisDetail: null,
   diagnosisView: "list",
   diagnosisSearch: "",
@@ -98,15 +33,27 @@ const state = {
   proposals: [],
   executionTasks: [],
   dataCenter: null,
-  workbenchLoading: {},
+  health: null,
+  workbenchQueues: {},
+  workbenchPending: {},
+  workbenchRevisions: {},
+  simulationExcluded: [],
+  simulationCandidates: [],
+  simulationResult: null,
+  feedback: null,
+  feedbackRiskId: null,
+  feedbackRevision: 0,
+  manifest: null,
+  datasetEpoch: 0,
+  resetting: false,
+  mutationCount: 0,
+  apiPending: 0,
   region: "all",
   todayFilter: "pending",
   todaySelectedItemId: null,
   todayWorkbenchCache: {},
-  todayWorkbenchLoading: null,
   chatMessages: [],
   caseFilter: "all",
-  caseSort: "featured",
   selectedCaseId: null,
   confirmedCases: [],
   analysisSearch: "",
@@ -120,7 +67,7 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const REGIONS = {
-  all: { label: "杭州市 · 全部50家门店", stores: [] },
+  all: { label: "当前全部门店", stores: [] },
   "west-lake": { label: "西湖区区域", stores: ["西湖"] },
   shangcheng: { label: "上城区区域", stores: ["上城"] },
   gongshu: { label: "拱墅区区域", stores: ["拱墅"] },
@@ -137,15 +84,117 @@ function scopedRisks() {
   return !region.stores.length ? state.risks : state.risks.filter((risk) => region.stores.some((name) => String(risk.store || "").includes(name)));
 }
 
-async function api(path, options = {}) {
-  if (!API_BASE) throw new Error("请通过本地服务打开系统");
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.detail || payload.message || `请求失败（${response.status}）`);
-  return payload;
+const requestApi = createApiClient({ baseUrl: API_BASE });
+const requests = createRequestState(() => renderRuntimeStatus());
+const WORKBENCH_ROUTES = ["transfer", "expiry-rescue", "procurement-brake"];
+const AGENT_NAMES = { "slow-diagnosis": "滞销诊断", transfer: "跨门店调拨", "expiry-rescue": "近效期处置", "procurement-brake": "采购刹车", simulation: "现金流模拟" };
+const RESOURCE_LOADERS = {
+  health: { path: "/health", label: "服务运行模式", apply: (data) => { state.health = data; } },
+  dashboard: { path: "/dashboard", label: "经营总览", apply: (data) => { state.dashboard = data; } },
+  risks: { path: "/risks", label: "风险队列", apply: (data) => {
+    if (!Array.isArray(data.items)) throw new Error("风险接口缺少 items 数组");
+    state.risks = data.items; state.riskTotal = data.total ?? data.items.length;
+    state.diagnosisRisks = null; state.diagnosisTotal = data.filtered_total ?? state.riskTotal;
+  } },
+  cases: { path: "/cases", label: "核查案例", apply: (data) => { state.confirmedCases = data.items || []; } },
+  workItems: { path: "/work-items", label: "行动清单", apply: (data) => { state.workItems = data.items || []; } },
+  proposals: { path: "/proposals", label: "方案审批", apply: (data) => { state.proposals = data.items || []; } },
+  executionTasks: { path: "/execution-tasks", label: "执行追踪", apply: (data) => { state.executionTasks = data.items || []; } },
+  dataCenter: { path: "/data-center", label: "数据来源", apply: (data) => { state.dataCenter = data; } },
+};
+
+function errorCopy(error) {
+  return error?.outcomeUnknown ? `${error.message}。写入结果待确认，请刷新记录并人工核对后再操作。` : error?.message || "请求失败";
+}
+
+async function api(path, options) {
+  state.apiPending++;
+  renderRuntimeStatus();
+  try { return await requestApi(path, options); }
+  finally { state.apiPending--; renderRuntimeStatus(); }
+}
+
+async function readResource(key, path, apply, label = key) {
+  if (state.resetting) return false;
+  const token = requests.start(key, label);
+  const epoch = state.datasetEpoch;
+  try {
+    const data = await api(path);
+    if (epoch !== state.datasetEpoch || requests.get(key).token !== token) return false;
+    apply(data);
+    requests.finish(key, token, "ready");
+    return true;
+  } catch (error) {
+    if (epoch === state.datasetEpoch) requests.finish(key, token, "error", error);
+    return false;
+  }
+}
+
+function resourceNotice(key, empty = "暂无记录") {
+  const resource = requests.get(key);
+  if (resource.status === "loading") return '<div class="empty-state" role="status">正在读取，请稍候…</div>';
+  if (resource.status === "error") return `<div class="empty-state request-error" role="alert">${escapeHtml(errorCopy(resource.error))}<button class="secondary-action" data-retry-resource="${escapeHtml(key)}">重新读取</button></div>`;
+  return `<div class="empty-state">${escapeHtml(empty)}</div>`;
+}
+
+function renderRuntimeStatus() {
+  const target = $("#runtime-status");
+  if (!target) return;
+  const entries = requests.entries();
+  const errors = entries.filter(([, resource]) => resource.status === "error");
+  const loading = state.apiPending > 0 || entries.some(([, resource]) => resource.status === "loading");
+  const dataReady = requests.get("dataCenter").status === "ready";
+  const mode = dataReady ? state.dataCenter?.mode : null;
+  const source = mode === "sample_replay" ? "合成测试数据 · 模拟测算，不代表真实客户收益" : mode === "real_inventory_snapshot" ? "真实库存快照 · 缺项需人工补充" : "数据来源尚未确认";
+  target.className = `runtime-status ${errors.length ? "is-error" : loading ? "is-loading" : ""}`;
+  target.innerHTML = `<div><strong>${escapeHtml(source)}</strong><p>规则模式 · 真实 AI 未接入；模型名称、模型原文与调用证据尚无接口提供。</p>${errors.length ? `<p role="alert">${errors.map(([, item]) => `${escapeHtml(item.label)}：${escapeHtml(errorCopy(item.error))}`).join("；")}</p>` : loading ? "<p>正在读取服务数据…</p>" : ""}</div><button class="secondary-action" data-refresh-all ${state.resetting ? "disabled" : ""}>重新读取</button>`;
+  const freshness = $("#data-freshness");
+  const updated = requests.get("dataCenter").updatedAt;
+  if (freshness) freshness.textContent = updated ? `读取于 ${new Date(updated).toLocaleTimeString("zh-CN")}${dataReady ? "" : " · 数据待确认"}` : "尚未读取快照";
+  const reset = $("#demo-reset");
+  if (reset) reset.disabled = !dataReady || mode !== "sample_replay" || requests.get("health").status !== "ready" || state.health?.sample_data !== true || state.resetting || state.apiPending > 0 || state.mutationCount > 0;
+  for (const route of Object.keys(AGENT_NAMES)) renderAgentRuntime(route);
+}
+
+function renderAgentRuntime(route) {
+  const target = document.querySelector(`[data-agent-runtime="${route}"]`);
+  if (!target) return;
+  const key = route === "slow-diagnosis" ? "diagnosis" : route;
+  const request = requests.get(key);
+  const data = route === "slow-diagnosis" ? state.diagnosisDetail : route === "simulation" ? state.simulationResult : state.workbenches[route];
+  const input = route === "slow-diagnosis" ? data?.risk : route === "simulation" ? state.simulationInput : data?.input;
+  const result = route === "slow-diagnosis" ? data?.diagnosis : route === "simulation" ? data : data?.calculation;
+  const missing = data?.evidence?.missing_fields || result?.cash?.missing_fields || result?.cash_basis?.missing_fields || [];
+  const evidence = data?.facts || data?.evidence || [];
+  const confirmation = data?.proposal ? `方案 ${data.proposal.id} · V${data.proposal.current_version} · ${data.proposal.status}` : "待人工检查；当前未批准执行";
+  const label = request.status === "loading" ? request.label : request.status === "error" ? "请求失败 / 待人工处理" : data?.dirty ? "输入已变更 · 待重新计算" : result ? "规则结果已返回 · 待人工确认" : "等待输入或读取";
+  const endpoint = route === "slow-diagnosis" ? `GET /risks/${state.diagnosisRiskId || "{id}"}` : route === "simulation" ? "POST /scenarios/simulate" : `/workbenches/${route}`;
+  target.innerHTML = `<div class="agent-runtime-heading"><strong>${escapeHtml(AGENT_NAMES[route])}运行过程</strong><span>${escapeHtml(label)}</span></div><ol class="agent-runtime-steps"><li>输入与快照</li><li>后端规则工具</li><li>证据与缺项</li><li>人工确认</li></ol><p>${escapeHtml(endpoint)} · ${escapeHtml(confirmation)}</p>${request.status === "error" ? `<p class="request-error" role="alert">${escapeHtml(errorCopy(request.error))}</p>` : ""}<p>缺失字段：${escapeHtml(missing.join("、") || "以本次返回为准")}。AI 输出：未提供。</p><details><summary>查看本次输入、计算结果与证据</summary><div class="runtime-payload"><div><h3>输入</h3><pre>${escapeHtml(JSON.stringify(input ?? null, null, 2))}</pre></div><div><h3>规则结果</h3><pre>${escapeHtml(JSON.stringify(result ?? null, null, 2))}</pre></div><div><h3>来源与证据</h3><pre>${escapeHtml(JSON.stringify(evidence, null, 2))}</pre></div></div></details>`;
+}
+
+async function performAction(key, label, action, onSuccess) {
+  if (state.resetting || requests.get(key).status === "loading") return false;
+  const token = requests.start(key, label);
+  state.mutationCount++;
+  if (key.startsWith("approval:") || key.startsWith("execute:")) {
+    const id = key.slice(key.indexOf(":") + 1);
+    $$("[data-approve-proposal], [data-execute-proposal]").filter((button) => button.dataset.approveProposal === id || button.dataset.executeProposal === id).forEach((button) => { button.disabled = true; });
+  }
+  renderRuntimeStatus();
+  try {
+    const result = await action();
+    await onSuccess?.(result);
+    requests.finish(key, token, "ready");
+    return true;
+  } catch (error) {
+    requests.finish(key, token, "error", error);
+    showToast(errorCopy(error), "error");
+    return false;
+  } finally {
+    state.mutationCount--;
+    if (key.startsWith("approval:") || key.startsWith("execute:")) renderApprovalList();
+    renderRuntimeStatus();
+  }
 }
 
 function escapeHtml(value) {
@@ -156,7 +205,7 @@ function escapeHtml(value) {
 
 function money(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "未知";
-  return `¥${Math.round(Number(value)).toLocaleString("zh-CN")}`;
+  return `¥${Number(value).toLocaleString("zh-CN", { maximumFractionDigits: 2 })}`;
 }
 
 function moneyWan(value) {
@@ -246,6 +295,11 @@ function missingLabel(field) {
     in_transit_qty: "在途数量",
     replenishment_rule: "自动补货规则",
     replenishment_log: "补货触发记录",
+    target_store_future_sales_receipts: "接收门店后续销量与回款",
+    price_sales_elasticity: "促销价格与销量关系",
+    payment_date_in_horizon: "目标期限内的付款日期",
+    comparison_sales: "同品对照销量",
+    non_zero_comparison_denominator: "有效的非零对照销量",
   }[field] || field;
 }
 
@@ -259,19 +313,23 @@ function showToast(message, tone = "success") {
 }
 
 async function switchRegion(regionId) {
+  if (state.mutationCount || Object.values(state.workbenchPending).some(Boolean)) {
+    $("#region-select").value = state.region; showToast("请等待当前写入完成后切换区域", "error"); return;
+  }
   state.region = REGIONS[regionId] ? regionId : "all";
-  state.overviewShowAllStores = false;
-  state.overviewSelectedStore = null;
-  const label = REGIONS[state.region].label;
-  $("#profile-region-name").textContent = label;
+  state.overviewShowAllStores = false; state.overviewSelectedStore = null;
   const firstRisk = scopedRisks()[0];
-  if (firstRisk) { state.selectedId = firstRisk.id; state.detail = null; state.diagnosisRiskId = firstRisk.id; state.diagnosisDetail = null; }
-  renderRiskList();
-  renderSupportPages();
-  if (firstRisk) await loadSelectedDetail();
-  renderDiagnosis();
+  state.selectedId = firstRisk?.id ?? null;
+  state.diagnosisRiskId = state.selectedId;
+  state.detail = null; state.diagnosisDetail = null;
+  state.workbenches = {};
+  for (const route of WORKBENCH_ROUTES) requests.invalidate(route);
+  invalidateSimulation("区域已改变，请重新计算当前范围");
+  renderRiskList(); renderSupportPages();
+  await loadSelectedDetail(); await loadDiagnosisReport(state.diagnosisRiskId);
+  if (WORKBENCH_ROUTES.includes(currentRoute())) await loadWorkbench(currentRoute());
   renderChat();
-  showToast(`已切换至${label}；当前页面按该区域的样例门店范围展示`);
+  showToast(`已切换至${REGIONS[state.region].label}`);
 }
 
 function filteredRisks() {
@@ -286,18 +344,15 @@ function filteredRisks() {
 }
 
 function selectedRisk() {
-  return state.risks.find((risk) => Number(risk.id) === Number(state.selectedId)) || state.risks[0];
-}
-
-function riskEvidenceFraction(risk) {
-  const missing = (risk.missing_fields || []).length;
-  const total = Math.max(2, missing + 1);
-  return `${Math.max(1, total - missing)}/${total}`;
+  return state.risks.find((risk) => Number(risk.id) === Number(state.selectedId));
 }
 
 function renderRiskList() {
   const list = filteredRisks();
   const container = $("#risk-list");
+  if (requests.get("risks").status !== "ready") {
+    container.innerHTML = resourceNotice("risks"); return;
+  }
   container.innerHTML = list.map((risk) => {
     const selected = Number(risk.id) === Number(state.selectedId);
     const priorityClass = isUrgentPriority(teacherPriority(risk)) ? "urgent" : "";
@@ -314,7 +369,7 @@ function renderRiskList() {
           <span>关注成本</span>
           <small>${risk.investigation_status === "pending" ? "核查中" : "待核查"}</small>
         </span>
-        <span class="risk-evidence">证据 ${riskEvidenceFraction(risk)}</span>
+        <span class="risk-evidence">${escapeHtml(evidenceLabel(risk.evidence_level))}</span>
       </button>`;
   }).join("") || '<div class="empty-state">没有符合当前筛选条件的风险案件。</div>';
 
@@ -357,7 +412,13 @@ function renderEvidence(risk, evidence) {
 
 function renderSelectedDetail() {
   const risk = selectedRisk();
-  if (!risk) return;
+  const ready = requests.get("detail").status === "ready" && state.detail?.risk?.id === risk?.id;
+  const panel = $("#case-pane");
+  panel.classList.toggle("is-unavailable", !ready);
+  $("#create-investigation").disabled = !ready;
+  $("#case-title").textContent = risk ? `${risk.product} · ${risk.store}` : "暂无风险案件";
+  $("#fact-copy").textContent = requests.get("detail").status === "error" ? errorCopy(requests.get("detail").error) : risk ? "正在读取事实与证据…" : "当前没有可查看的风险，或数据尚未读取。";
+  if (!ready) return;
   const detailRisk = state.detail?.risk || risk;
   const comparison = state.detail?.comparison;
   const peerMedian = comparison?.comparison_median ?? median(detailRisk.comparison || []);
@@ -370,7 +431,7 @@ function renderSelectedDetail() {
   const fact = peerMedian === null
     ? (detailRisk.observation || "当前数据不足以形成可计算的门店对照。")
     : `近30天销量 ${detailRisk.sales_30} 盒，对照门店中位数 ${peerMedian} 盒，差异 ${diff}%；尚未推断形成原因。`;
-  const knownCost = Number(risk.id) === 1 ? "¥86（已知）" : "未知";
+  const knownCost = "以工作台本次计算为准";
 
   $("#case-id").textContent = `RISK-${String(risk.sku || risk.id).replace("SKU-", "")}`;
   $("#case-title").textContent = `${risk.product} · ${risk.store}`;
@@ -392,34 +453,32 @@ function renderSelectedDetail() {
 }
 
 async function loadSelectedDetail() {
-  if (!API_BASE) {
-    renderSelectedDetail();
-    return;
-  }
-  try {
-    state.detail = await api(`/risks/${state.selectedId}`);
-  } catch (error) {
-    state.detail = null;
-    showToast(`详情读取失败：${error.message}`, "error");
-  }
+  const id = state.selectedId;
+  closeInvestigationModal();
+  state.feedbackRiskId = null;
+  state.detail = null;
+  state.investigationId = null; state.feedbackId = null; state.feedback = null;
+  $("#case-note").value = ""; $("#note-count").textContent = "0";
+  if (!id) { requests.invalidate("detail"); renderSelectedDetail(); return; }
+  const pending = readResource("detail", `/risks/${id}`, (data) => { state.detail = data; }, "风险详情");
+  renderSelectedDetail();
+  await pending;
   renderSelectedDetail();
 }
 
 async function loadDiagnosisReport(riskId) {
-  if (!riskId) { state.diagnosisDetail = null; renderDiagnosis(); return; }
-  state.diagnosisRiskId = Number(riskId);
-  if (!API_BASE) { state.diagnosisDetail = null; renderDiagnosis(); return; }
-  try {
-    state.diagnosisDetail = await api(`/risks/${state.diagnosisRiskId}`);
-  } catch (error) {
-    state.diagnosisDetail = null;
-    showToast(`诊断报告读取失败：${error.message}`, "error");
-  }
+  state.diagnosisRiskId = riskId ? Number(riskId) : null;
+  state.diagnosisDetail = null;
+  if (!riskId) { requests.invalidate("diagnosis"); renderDiagnosis(); return; }
+  const pending = readResource("diagnosis", `/risks/${riskId}`, (data) => { state.diagnosisDetail = data; }, "读取诊断证据");
   renderDiagnosis();
+  await pending;
+  renderDiagnosis(); renderAgentRuntime("slow-diagnosis");
 }
 
-function inputField(label, name, value, type = "number", extra = "") {
-  return `<label>${label}<input name="${name}" type="${type}" value="${escapeHtml(value ?? "")}" ${extra}/></label>`;
+function inputField(label, name, value, type = "number", attributes = {}) {
+  const constraints = Object.entries(attributes).map(([key, setting]) => ` ${key}="${escapeHtml(setting)}"`).join("");
+  return `<label>${escapeHtml(label)}<input name="${escapeHtml(name)}" type="${type}" value="${escapeHtml(value ?? "")}"${constraints}></label>`;
 }
 
 function workbenchStatus(data) {
@@ -444,15 +503,14 @@ function transferQueue(data, input) {
   const selectedRiskId = Number(data.risk?.id || input.risk_id);
   return `<aside class="transfer-queue-panel"><header><div><h2>待调拨商品 <b>${items.length}</b></h2><p>按风险时效与库存占用排序</p></div><span>${items.length} 项</span></header><div class="transfer-filter-row"><span>全部商品分类</span><span>优先级排序</span></div><div class="transfer-case-list">${items.map((item) => {
     const selected = Number(item.id) === selectedRiskId;
-    return `<button type="button" class="transfer-case ${selected ? "selected" : ""}" data-transfer-risk="${item.id}" aria-label="查看 ${escapeHtml(item.product)} 调拨方案"><span class="transfer-case-visual">${transferProductVisual(item)}</span><span class="transfer-case-copy"><span><strong>${escapeHtml(item.product)}</strong><i class="priority-badge ${item.priority === "紧急" ? "urgent" : ""}">${escapeHtml(item.priority)}</i></span><small>${escapeHtml(item.sku)} ｜ ${escapeHtml(item.store)}</small><em>库存 ${item.inventory_qty ?? "—"} 件 ｜ 建议调拨 ${Number(item.id) === 1 ? "40" : "35"} 件</em><b>库存成本 ${money(riskAmount(item))}</b></span><span class="material-symbols-rounded transfer-case-arrow">chevron_right</span></button>`;
+    return `<button type="button" class="transfer-case ${selected ? "selected" : ""}" data-transfer-risk="${item.id}" aria-label="查看 ${escapeHtml(item.product)} 调拨方案"><span class="transfer-case-visual">${transferProductVisual(item)}</span><span class="transfer-case-copy"><span><strong>${escapeHtml(item.product)}</strong><i class="priority-badge ${item.priority === "紧急" ? "urgent" : ""}">${escapeHtml(item.priority)}</i></span><small>${escapeHtml(item.sku)} ｜ ${escapeHtml(item.store)}</small><em>库存 ${item.inventory_qty ?? "—"} 件 ｜ 建议数量待后端测算</em><b>库存成本 ${money(riskAmount(item))}</b></span><span class="material-symbols-rounded transfer-case-arrow">chevron_right</span></button>`;
   }).join("") || '<div class="empty-state">当前没有待调拨商品。</div>'}</div></aside>`;
 }
 
 function transferStockCard(label, store, before, after, safety, tone) {
-  const safeBefore = Number(before || 0), safeAfter = Number(after || 0), safeMax = Math.max(safeBefore, safeAfter, Number(safety || 0), 1);
-  const beforeWidth = Math.max(6, Math.round((safeBefore / safeMax) * 100));
-  const afterWidth = Math.max(6, Math.round((safeAfter / safeMax) * 100));
-  return `<section class="transfer-stock-card ${tone}"><h4>${escapeHtml(label)}：${escapeHtml(store || "未知门店")}</h4><div class="transfer-stock-line"><span>调拨前</span><i><b style="width:${beforeWidth}%"></b></i><strong>${safeBefore} 件</strong></div><div class="transfer-stock-line"><span>调拨后</span><i><b style="width:${afterWidth}%"></b></i><strong>${safeAfter} 件</strong></div><p>安全库存 ${safety ?? "未知"} 件</p></section>`;
+  const maximum = Math.max(Number(before ?? 0), Number(after ?? 0), Number(safety ?? 0), 1);
+  const barWidth = (value) => value == null ? 0 : Math.max(0, Math.round(Number(value) / maximum * 100));
+  return `<section class="transfer-stock-card ${tone}"><h4>${escapeHtml(label)}：${escapeHtml(store || "未知门店")}</h4><div class="transfer-stock-line"><span>调拨前</span><i><b style="width:${barWidth(before)}%"></b></i><strong>${before ?? "未知"} 件</strong></div><div class="transfer-stock-line"><span>调拨后</span><i><b style="width:${barWidth(after)}%"></b></i><strong>${after ?? "待计算"} 件</strong></div><p>安全库存 ${safety ?? "未知"} 件</p></section>`;
 }
 
 function transferWorkbench(data) {
@@ -464,26 +522,21 @@ function transferWorkbench(data) {
   const before = calc.before_after || {};
   const source = before.source || {}, target = before.target || {};
   const limits = calc.limits || {}, cash = calc.cash || {}, economic = calc.economic || {};
-  const netEconomicImpact = Number(economic.net_avoidable_loss ?? 0);
-  const impactTone = netEconomicImpact >= 0 ? "positive" : "negative";
-  const selectedRank = Math.max(1, network.findIndex((item) => item.store_id === input.target_store_id) + 1);
-  const checks = [
-    [Number(input.quantity || 0) <= Number(limits.available_to_transfer || 0), "调出店保留安全库存"],
-    [Number(input.quantity || 0) <= Number(limits.receiving_capacity || 0), "接收店可承接该数量"],
-    [Number(input.eta_days || 0) < Number(input.sellable_days || Infinity), "配送条件满足可售期"],
-  ];
+  const impactTone = economic.net_avoidable_loss == null ? "" : Number(economic.net_avoidable_loss) >= 0 ? "positive" : "negative";
+  const selectedRank = network.findIndex((item) => item.store_id === input.target_store_id) + 1;
+  const limitsSummary = [`后端可调上限 ${limits.available_to_transfer ?? "待计算"} 件`, `后端接收容量 ${limits.receiving_capacity ?? "待计算"} 件`, `预计配送 ${input.eta_days ?? "未知"} 天`];
   return `<div class="transfer-workbench-shell">
     ${transferQueue(data, input)}
     <section class="transfer-focus-panel">
       <header class="transfer-product-header"><div class="transfer-product-visual">${transferProductVisual(risk)}</div><div><div class="transfer-product-title"><h2>${escapeHtml(input.product || "调拨商品")}</h2><span class="priority-badge ${risk.priority === "紧急" ? "urgent" : ""}">${escapeHtml(risk.priority || "待确认")}</span></div><p>${escapeHtml(risk.sku || "SKU 未知")} ｜ 批次 ${escapeHtml(input.batch || "未知")} ｜ 可售期 ${input.sellable_days ?? "未知"} 天</p><div class="transfer-tag-list"><span>滞销诊断</span><span>可调拨</span><span>库存积压</span></div></div><button class="secondary-action" type="button" data-go="slow-diagnosis">查看诊断依据</button></header>
       <nav class="transfer-detail-tabs" aria-label="调拨详情"><span class="active">推荐方案</span><span>候选门店</span><span>库存对比</span><span>调拨影响</span><span>相关证据</span></nav>
       <section class="transfer-recommendation"><span class="material-symbols-rounded">recommend</span><div><p>推荐方案</p><h3>建议将 <b>${input.quantity ?? "—"} 件</b> 调至 ${escapeHtml(input.target_store || "推荐接收门店")}</h3><small>${escapeHtml(input.source_store || "调出门店")} <span class="material-symbols-rounded">arrow_forward</span> ${escapeHtml(input.target_store || "接收门店")} ｜ ${selected.distance_km ?? "—"} km ｜ 预计 ${selected.travel_minutes ?? "—"} 分钟到店 ｜ 配送费 ${money(input.transport_fee)}</small></div><div class="transfer-recommendation-metric"><span>本次调拨库存成本</span><strong>${money(cash.inventory_cost)}</strong><small>${input.quantity ?? "—"} 件 × ${money(input.unit_cost).replace("¥", "¥")}/件</small></div><div class="transfer-recommendation-metric positive"><span>预计避免报损</span><strong>${money(economic.avoided_loss)}</strong><small>不调拨预计损失 ${money(economic.potential_loss_without_transfer)}</small></div></section>
-      <div class="transfer-validation-row">${checks.map(([passed, label]) => `<span class="${passed ? "passed" : "blocked"}"><i class="material-symbols-rounded">${passed ? "check_circle" : "error"}</i>${escapeHtml(label)}</span>`).join("")}<button class="text-link" type="button" data-go="risks">查看计算依据 <span class="material-symbols-rounded">arrow_forward</span></button></div>
+      <div class="transfer-validation-row">${limitsSummary.map((label) => `<span><i class="material-symbols-rounded">info</i>${escapeHtml(label)}</span>`).join("")}<button class="text-link" type="button" data-go="risks">查看计算依据 <span class="material-symbols-rounded">arrow_forward</span></button></div>
       <div class="transfer-route-grid"><section class="transfer-route-card"><header><div><h3>调拨路线（示意）</h3><p>${selected.distance_km ?? "—"} km ｜ 约 ${selected.travel_minutes ?? "—"} 分钟 ｜ 预计 ${selected.eta_days ?? input.eta_days ?? "—"} 天到店</p></div></header><div class="transfer-route-map"><img src="assets/today-transfer-route-map.png" alt="${escapeHtml(input.source_store || "调出门店")}至${escapeHtml(input.target_store || "接收门店")}的同城配送路线示意" /><span class="route-store source">${escapeHtml(input.source_store || "调出门店")}<small>调出 · ${source.on_hand_before ?? input.source_on_hand ?? "—"} 件</small></span><span class="route-store target">${escapeHtml(input.target_store || "接收门店")}<small>调入 · ${input.quantity ?? "—"} 件</small></span><b class="route-map-chip">配送费 ${money(input.transport_fee)}</b></div></section><section class="transfer-alternative-card"><header><h3>其他可接收门店</h3><button type="button" class="text-link" data-transfer-target="${escapeHtml(network[0]?.store_id || "")}">采用最优方案 <span class="material-symbols-rounded">arrow_forward</span></button></header><div class="transfer-alternative-head"><span>候选门店</span><span>距离</span><span>可接收</span><span>预计费用</span></div><div class="transfer-alternative-list">${network.slice(0, 5).map((item, index) => `<button type="button" class="transfer-alternative-row ${item.store_id === input.target_store_id ? "selected" : ""}" data-transfer-target="${escapeHtml(item.store_id)}"><b>${index + 1}</b><span><strong>${escapeHtml(item.district)}区 · ${escapeHtml(item.name)}</strong>${item.store_id === input.target_store_id ? '<em>推荐</em>' : ""}</span><span>${item.distance_km} km</span><span>${item.calculation?.limits?.receiving_capacity ?? "—"} 件</span><span>${money(item.transport_fee)}</span></button>`).join("")}</div></section></div>
       <div class="transfer-impact-grid-new"><div class="transfer-stock-compare">${transferStockCard("调出店", input.source_store, source.on_hand_before ?? input.source_on_hand, source.on_hand_after, source.safety_stock ?? input.source_safety, "source")}${transferStockCard("调入店", input.target_store, target.on_hand_before ?? input.target_on_hand, target.on_hand_after, target.safety_stock ?? input.target_safety, "target")}</div><section class="transfer-impact-card"><h3>预计经营影响（未来 ${input.sellable_days ?? "—"} 天）</h3><div><span class="material-symbols-rounded">inventory</span><p><small>预计可消化</small><strong>${economic.target_sale_before_expiry_qty ?? "未知"} 件</strong></p></div><div class="${impactTone}"><span class="material-symbols-rounded">savings</span><p><small>调拨后净经营影响</small><strong>${money(economic.net_avoidable_loss)}</strong></p></div><div><span class="material-symbols-rounded">swap_vert</span><p><small>调出店覆盖天数</small><strong>${source.coverage_before ?? "未知"} → ${source.coverage_after ?? "未知"} 天</strong></p></div></section></div>
-      <form class="transfer-edit-form" data-workbench-form="transfer"><input type="hidden" name="risk_id" value="${escapeHtml(input.risk_id || risk.id || "")}" /><label>调拨数量<input name="quantity" type="number" min="1" value="${escapeHtml(input.quantity ?? "")}" /></label><label>接收门店<select id="transfer-target-picker">${network.map((item) => `<option value="${escapeHtml(item.store_id)}" ${item.store_id === input.target_store_id ? "selected" : ""}>${escapeHtml(item.district)}区 · ${escapeHtml(item.name)}（${item.distance_km} km）</option>`).join("")}</select></label><label>配送费用<input name="transport_fee" type="number" min="0" value="${escapeHtml(input.transport_fee ?? "")}" /></label><label>预计到货天数<input name="eta_days" type="number" min="0" value="${escapeHtml(input.eta_days ?? "")}" /></label><div class="transfer-form-actions"><small>${workbenchStatus(data)} · 修改数量、门店或费用后，旧测算即失效。</small><button class="secondary-action" type="button" data-workbench-save="transfer" ${calc.valid ? "" : "disabled"}>保存草稿</button><button class="secondary-action" type="submit">重新计算</button><button class="primary-action" type="button" data-workbench-submit="transfer" ${data.proposal?.status === "draft" ? "" : "disabled"}>提交审批</button></div></form>
+      <form class="transfer-edit-form" data-workbench-form="transfer"><input type="hidden" name="risk_id" value="${escapeHtml(input.risk_id || risk.id || "")}" /><label>调拨数量<input name="quantity" type="number" min="1" value="${escapeHtml(input.quantity ?? "")}" /></label><label>接收门店<select id="transfer-target-picker">${network.map((item) => `<option value="${escapeHtml(item.store_id)}" ${item.store_id === input.target_store_id ? "selected" : ""}>${escapeHtml(item.district)}区 · ${escapeHtml(item.name)}（${item.distance_km} km）</option>`).join("")}</select></label><label>配送费用<input name="transport_fee" type="number" min="0" step="0.01" required value="${escapeHtml(input.transport_fee ?? "")}" /></label><label>预计到货天数<input name="eta_days" type="number" min="0" value="${escapeHtml(input.eta_days ?? "")}" /></label><div class="transfer-form-actions"><small class="workbench-status">${workbenchStatus(data)} · 修改数量、门店或费用后，旧测算即失效。</small><button class="secondary-action" type="button" data-workbench-save="transfer" ${calc.valid ? "" : "disabled"}>保存草稿</button><button class="secondary-action" type="submit">重新计算</button><button class="primary-action" type="button" data-workbench-submit="transfer" ${data.proposal?.status === "draft" ? "" : "disabled"}>提交审批</button></div></form>
       ${calculationNotice(calc)}
-      <p class="transfer-calculation-note"><span class="material-symbols-rounded">info</span>${escapeHtml(cash.note || "内部调拨不直接算作现金释放。")} 已知现金流出为配送费 ${money(Math.abs(Number(cash.known_cash_effect || input.transport_fee || 0)))}；实际销售和回款需在执行追踪中确认。当前推荐门店在 50 家候选中排名第 ${selectedRank}。</p>
+      <p class="transfer-calculation-note"><span class="material-symbols-rounded">info</span>${escapeHtml(cash.note || "内部调拨不直接算作现金释放。")} 已知现金流出为配送费 ${money(Math.abs(Number(cash.known_cash_effect || input.transport_fee || 0)))}；实际销售和回款需在执行追踪中确认。当前推荐门店在 ${network.length} 家候选中排名第 ${selectedRank}。</p>
     </section>
   </div>`;
 }
@@ -494,27 +547,20 @@ function expiryQueuePanel(data, activeRiskId) {
 }
 
 function expiryWorkbench(data) {
-  const queuedEntry = (data.expiry_queue || []).find((item) => Number(item.risk?.id) === Number(data.risk?.id)) || (data.expiry_queue || [])[0] || {};
   const rawInput = data.input || {};
-  const input = rawInput.product ? rawInput : (queuedEntry.input || {});
-  const calc = rawInput.product ? data.calculation : { valid: true, forecast: queuedEntry.forecast || {}, cash: queuedEntry.cash || {}, alternatives: [] };
+  const input = rawInput;
+  const calc = data.calculation;
   const forecast = calc?.forecast || {}, cash = calc?.cash || {};
   return `<div class="workbench-shell">${expiryQueuePanel(data, data.risk?.id)}<section class='expiry-plan-header'><span class='agent-page-mark'><span class='material-symbols-rounded'>crisis_alert</span>当前批次处置方案</span><h3>现在处理：${escapeHtml(input.store || "未知门店")} · ${escapeHtml(input.product || "未知商品")}</h3><p>请先确定可分配到调拨、促销、退供的数量，再保存为待审批方案。</p></section><div class="workbench-context"><strong>${escapeHtml(input.store || "未知门店")} · ${escapeHtml(input.product || "未知商品")}</strong><span>批次 ${escapeHtml(input.batch || "未知")} · 剩余可售 ${input.sellable_days ?? "未知"} 天 · 最晚处置 ${escapeHtml(input.latest_disposal_date || "未知")}</span><small>库存 ${input.inventory_qty ?? "未知"} 件 · 当前30日销量 ${input.sales_30 ?? "未知"} 件</small></div>
-  <form class="workbench-form four-fields" data-workbench-form="expiry-rescue"><input type="hidden" name="risk_id" value="${escapeHtml(input.risk_id || data.risk?.id || "")}" />${inputField("调拨数量", "transfer_qty", input.transfer_qty, "number", "min=0")}${inputField("促销数量", "promo_qty", input.promo_qty, "number", "min=0")}${inputField("审核促销价", "promo_price", input.promo_price, "number", "min=0")}${inputField("退供数量", "return_qty", input.return_qty, "number", "min=0")}<div class="workbench-actions"><button class="primary-action" type="submit">重新计算</button><button class="secondary-action" type="button" data-workbench-save="expiry-rescue" ${calc?.valid ? "" : "disabled"}>保存方案</button><button class="text-action" type="button" data-workbench-submit="expiry-rescue" ${data.proposal?.status === "draft" ? "" : "disabled"}>提交审批</button></div><small class="workbench-status">${workbenchStatus(data)}</small></form>${calculationNotice(calc)}
+  <form class="workbench-form four-fields" data-workbench-form="expiry-rescue"><input type="hidden" name="risk_id" value="${escapeHtml(input.risk_id || data.risk?.id || "")}" />${inputField("调拨数量", "transfer_qty", input.transfer_qty, "number", { min: 0 })}${inputField("促销数量", "promo_qty", input.promo_qty, "number", { min: 0 })}${inputField("审核促销价", "promo_price", input.promo_price, "number", { min: 0, step: "0.01" })}${inputField("退供数量", "return_qty", input.return_qty, "number", { min: 0 })}<div class="workbench-actions"><button class="primary-action" type="submit">重新计算</button><button class="secondary-action" type="button" data-workbench-save="expiry-rescue" ${calc?.valid ? "" : "disabled"}>保存方案</button><button class="text-action" type="button" data-workbench-submit="expiry-rescue" ${data.proposal?.status === "draft" ? "" : "disabled"}>提交审批</button></div><small class="workbench-status">${workbenchStatus(data)}</small></form>${calculationNotice(calc)}
   <div class="calculation-kpis"><span>正常可售 <b>${forecast.normal_sale_qty ?? "未知"} 件</b></span><span>预计剩余 <b>${forecast.expected_remaining_qty ?? "未知"} 件</b></span><span>避免报损 <b>${money(cash.avoided_loss)}</b></span><span>预计净现金改善 <b>未知</b></span></div>
   <div class="alternative-table">${(calc?.alternatives || []).map((item) => `<div><strong>${escapeHtml(item.type)}</strong><span>${item.quantity} 件 · 费用 ${money(item.fee)} · 现金 ${money(item.cash_impact)}</span><small>${escapeHtml(item.assumption || `剩余风险 ${item.remaining_risk} 件`)}</small></div>`).join("") || '<div class="empty-state">先计算后比较正常销售、调拨、促销、退供和组合处置。</div>'}</div>
   <p class="workbench-footnote">药品相关沟通仅可生成待审核草稿；未配置审批流程前不自动发送。缺项：${escapeHtml((cash.missing_fields || []).join("、") || "无")}</p></div>`;
 }
 
 function procurementEvidencePanel(data, input, inventory) {
-  const risk = data.risk || {};
-  const sales30 = Number(risk.sales_30 || 0);
-  const totalBefore = Number(input.current_inventory || 0) + Number(input.in_transit_qty || 0) + Number(input.open_purchase_qty || 0);
-  const dailySales = sales30 ? sales30 / 30 : null;
-  const coverage = dailySales ? Math.round(totalBefore / dailySales) : null;
-  const safety = Number(input.safety_stock || 0);
-  const cushion = totalBefore - safety;
-  return `<section class='procurement-evidence-panel'><div class='surface-toolbar'><div><span class='agent-page-mark'><span class='material-symbols-rounded'>fact_check</span>采购刹车依据</span><h3>不是直接停单，而是先确认这笔采购是否仍有必要</h3><p>来源：当前库存、在途采购、未执行采购单和近30天销售快照（演示数据）。</p></div><span class='evidence-badge partial'>部分支持</span></div><div class='procurement-evidence-grid'><section><span>当前库存</span><strong>${input.current_inventory ?? '未知'} 件</strong><small>安全库存 ${safety} 件</small></section><section><span>已在路上</span><strong>${input.in_transit_qty ?? '未知'} 件</strong><small>不能当作现货，但会形成后续库存</small></section><section><span>尚未执行采购</span><strong>${input.open_purchase_qty ?? '未知'} 件</strong><small>这是可以和供应商协商的部分</small></section><section><span>若不调整，预计库存位</span><strong>${totalBefore} 件</strong><small>比安全库存多 ${cushion} 件；按近30天销量 ${sales30 || '未知'} 件，约覆盖 ${coverage ?? '未知'} 天</small></section></div><div class='procurement-judgement'><span class='material-symbols-rounded'>lightbulb</span><div><strong>系统判断：可以提出“减量／取消未执行量／延期到货”的待审批方案</strong><p>理由是：即使只调整 ${input.adjustment_qty ?? '未知'} 件，调整后预计库存位仍为 ${inventory.projected_after_adjustment ?? '未知'} 件，高于安全库存 ${safety} 件。最终是否调整，还需要采购合同最小起订量、取消费用、供应商确认和未来促销计划；这些未接入的数据不能由系统替你决定。</p></div></div></section>`;
+  const calculation = data.calculation;
+  return `<section class="procurement-evidence-panel"><div class="surface-toolbar"><div><h3>采购调整依据</h3><p>来源：本次后端工作台输入与计算；金额和库存约束由后端计算。</p></div><span class="evidence-badge">${calculation?.valid ? "约束通过，待审批" : "待重新核查"}</span></div><div class="procurement-evidence-grid"><section><span>当前库存</span><strong>${escapeHtml(input.current_inventory ?? "未知")} 件</strong><small>安全库存 ${escapeHtml(input.safety_stock ?? "未知")} 件</small></section><section><span>在途数量</span><strong>${escapeHtml(input.in_transit_qty ?? "未知")} 件</strong><small>不是现有库存</small></section><section><span>未执行采购</span><strong>${escapeHtml(input.open_purchase_qty ?? "未知")} 件</strong><small>调整需供应商与负责人确认</small></section><section><span>调整后预计库存位</span><strong>${escapeHtml(inventory.projected_after_adjustment ?? "待计算")} 件</strong><small>仅展示后端本次结果</small></section></div><p>合同、取消费用和供应商确认仍需人工核查。约束失败时不能保存方案。</p></section>`;
 }
 
 function procurementWorkbench(data) {
@@ -533,10 +579,19 @@ function renderWorkbench(route) {
     target.innerHTML = '<div class="empty-state">当前真实库存快照尚未包含销售、批次效期或采购订单，补齐对应数据后才能生成可执行方案。</div>';
     return;
   }
-  if (state.workbenchLoading[route]) { target.innerHTML = '<div class="empty-state">正在读取工作台数据…</div>'; return; }
+  if ((requests.get(route).status === "loading" || (requests.get(route).status === "error" && !data?.input)) && !state.workbenchPending[route]) {
+    target.innerHTML = resourceNotice(route); return;
+  }
+  if (data?.mode === "real_inventory_snapshot" || data?.mode === "unavailable" || !data?.input || !Object.keys(data.input).length) {
+    target.innerHTML = '<div class="empty-state">当前快照缺少可计算的工作台输入，请人工补充批次、门店需求或采购单。</div>'; return;
+  }
   if (!data) { target.innerHTML = '<div class="empty-state">工作台数据尚未加载，或接口读取失败。</div>'; return; }
   target.innerHTML = route === "transfer" ? transferWorkbench(data) : route === "expiry-rescue" ? expiryWorkbench(data) : procurementWorkbench(data);
   bindWorkbenchEvents(route, target);
+  target.classList.toggle("has-stale-calculation", Boolean(data.dirty));
+  if (data.dirty || requests.get(route).status === "error") $$("[data-workbench-save], [data-workbench-submit]", target).forEach((button) => { button.disabled = true; });
+  if (state.workbenchPending[route]) setWorkbenchBusy(route);
+  renderAgentRuntime(route);
   if (route === "transfer") {
     const statusNode = $("#transfer-approval-count");
     const executionNode = $("#transfer-execution-count");
@@ -552,15 +607,12 @@ function renderWorkbench(route) {
 }
 
 async function selectTransferTarget(storeId) {
-  const data = state.workbenches.transfer, candidate = (data?.transfer_network || []).find((item) => item.store_id === storeId);
-  if (!candidate) return;
-  const input = { ...(data.input || {}), target_store: candidate.name, target_store_id: candidate.store_id, target_on_hand: candidate.on_hand, target_capacity: candidate.capacity, target_safety: candidate.safety_stock, target_daily_sales: candidate.daily_sales, transport_fee: candidate.transport_fee, eta_days: candidate.eta_days };
-  try {
-    const result = await api('/workbenches/transfer/draft', { method: 'POST', body: JSON.stringify({ input }) });
-    state.workbenches.transfer = { ...data, input, calculation: null, draft: result.draft };
-    renderWorkbench('transfer');
-    showToast(`已选择${candidate.district}区·${candidate.name}；请重新测算后保存方案`);
-  } catch (error) { showToast(`切换接收门店失败：${error.message}`, 'error'); }
+  const data = state.workbenches.transfer;
+  const candidate = data?.transfer_network?.find((item) => item.store_id === storeId);
+  if (!candidate || state.workbenchPending.transfer) return;
+  updateWorkbenchInput("transfer", { target_store: candidate.name, target_store_id: candidate.store_id, target_on_hand: candidate.on_hand, target_capacity: candidate.capacity, target_safety: candidate.safety_stock, target_daily_sales: candidate.daily_sales, transport_fee: candidate.transport_fee, eta_days: candidate.eta_days });
+  renderWorkbench("transfer");
+  await persistWorkbenchInput("transfer");
 }
 
 function formInput(form) {
@@ -569,80 +621,155 @@ function formInput(form) {
   return input;
 }
 
-async function markWorkbenchDirty(route, form) {
+function updateWorkbenchInput(route, values) {
   const data = state.workbenches[route];
-  const input = { ...(data?.input || {}), ...formInput(form) };
-  try {
-    const result = await api(`/workbenches/${route}/draft`, { method: "POST", body: JSON.stringify({ input }) });
-    state.workbenches[route] = { ...data, input, calculation: null, draft: result.draft };
-    renderWorkbench(route);
-    showToast("输入已保存，旧测算已标记为待重新计算");
-  } catch (error) { showToast(`保存输入失败：${error.message}`, "error"); }
+  if (!data) return;
+  state.workbenchRevisions[route] = (state.workbenchRevisions[route] || 0) + 1;
+  requests.invalidate(route);
+  state.workbenches[route] = { ...data, input: { ...data.input, ...values }, calculation: null, proposal: null, dirty: true, draft: { ...data.draft, status: "needs_recalculation" } };
+  invalidateSimulation("工作台输入已变化，请重新运行现金模拟。");
+  const target = document.querySelector(`[data-workbench-form="${route}"]`);
+  if (target) {
+    $$("[data-workbench-save], [data-workbench-submit]", target).forEach((button) => { button.disabled = true; });
+    const status = $(".workbench-status", target);
+    if (status) status.textContent = "输入已修改，待重新计算";
+    const notice = target.parentElement.querySelector(".workbench-notice");
+    if (notice) { notice.className = "workbench-notice stale"; notice.textContent = "输入已修改；下方旧结果已失效，重新计算后才能保存与提交。"; }
+    target.parentElement.classList.add("has-stale-calculation");
+  }
+  renderAgentRuntime(route);
+}
+
+function queueWorkbench(route, label, action, apply) {
+  if (state.resetting) return Promise.resolve();
+  const revision = state.workbenchRevisions[route] || 0;
+  const data = state.workbenches[route];
+  const epoch = state.datasetEpoch;
+  state.workbenchPending[route] = (state.workbenchPending[route] || 0) + 1;
+  const previous = state.workbenchQueues[route] || Promise.resolve();
+  const pending = previous.catch(() => {}).then(async () => {
+    if (epoch !== state.datasetEpoch || (state.workbenchRevisions[route] || 0) !== revision) return;
+    const token = requests.start(route, label);
+    state.mutationCount++; renderRuntimeStatus();
+    try {
+      const result = await action(data);
+      if ((state.workbenchRevisions[route] || 0) === revision && epoch === state.datasetEpoch) {
+        apply?.(result);
+        requests.finish(route, token, "ready");
+      }
+    } catch (error) {
+      if ((state.workbenchRevisions[route] || 0) === revision) {
+        requests.finish(route, token, "error", error);
+        showToast(errorCopy(error), "error");
+      }
+    } finally { state.mutationCount--; renderRuntimeStatus(); }
+  }).finally(() => {
+    state.workbenchPending[route]--;
+    if (!state.workbenchPending[route]) renderWorkbench(route);
+  });
+  state.workbenchQueues[route] = pending;
+  return pending;
+}
+
+function persistWorkbenchInput(route) {
+  const input = { ...state.workbenches[route]?.input };
+  return queueWorkbench(route, "保存输入，旧测算作废", () => api(`/workbenches/${route}/draft`, { method: "POST", body: JSON.stringify({ input }) }), (result) => {
+    state.workbenches[route] = { ...state.workbenches[route], draft: result.draft };
+  });
 }
 
 async function calculateWorkbench(route, form) {
-  const data = state.workbenches[route], input = { ...(data?.input || {}), ...formInput(form) };
-  try {
-    const result = await api(`/workbenches/${route}/calculate`, { method: "POST", body: JSON.stringify({ input }) });
-    state.workbenches[route] = { ...data, input: result.input, calculation: result.calculation, draft: result.draft };
-    renderWorkbench(route);
-    showToast(result.calculation.valid ? "测算已更新" : "约束未通过，已阻止保存方案", result.calculation.valid ? "success" : "error");
-  } catch (error) { showToast(`计算失败：${error.message}`, "error"); }
+  if (!form.reportValidity()) return;
+  const input = { ...state.workbenches[route]?.input, ...formInput(form) };
+  updateWorkbenchInput(route, input);
+  const pending = queueWorkbench(route, "后端规则工具计算中", () => api(`/workbenches/${route}/calculate`, { method: "POST", body: JSON.stringify({ input }) }), (result) => {
+    state.workbenches[route] = { ...state.workbenches[route], input: result.input, calculation: result.calculation, draft: result.draft, proposal: null, dirty: false };
+    showToast(result.calculation.valid ? "测算已返回，请检查约束和证据" : "约束未通过，已阻止保存方案", result.calculation.valid ? "success" : "error");
+  });
+  setWorkbenchBusy(route);
+  await pending;
+}
+
+function setWorkbenchBusy(route) {
+  const target = document.querySelector(`[data-workbench-form="${route}"]`);
+  if (target) $$("button, input, select", target).forEach((node) => { node.disabled = true; });
 }
 
 async function saveWorkbench(route) {
   const data = state.workbenches[route];
-  try {
-    const result = await api(`/workbenches/${route}/save`, { method: "POST", body: JSON.stringify({ input: data.input }) });
-    state.workbenches[route] = { ...data, calculation: result.calculation, proposal: result.proposal, draft: { ...(data.draft || {}), status: "saved" } };
-    renderWorkbench(route); await refreshCommonRecords(); showToast("方案草稿已保存；尚未修改外部业务单据");
-  } catch (error) { showToast(`保存方案失败：${error.message}`, "error"); }
+  if (!data?.calculation?.valid || data.dirty || state.workbenchPending[route]) return;
+  const input = { ...data.input };
+  const pending = queueWorkbench(route, "保存待审批方案", () => api(`/workbenches/${route}/save`, { method: "POST", body: JSON.stringify({ input }) }), (result) => {
+    state.workbenches[route] = { ...state.workbenches[route], calculation: result.calculation, proposal: result.proposal, draft: { ...data.draft, status: "saved" } };
+    showToast("方案已保存，尚未审批或执行");
+  });
+  setWorkbenchBusy(route);
+  await pending; await refreshCommonRecords();
 }
 
 async function submitWorkbench(route) {
-  const proposalId = state.workbenches[route]?.proposal?.id;
-  if (!proposalId) return;
-  try { const proposal = await api(`/proposals/${proposalId}/submit`, { method: "POST" }); state.workbenches[route].proposal = proposal; renderWorkbench(route); await refreshCommonRecords(); showToast("已提交负责人审批"); }
-  catch (error) { showToast(`提交失败：${error.message}`, "error"); }
+  const data = state.workbenches[route];
+  if (data?.proposal?.status !== "draft" || data.dirty || state.workbenchPending[route]) return;
+  const pending = queueWorkbench(route, "提交人工审批", () => api(`/proposals/${data.proposal.id}/submit`, { method: "POST" }), (proposal) => {
+    state.workbenches[route] = { ...state.workbenches[route], proposal };
+    showToast("已提交负责人审批");
+  });
+  setWorkbenchBusy(route);
+  await pending; await refreshCommonRecords();
 }
 
 function bindWorkbenchEvents(route, target) {
   const form = $("[data-workbench-form]", target);
   form?.addEventListener("submit", (event) => { event.preventDefault(); calculateWorkbench(route, form); });
-  form?.addEventListener("change", () => markWorkbenchDirty(route, form));
+  form?.addEventListener("input", (event) => { if (event.target.id !== "transfer-target-picker") updateWorkbenchInput(route, formInput(form)); });
+  form?.addEventListener("change", (event) => {
+    if (event.target.id === "transfer-target-picker") return;
+    updateWorkbenchInput(route, formInput(form));
+    persistWorkbenchInput(route);
+  });
   $("[data-workbench-save]", target)?.addEventListener("click", () => saveWorkbench(route));
   $("[data-workbench-submit]", target)?.addEventListener("click", () => submitWorkbench(route));
 }
 
 async function loadWorkbench(route, riskId = null) {
-  if (!API_BASE || state.workbenchLoading[route] || !state.risks.length) { renderWorkbench(route); return; }
-  state.workbenchLoading[route] = true; renderWorkbench(route);
-  try { state.workbenches[route] = await api(`/workbenches/${route}${riskId ? `?risk_id=${riskId}` : ""}`); }
-  catch (error) { showToast(`工作台读取失败：${error.message}`, "error"); }
-  finally { state.workbenchLoading[route] = false; renderWorkbench(route); }
+  if (state.resetting || state.workbenchPending[route]) return;
+  const current = state.workbenches[route];
+  if (!riskId && current?.dirty) { renderWorkbench(route); return; }
+  if (riskId && current?.dirty && Number(current.input?.risk_id) !== Number(riskId)) {
+    if (!window.confirm("当前输入尚未重新计算，切换商品后可从服务重新读取草稿。继续切换？")) return;
+  }
+  const regionalCandidate = scopedRisks().find((risk) => agentRouteForRisk(risk) === route);
+  if (state.region !== "all" && !riskId && !current && !regionalCandidate) {
+    state.workbenches[route] = { input: {}, mode: "unavailable" }; renderWorkbench(route); return;
+  }
+  const selected = riskId || current?.risk?.id || regionalCandidate?.id;
+  state.workbenchRevisions[route] = (state.workbenchRevisions[route] || 0) + 1;
+  const pending = readResource(route, `/workbenches/${route}${selected ? `?risk_id=${encodeURIComponent(selected)}` : ""}`, (data) => { state.workbenches[route] = {
+    ...data,
+    dirty: data.draft?.status === "needs_recalculation",
+    calculation: data.draft?.status === "needs_recalculation" ? null : data.calculation,
+    proposal: data.draft?.status === "saved" ? data.proposal : null,
+  }; }, "读取工作台快照");
+  renderWorkbench(route);
+  await pending; renderWorkbench(route);
 }
 
 async function loadDiagnosisCandidates() {
-  if (!API_BASE) { renderDiagnosis(); return; }
   const priority = state.diagnosisPriority === "all" ? "" : `?priority=${encodeURIComponent(state.diagnosisPriority)}`;
-  try {
-    const payload = await api(`/risks${priority}`);
+  await readResource("diagnosisCandidates", `/risks${priority}`, (payload) => {
     state.diagnosisRisks = payload.items || [];
-    state.diagnosisTotal = Number(payload.filtered_total ?? payload.total ?? state.diagnosisRisks.length);
-    if (!state.diagnosisRisks.some((item) => Number(item.id) === Number(state.diagnosisRiskId))) {
-      state.diagnosisRiskId = state.diagnosisRisks[0]?.id || null;
-      state.diagnosisDetail = null;
-    }
-  } catch (error) {
-    showToast(`候选清单读取失败：${error.message}`, "error");
-  }
+    state.diagnosisTotal = payload.filtered_total ?? payload.total ?? state.diagnosisRisks.length;
+  }, "诊断候选清单");
   renderDiagnosis();
 }
 
 function renderDiagnosis() {
   const target = $("#slow-list");
   if (!target) return;
-  const regionRisks = state.diagnosisRisks || scopedRisks();
+  if (requests.get("risks").status !== "ready") { target.innerHTML = resourceNotice("risks"); return; }
+  if (requests.get("diagnosisCandidates").status === "error") { target.innerHTML = resourceNotice("diagnosisCandidates"); return; }
+  const regionNames = (REGIONS[state.region] || REGIONS.all).stores;
+  const regionRisks = (state.diagnosisRisks || state.risks).filter((risk) => !regionNames.length || regionNames.some((name) => String(risk.store || "").includes(name)));
   const selectedRisk = regionRisks.find((item) => Number(item.id) === Number(state.diagnosisRiskId)) || regionRisks[0];
   const baselineSummary = state.dashboard?.teacher_baseline || {};
   const operatingSummary = state.dashboard?.operating_summary || {};
@@ -662,7 +789,7 @@ function renderDiagnosis() {
     ? Number(baselineSummary.suggested_reduction_amount || 0)
     : candidates.reduce((sum, item) => sum + Number(item.teacher_baseline?.suggested_reduction_amount || 0), 0);
   const query = state.diagnosisSearch.trim().toLowerCase();
-  const displayedCandidateTotal = state.diagnosisTotal || candidateCount;
+  const displayedCandidateTotal = state.diagnosisTotal ?? candidateCount;
   const visibleCandidates = candidates.filter((item) => {
     const matchesText = !query || [item.product, item.store, item.sku].join(" ").toLowerCase().includes(query);
     return matchesText && (state.diagnosisPriority === "all" || teacherPriority(item) === state.diagnosisPriority);
@@ -683,7 +810,7 @@ function renderDiagnosis() {
   const factors = detail?.factors || [];
   const factRows = detail?.facts || [];
   const report = detail?.diagnosis;
-  const viewTabs = [["list", "滞销库存列表"], ["reasons", "原因分析"], ["actions", "处置建议"], ["stores", "门店分布"], ["suppliers", "供应商分布"]];
+  const viewTabs = [["list", "滞销库存列表"], ["reasons", "原因分析"], ["actions", "处置建议"], ["stores", "门店分布"]];
   if (!viewTabs.some(([view]) => view === state.diagnosisView)) state.diagnosisView = "list";
   const listMarkup = `<div class="slow-list-tools"><label class="slow-search"><span class="material-symbols-rounded">search</span><input id="slow-search" type="search" value="${escapeHtml(state.diagnosisSearch)}" placeholder="搜索商品名称、SKU 或门店" /></label><select id="slow-priority-filter" aria-label="按优先级筛选"><option value="all">全部优先级</option><option value="P1" ${state.diagnosisPriority === "P1" ? "selected" : ""}>P1 优先核查</option><option value="P2" ${state.diagnosisPriority === "P2" ? "selected" : ""}>P2 高存销</option><option value="P3" ${state.diagnosisPriority === "P3" ? "selected" : ""}>P3 关注</option></select><span>${visibleCandidates.length} / ${displayedCandidateTotal.toLocaleString()} 条</span></div><div class="slow-candidate-table"><div class="slow-candidate-head"><span>商品信息</span><span>门店</span><span>库存数量</span><span>库存金额</span><span>近90天销量</span><span>库存天数</span><span>主要原因</span><span>建议动作</span><span>处理状态</span><span>操作</span></div>${visibleCandidates.map((item) => { const unit = escapeHtml(item.unit || ""); const sales90 = item.sales_90 === null || item.sales_90 === undefined ? "—" : `${Number(item.sales_90).toLocaleString()} ${unit}`; const daysToSell = item.days_to_sell === null || item.days_to_sell === undefined ? "—" : `${Number(item.days_to_sell).toLocaleString()} 天`; return `<div class="slow-candidate-row ${item.id === risk?.id ? "selected" : ""}"><span><strong>${escapeHtml(item.product || "未命名商品")}</strong><small>${escapeHtml(item.sku || "SKU 未知")} · ${unit || "单位未知"}</small></span><span>${escapeHtml(item.store || "门店未知")}</span><span>${Number(item.inventory_qty || 0).toLocaleString()} ${unit}</span><span>${money(riskAmount(item))}</span><span>${sales90}</span><span>${daysToSell}</span><span class="slow-empty-field">—</span><span class="slow-empty-field">—</span><span class="slow-empty-field">—</span><button class="text-link" type="button" data-diagnosis-select="${item.id}">查看计算</button></div>`; }).join("") || '<div class="empty-state">没有符合当前筛选条件的候选记录。</div>'}</div><p class="slow-table-note">近90天销量、库存天数来自当前快照；主要原因、建议动作和处理状态尚无经核查的数据，暂以“—”占位。</p>`;
   const storesMarkup = `<section class="analysis-view"><header class="analysis-view-header"><div><h2>门店分布</h2><p>定位候选库存集中在哪些门店；金额和占比需分开查看。</p></div><div class="analysis-summary"><span><small>涉及门店</small><strong>${stores.length} 家</strong></span><span><small>涉及库存成本</small><strong>${money(candidateAmount)}</strong></span></div></header><div class="analysis-split"><article class="analysis-panel"><header><h3>各门店疑似滞销库存成本</h3><span>按金额</span></header><div class="slow-store-bars large">${topStores.map((store, index) => `<button type="button" data-diagnosis-view="list"><b>${index + 1}</b><span>${escapeHtml(store.name || "未命名门店")}</span><i><em style="width:${Math.max((Number(store.candidate_inventory_value || 0) / maxStoreCandidate) * 100, 4)}%"></em></i><strong>${money(store.candidate_inventory_value)}</strong></button>`).join("") || '<div class="empty-state">没有可展示的门店候选汇总。</div>'}</div></article><article class="analysis-panel store-current"><header><h3>当前门店概览</h3><span>按候选成本最高</span></header><strong>${escapeHtml(topStores[0]?.name || "—")}</strong><p>本店库存成本 ${topStores[0] ? money(topStores[0].inventory_value) : "—"}。</p><div class="store-current-metrics"><span><small>疑似滞销成本</small><b>${topStores[0] ? money(topStores[0].candidate_inventory_value) : "—"}</b></span><span><small>占本店库存</small><b>${topStores[0] && Number(topStores[0].inventory_value || 0) > 0 ? `${((Number(topStores[0].candidate_inventory_value || 0) / Number(topStores[0].inventory_value || 0)) * 100).toFixed(1)}%` : "—"}</b></span><span><small>涉及商品</small><b>${topStores[0] ? Number(topStores[0].slow_moving_skus || 0).toLocaleString() : "—"}</b></span></div><p class="analysis-note">门店表现与滞销成因仍需结合客群、陈列与经营记录核查。</p></article></div><section class="analysis-panel analysis-records"><header><div><h3>门店明细</h3><p>占比为候选库存成本占该门店当前库存成本，不代表门店整体经营评价。</p></div><span>${stores.length} 家门店</span></header><div class="analysis-table-wrap"><div class="analysis-table store-table"><div class="analysis-table-head"><span>门店</span><span>全店库存成本</span><span>疑似滞销成本</span><span>占本店库存</span><span>涉及商品</span><span>核查状态</span><span>操作</span></div>${stores.map((store) => { const share = Number(store.inventory_value || 0) > 0 ? `${((Number(store.candidate_inventory_value || 0) / Number(store.inventory_value || 0)) * 100).toFixed(1)}%` : "—"; return `<div class="analysis-table-row"><strong>${escapeHtml(store.name || "未命名门店")}</strong><span>${money(store.inventory_value)}</span><span>${money(store.candidate_inventory_value)}</span><span>${share}</span><span>${Number(store.slow_moving_skus || 0).toLocaleString()} 条</span><span class="slow-empty-field">—</span><button class="text-link" type="button" data-diagnosis-view="list">查看清单</button></div>`; }).join("") || '<div class="empty-state">当前快照没有可汇总的门店候选数据。</div>'}</div></div></section></section>`;
@@ -700,28 +827,7 @@ function renderDiagnosis() {
   $("#slow-search", target)?.addEventListener("input", (event) => { state.diagnosisSearch = event.target.value; renderDiagnosis(); $("#slow-search", target)?.focus(); });
   $("#slow-priority-filter", target)?.addEventListener("change", async (event) => { state.diagnosisPriority = event.target.value; state.diagnosisSearch = ""; await loadDiagnosisCandidates(); });
   $$('[data-diagnosis-select]', target).forEach((button) => button.addEventListener("click", async () => { await loadDiagnosisReport(button.dataset.diagnosisSelect); requestAnimationFrame(() => $("#slow-calculation-detail")?.scrollIntoView({ behavior: "smooth", block: "start" })); }));
-  $("[data-open-risk]", target)?.addEventListener("click", async (event) => {
-    const riskId = Number(event.currentTarget.dataset.openRisk);
-    const riskForInvestigation = regionRisks.find((item) => Number(item.id) === riskId);
-    if (riskForInvestigation && !state.risks.some((item) => Number(item.id) === riskId)) state.risks = [riskForInvestigation, ...state.risks];
-    state.selectedId = riskId;
-    state.parentRoute = "slow-diagnosis";
-    window.location.hash = "risks";
-    renderRiskList();
-    await loadSelectedDetail();
-  });
-  $("#slow-refresh-analysis")?.addEventListener("click", async () => {
-    if (!API_BASE) return;
-    try {
-      const [dashboard, riskPayload] = await Promise.all([api("/dashboard"), api("/risks")]);
-      state.dashboard = dashboard;
-      state.risks = riskPayload.items || [];
-      state.riskTotal = riskPayload.total || state.risks.length;
-      await loadDiagnosisCandidates();
-      renderAgentModules();
-      showToast("已按当前导入快照刷新老师口径分析结果");
-    } catch (error) { showToast(`刷新分析结果失败：${error.message}`, "error"); }
-  });
+
 }
 
 function renderAgentModules() {
@@ -741,6 +847,11 @@ function renderAgentModules() {
 
 function renderOperatingOverview() {
   const summary = state.dashboard?.operating_summary || {};
+  const overview = document.querySelector('[data-view="overview"]');
+  overview.classList.toggle("is-unavailable", requests.get("dashboard").status !== "ready");
+  let notice = overview.querySelector(".page-resource-notice");
+  if (!notice) { notice = document.createElement("div"); notice.className = "page-resource-notice"; overview.prepend(notice); }
+  notice.innerHTML = requests.get("dashboard").status !== "ready" ? resourceNotice("dashboard") : "";
   const isRealSnapshot = Boolean(summary.mixed_units);
   const district = { all: null, "west-lake": "西湖", shangcheng: "上城", gongshu: "拱墅", yuhang: "余杭", linping: "临平", binjiang: "滨江", xiaoshan: "萧山", qiantang: "钱塘", fuyang: "富阳" }[state.region] || null;
   const stores = (summary.stores || []).filter((store) => !district || store.district === district).sort((left, right) => Number(right.inventory_value || 0) - Number(left.inventory_value || 0));
@@ -768,7 +879,7 @@ function renderOperatingOverview() {
   const chartStores = state.overviewShowAllStores ? stores : topStores;
   const selectedStore = stores.find((store) => store.name === state.overviewSelectedStore);
   const detailStores = selectedStore ? [selectedStore] : topStores;
-  const regionLabel = district ? `${district}区区域` : (summary.region_label || "杭州市 · 全部50家门店");
+  const regionLabel = district ? `${district}区区域` : (summary.region_label || "当前全部门店");
   $("#profile-region-name").textContent = regionLabel;
   const regionSelect = $("#region-select");
   if (regionSelect && isRealSnapshot && state.region === "all") {
@@ -864,7 +975,7 @@ function todayTransferDetail(item, risk, detail) {
   const quantity = input.quantity || "—";
   const source = before.source || {};
   const target = before.target || {};
-  const loading = state.todayWorkbenchLoading === todayDetailCacheKey(item);
+  const loading = requests.get(`today:${todayDetailCacheKey(item)}`).status === "loading";
   return `<div class="today-detail-inner transfer-task-detail">
     <div class="today-detail-top"><span class="priority-badge urgent"><span class="material-symbols-rounded">priority_high</span>${escapeHtml(item.priority || "紧急")}</span><small>任务编号 #${escapeHtml(item.id)}</small><span class="today-status">${escapeHtml(item.status)}</span></div>
     <h2>${escapeHtml(risk?.store || input.source_store || "调出门店")} · ${escapeHtml(risk?.product || input.product || "调拨商品")}</h2>
@@ -907,14 +1018,12 @@ function todayGenericDetail(item, risk, detail) {
   </div>`;
 }
 
-function queueTodayWorkbench(item) {
+async function queueTodayWorkbench(item) {
   const key = todayDetailCacheKey(item);
-  if (!key || !["transfer", "expiry-rescue", "procurement-brake"].includes(item?.route) || state.todayWorkbenchCache[key] || state.todayWorkbenchLoading === key || !API_BASE) return;
-  state.todayWorkbenchLoading = key;
-  api(`/workbenches/${item.route}?risk_id=${item.risk_id}`)
-    .then((data) => { state.todayWorkbenchCache[key] = data; })
-    .catch((error) => showToast(`读取任务方案失败：${error.message}`, "error"))
-    .finally(() => { state.todayWorkbenchLoading = null; renderSupportPages(); });
+  const resource = `today:${key}`;
+  if (!key || !WORKBENCH_ROUTES.includes(item?.route) || requests.get(resource).status !== "idle") return;
+  await readResource(resource, `/workbenches/${item.route}?risk_id=${item.risk_id}`, (data) => { state.todayWorkbenchCache[key] = data; }, "今日任务方案");
+  renderSupportPages();
 }
 
 function renderSupportPages() {
@@ -942,7 +1051,7 @@ function renderSupportPages() {
   if (approvalNavCount) approvalNavCount.textContent = pendingApprovals;
   $("#task-page-count").textContent = `${todayItems.length} 项任务`;
 
-  const todayFilters = { pending: pendingItems, approval: approvalItems, completed: [] };
+  const todayFilters = { pending: pendingItems, approval: approvalItems, completed: completedItems.map((task) => ({ ...task, title: `执行任务 ${task.id}`, route: "execution", action_label: "查看执行回执" })) };
   const visibleTodayItems = todayFilters[state.todayFilter] || pendingItems;
   if (!visibleTodayItems.some((item) => item.id === state.todaySelectedItemId)) state.todaySelectedItemId = visibleTodayItems[0]?.id || null;
   const selectedTodayItem = visibleTodayItems.find((item) => item.id === state.todaySelectedItemId) || null;
@@ -962,8 +1071,8 @@ function renderSupportPages() {
   $("#today-detail").innerHTML = selectedTodayItem
     ? (selectedTodayItem.route === "transfer" ? todayTransferDetail(selectedTodayItem, selectedTodayRisk, selectedTodayDetail) : todayGenericDetail(selectedTodayItem, selectedTodayRisk, selectedTodayDetail))
     : '<div class="today-detail-empty"><span class="material-symbols-rounded">task_alt</span><h2>当前没有可查看的任务</h2><p>切换“待我处理”或“等待审批”查看今天需要推进的事项。</p></div>';
-  $$("[data-today-filter]").forEach((button) => button.addEventListener("click", () => { state.todayFilter = button.dataset.todayFilter; state.todaySelectedItemId = null; renderSupportPages(); }));
-  $$("[data-today-select]").forEach((button) => button.addEventListener("click", () => { state.todaySelectedItemId = button.dataset.todaySelect; renderSupportPages(); }));
+  const todayKey = `today:${todayDetailCacheKey(selectedTodayItem)}`;
+  if (selectedTodayItem && requests.get(todayKey).status === "error") $("#today-detail").innerHTML = resourceNotice(todayKey);
   if (selectedTodayItem && currentRoute() === "today") queueTodayWorkbench(selectedTodayItem);
 
   $("#task-list").innerHTML = todayItems.map((item) => `
@@ -977,19 +1086,16 @@ function renderSupportPages() {
   renderApprovalList();
   renderExecutionList();
   renderDataCenter();
-
-  $$("[data-open-risk]").forEach((button) => button.addEventListener("click", async () => {
-    state.selectedId = Number(button.dataset.openRisk);
-    state.parentRoute = button.dataset.sourceRoute || agentRouteForRisk(selectedRisk());
-    window.location.hash = "risks";
-    renderRiskList();
-    await loadSelectedDetail();
-  }));
-  $$("[data-approve-proposal]").forEach((button) => button.addEventListener("click", () => approveProposal(button.dataset.approveProposal)));
+  if (requests.get("workItems").status !== "ready") {
+    $("#today-list").innerHTML = resourceNotice("workItems");
+    $("#today-detail").innerHTML = resourceNotice("workItems");
+    $("#task-list").innerHTML = resourceNotice("workItems");
+  }
 }
 
 function renderApprovalList() {
   const target = $("#approval-list"); if (!target) return;
+  if (requests.get("proposals").status !== "ready") { target.innerHTML = resourceNotice("proposals"); return; }
   const items = state.proposals.filter((proposal) => ["pending_approval", "approved", "needs_replan", "execution_task_created"].includes(proposal.status));
   $("#approval-page-count").textContent = `${items.length} 项`;
   target.innerHTML = items.map((proposal) => {
@@ -1001,67 +1107,57 @@ function renderApprovalList() {
 }
 
 async function approveProposal(id) {
-  try { await api(`/proposals/${id}/approve`, { method: "POST", headers: { "Idempotency-Key": `ui-approve-${id}` } }); await refreshCommonRecords(); showToast("方案已审批；下一步仍需生成执行任务"); }
-  catch (error) { showToast(`审批失败：${error.message}`, "error"); }
+  const proposal = state.proposals.find((item) => item.id === id);
+  if (!proposal || proposal.status !== "pending_approval") return;
+  await performAction(`approval:${id}`, "人工审批", () => api(`/proposals/${id}/approve`, { method: "POST", headers: { "Idempotency-Key": `ui-approve-${id}-v${proposal.current_version}` } }), async () => {
+    await refreshCommonRecords(); showToast("当前方案版本已审批；下一步可生成执行草稿");
+  });
 }
 
 async function executeProposal(id) {
-  try { await api(`/proposals/${id}/execute`, { method: "POST", headers: { "Idempotency-Key": `ui-execute-${id}` } }); await refreshCommonRecords(); showToast("已生成待外部执行任务，尚未执行调拨或修改采购单"); }
-  catch (error) { showToast(`创建执行任务失败：${error.message}`, "error"); }
+  const proposal = state.proposals.find((item) => item.id === id);
+  if (!proposal || proposal.status !== "approved") return;
+  await performAction(`execute:${id}`, "生成执行草稿", () => api(`/proposals/${id}/execute`, { method: "POST", headers: { "Idempotency-Key": `ui-execute-${id}-v${proposal.current_version}` } }), async () => {
+    await refreshCommonRecords(); showToast("执行草稿已生成，待人工在原系统执行并回填回执");
+  });
 }
 
 function renderExecutionList() {
-  const target = $("#execution-list"); if (!target) return;
+  const target = $("#execution-list");
+  if (requests.get("executionTasks").status !== "ready") { target.innerHTML = resourceNotice("executionTasks"); return; }
+  const statuses = { draft_pending_external_execution: "待原系统执行（草稿）", pending_dispatch: "待出库", in_transit: "在途", awaiting_receipt: "待收货", received: "已收货", completed: "已完成", exception: "异常 / 待人工核对" };
   $("#execution-page-count").textContent = `${state.executionTasks.length} 项`;
-  target.innerHTML = state.executionTasks.map((task) => `<div class="execution-row"><div><strong>${escapeHtml(task.id)}</strong><p>方案 ${escapeHtml(task.proposal_id)} · V${task.proposal_version} · 当前 ${escapeHtml(task.status)}</p><div class="timeline-mini">${(task.metadata?.timeline || []).map((event) => `<span>${escapeHtml(event.status)} · ${escapeHtml(event.at)}</span>`).join("") || "<span>已生成任务，等待人工回执</span>"}</div></div><form data-execution-form="${task.id}"><label>更新状态<select name="status"><option value="pending_dispatch">待出库</option><option value="in_transit">在途</option><option value="awaiting_receipt">待收货</option><option value="received">已收货</option><option value="completed">已完成</option><option value="exception">异常</option></select></label><label>回执号（收货/完成必填）<input name="receipt_ref" placeholder="外部单据或签收回执" /></label><button class="secondary-action" type="submit">记录状态</button></form></div>`).join("") || '<div class="empty-state">暂无执行任务。审批方案后可生成任务；这不会自动向 ERP 发单。</div>';
-  $$("[data-execution-form]", target).forEach((form) => form.addEventListener("submit", async (event) => { event.preventDefault(); const values = formInput(form); try { await api(`/execution-tasks/${form.dataset.executionForm}/status`, { method: "POST", body: JSON.stringify(values) }); await refreshCommonRecords(); showToast("执行状态与回执已记录"); } catch (error) { showToast(`状态更新失败：${error.message}`, "error"); } }));
+  target.innerHTML = state.executionTasks.map((task) => `<div class="execution-row"><div><strong>${escapeHtml(task.id)}</strong><p>方案 ${escapeHtml(task.proposal_id)} · V${escapeHtml(task.proposal_version)} · ${escapeHtml(statuses[task.status] || task.status)}</p><div class="timeline-mini">${(task.metadata?.timeline || []).map((event) => `<span>${escapeHtml(statuses[event.status] || event.status)} · ${escapeHtml(event.at)}</span>`).join("") || "<span>已生成草稿，尚未执行外部操作</span>"}</div></div><form data-execution-form="${escapeHtml(task.id)}"><label>更新状态<select name="status">${Object.entries(statuses).filter(([value]) => value !== "draft_pending_external_execution").map(([value,label]) => `<option value="${value}">${label}</option>`).join("")}</select></label><label>回执号（收货/完成必填）<input name="receipt_ref" placeholder="外部单据或签收回执" /></label><button class="secondary-action" type="submit">记录状态</button><p class="execution-error" role="status"></p></form></div>`).join("") || '<div class="empty-state">暂无执行任务。审批后可生成待原系统执行的草稿。</div>';
+  $$("[data-execution-form]", target).forEach((form) => {
+    const receipt = $("[name=receipt_ref]", form);
+    $("[name=status]", form).addEventListener("change", (event) => { receipt.required = ["received", "completed"].includes(event.target.value); });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const values = formInput(form), id = form.dataset.executionForm;
+      $$("button, input, select", form).forEach((node) => { node.disabled = true; });
+      const ok = await performAction(`receipt:${id}`, "记录人工执行回执", () => api(`/execution-tasks/${id}/status`, { method: "POST", body: JSON.stringify(values) }), async () => { await refreshCommonRecords(); showToast("状态与回执已记录"); });
+      if (!ok && form.isConnected) {
+        $(".execution-error", form).textContent = errorCopy(requests.get(`receipt:${id}`).error);
+        $$("button, input, select", form).forEach((node) => { node.disabled = false; });
+      }
+    });
+  });
 }
 
 function renderDataCenter() {
-  const data = state.dataCenter, sourceTarget = $("#data-sources"), history = $("#import-history");
-  if (!sourceTarget || !history) return;
-  const source = data?.sources?.[0] || {};
-  const isReal = data?.mode === "real_inventory_snapshot";
-  const realSummary = source.summary || {};
-  const currentTitle = isReal ? `当前查看：真实库存快照（${source.last_snapshot || "未标注时点"}）` : "当前查看：2026年第二季度库存分析";
-  const currentMeta = isReal
-    ? `库存时点：${source.last_snapshot || "未标注"} <i></i> 覆盖范围：${realSummary.stores || 0} 个门店 <i></i> 明细行：${Number(realSummary.rows || 0).toLocaleString()} <i></i> 数据来源：真实文件导入`
-    : "销售期间：2026-04-01 ～ 2026-06-30 <i></i> 库存时点：2026-06-30 <i></i> 覆盖范围：50家门店 <i></i> 数据来源：手动导入 <i></i> 更新于：2026-07-02 14:21";
-  const statusLabel = isReal ? "已接入" : "已完成";
-  sourceTarget.innerHTML = `<section class="data-current-analysis"><div class="data-current-icon"><span class="material-symbols-rounded">database</span></div><div class="data-current-copy"><div class="data-current-title"><strong>${escapeHtml(currentTitle)}</strong><span class="status-pill success">${statusLabel}</span></div><p>${currentMeta}</p><small>当前数据源：${escapeHtml(source.name || "季度经营数据")} · 已覆盖 ${escapeHtml((source.fields || []).join("、") || "库存、销售、采购、效期")}${isReal ? ` · 库存成本 ${money(realSummary.cost_total)} · SKU ${Number(realSummary.skus || 0).toLocaleString()}` : ""}</small></div><div class="data-current-actions"><button class="secondary-action" type="button" data-go="overview">查看分析结果</button><button class="secondary-action" id="data-view-files" type="button">查看本次文件</button></div></section>`;
-  $("#data-view-files")?.addEventListener("click", () => showToast(isReal ? `本次文件：${source.name || "真实库存明细表"}` : "本次分析包含库存、销售与采购共 3 份文件"));
-  const schemas = data?.import_schemas || {};
-  const kind = $("#import-kind")?.value || "inventory";
-  const schema = schemas[kind] || { label: "库存表", required: ["sku", "store", "inventory_qty"], description: "每行一个商品在一个门店的当前库存。" };
-  const requirements = $("#import-requirements");
-  if (requirements) requirements.innerHTML = `<strong>${escapeHtml(schema.label)}需要的字段</strong><span>${schema.required.map((field) => `<code>${escapeHtml(field)}</code>`).join("")}</span><small>${escapeHtml(schema.description)}</small>`;
-  const demoHistory = [
-    { name: "2026年第二季度库存分析", sales: "2026-04-01 ～ 2026-06-30", inventory: "2026-06-30", stores: "50家门店", files: 3, status: "已完成", created: "2026-07-02 14:21" },
-    { name: "2026年第一季度库存分析", sales: "2026-01-01 ～ 2026-03-31", inventory: "2026-03-31", stores: "50家门店", files: 3, status: "已完成", created: "2026-04-03 10:15" },
-    { name: "2026年8月近效期专项分析", sales: "2026-08-01 ～ 2026-08-31", inventory: "2026-08-31", stores: "48家门店", files: 2, status: "已完成", created: "2026-09-01 16:32" },
-    { name: "2026年9月库存检查", sales: "2026-09-01 ～ 2026-09-15", inventory: "2026-09-15", stores: "50家门店", files: 2, status: "待修正", created: "2026-09-15 11:20" },
-    { name: "2026年3月采购复盘", sales: "2026-03-01 ～ 2026-03-31", inventory: "2026-03-31", stores: "50家门店", files: 4, status: "已完成", created: "2026-04-01 09:26" },
-  ];
-  const importedHistory = (data?.imports || []).map((item) => {
-    const summary = item.summary || {}, errors = item.errors || [];
-    return { name: item.filename?.replace(/\.(xlsx?|csv|tsv)$/i, "") || item.id, sales: "本次导入", inventory: "待分析", stores: "当前区域", files: 1, status: item.status === "validated" ? "已完成" : "待修正", created: item.created_at || "刚刚", note: errors.map((error) => error.message).join("；") };
-  });
-  const realHistory = isReal ? [{
-    name: source.name || "真实库存快照",
-    sales: "未提供销售明细",
-    inventory: source.last_snapshot || "未标注",
-    stores: `${realSummary.stores || 0} 个门店`,
-    files: 1,
-    status: "已完成",
-    created: source.last_snapshot || "已导入",
-  }] : [];
-  let historyRows = realHistory.length ? realHistory : (importedHistory.length ? importedHistory : demoHistory);
-  const search = state.analysisSearch.trim().toLowerCase();
-  historyRows = historyRows.filter((item) => (!search || item.name.toLowerCase().includes(search)) && (state.analysisStatus === "全部状态" || item.status === state.analysisStatus));
-  if (state.analysisSort === "按创建时间") historyRows = [...historyRows].sort((a, b) => b.created.localeCompare(a.created));
-  history.innerHTML = historyRows.map((item) => `<div class="analysis-history-row"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.sales)}</span><span>${escapeHtml(item.inventory)}</span><span>${escapeHtml(item.stores)}</span><span>${item.files}</span><b class="analysis-status ${item.status === "已完成" ? "done" : "fix"}">${escapeHtml(item.status)}</b><time>${escapeHtml(item.created)}</time><div class="analysis-history-actions"><button type="button" data-go="overview">${item.status === "已完成" ? "查看结果" : "继续处理"}</button><button type="button" data-history-files="${escapeHtml(item.name)}">查看文件</button><button type="button" aria-label="更多操作">•••</button></div></div>`).join("") || '<div class="empty-state">没有匹配的分析记录。</div>';
-  const count = $("#analysis-count");
-  if (count) count.textContent = `共 ${historyRows.length || 0} 条记录`;
+  const source = $("#data-sources"), history = $("#import-history");
+  if (requests.get("dataCenter").status !== "ready") {
+    source.innerHTML = resourceNotice("dataCenter"); history.innerHTML = "";
+    $("#data-import-form button[type=submit]").disabled = true;
+    return;
+  }
+  $("#data-import-form button[type=submit]").disabled = false;
+  const view = buildDataCenterView({ data: state.dataCenter, search: state.analysisSearch, status: state.analysisStatus, sort: state.analysisSort, kind: $("#import-kind").value, escapeHtml, money });
+  source.innerHTML = view.sourcesHtml;
+  history.innerHTML = view.historyHtml;
+  $("#import-requirements").innerHTML = view.requirementsHtml;
+  $("#analysis-count").textContent = `共 ${view.count} 条校验记录`;
 }
 
 function fileAsBase64(file) {
@@ -1074,42 +1170,28 @@ function fileAsBase64(file) {
 }
 
 async function refreshCommonRecords() {
-  if (!API_BASE) return;
-  try {
-    const [items, proposals, tasks, data] = await Promise.all([api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center")]);
-    state.workItems = items.items || []; state.proposals = proposals.items || []; state.executionTasks = tasks.items || []; state.dataCenter = data;
-    renderSupportPages();
-  } catch (error) { showToast(`协同记录读取失败：${error.message}`, "error"); }
+  // The backend owns one SQLite connection. Reads remain independent in state.
+  for (const key of ["health", "workItems", "proposals", "executionTasks", "dataCenter"]) {
+    const loader = RESOURCE_LOADERS[key];
+    await readResource(key, loader.path, loader.apply, loader.label);
+  }
+  renderSupportPages();
 }
 
 async function hydrate() {
-  try {
-    const [dashboard, riskPayload, casePayload, items, proposals, tasks, data] = API_BASE
-      ? await Promise.all([api("/dashboard"), api("/risks"), api("/cases"), api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center")])
-      : [null, { items: fallbackRisks }, { items: [] }, { items: [] }, { items: [] }, { items: [] }, null];
-    state.dashboard = dashboard;
-    const realMode = data?.mode === "real_inventory_snapshot";
-    state.risks = riskPayload.items?.length ? riskPayload.items : (realMode ? [] : fallbackRisks);
-    state.riskTotal = riskPayload.total || state.risks.length;
-    state.diagnosisRisks = state.risks;
-    state.diagnosisTotal = Number(riskPayload.filtered_total ?? riskPayload.total ?? state.risks.length);
-    state.workItems = items.items || []; state.proposals = proposals.items || []; state.executionTasks = tasks.items || []; state.dataCenter = data;
-    if (!state.risks.some((risk) => Number(risk.id) === Number(state.selectedId))) state.selectedId = state.risks[0]?.id;
-    renderRiskList();
-    renderSupportPages();
-    renderCases(casePayload.items || []);
-    if (state.risks.length) {
-      await loadSelectedDetail();
-      await loadDiagnosisReport(state.diagnosisRiskId || state.selectedId);
-      if (!realMode) await Promise.all(["transfer", "expiry-rescue", "procurement-brake"].map((route) => loadWorkbench(route)));
-    }
-  } catch (error) {
-    state.risks = [...fallbackRisks]; state.riskTotal = state.risks.length;
-    renderRiskList();
-    renderSupportPages();
-    renderSelectedDetail();
-    showToast(`本地 API 暂不可用，正在显示可重复样例：${error.message}`, "error");
+  const epoch = state.datasetEpoch;
+  for (const [key, loader] of Object.entries(RESOURCE_LOADERS)) {
+    await readResource(key, loader.path, loader.apply, loader.label);
+    if (epoch !== state.datasetEpoch) return false;
   }
+  if (!state.risks.some((risk) => Number(risk.id) === Number(state.selectedId))) state.selectedId = state.risks[0]?.id ?? null;
+  if (!state.risks.some((risk) => Number(risk.id) === Number(state.diagnosisRiskId))) state.diagnosisRiskId = state.selectedId;
+  renderRiskList(); renderSupportPages(); renderCases(state.confirmedCases);
+  await loadSelectedDetail();
+  await loadDiagnosisReport(state.diagnosisRiskId);
+  renderRuntimeStatus();
+  if (WORKBENCH_ROUTES.includes(currentRoute())) await loadWorkbench(currentRoute());
+  return !requests.entries().some(([, resource]) => resource.status === "error");
 }
 
 function renderCases(cases) {
@@ -1117,47 +1199,39 @@ function renderCases(cases) {
   renderCaseLibrary();
 }
 
+function caseItems() {
+  return state.confirmedCases.map((entry) => {
+    const content = entry.content || {};
+    return { id: entry.id, title: `${content.store || "门店"} · ${content.sku || "商品"}核查`,
+      summary: content.raw_feedback || "后端未返回原始反馈", status: content.outcome_status || "待观察",
+      category: content.risk_type || "核查", factVersion: content.fact_version ?? "未知", content, route: agentRouteForRisk({ risk_type: content.risk_type }) };
+  });
+}
+
 function caseCategoryCount(category) {
-  return category === "all" ? featuredCases.length : featuredCases.filter((item) => item.tags.includes(category)).length;
+  return category === "all" ? caseItems().length : caseItems().filter((item) => item.category === category).length;
 }
 
 function renderCaseLibrary() {
-  const tabs = $("#case-category-tabs");
-  const target = $("#case-library");
-  if (!tabs || !target) return;
-  tabs.innerHTML = caseCategories.map((category) => `<button type="button" role="tab" aria-selected="${state.caseFilter === category.id}" class="${state.caseFilter === category.id ? "active" : ""}" data-case-category="${category.id}">${escapeHtml(category.label)} (${caseCategoryCount(category.id)})</button>`).join("");
-  let visible = state.caseFilter === "all"
-    ? featuredCases.filter((item) => item.featured)
-    : featuredCases.filter((item) => item.tags.includes(state.caseFilter));
-  visible = [...visible].sort((left, right) => {
-    if (state.caseSort === "impact") return Number(right.impact) - Number(left.impact);
-    if (state.caseSort === "speed") return Number(left.speed) - Number(right.speed);
-    if (state.caseSort === "amount") return Number(right.impact) - Number(left.impact);
-    return Number(Boolean(right.featured)) - Number(Boolean(left.featured));
-  }).slice(0, 6);
-  target.innerHTML = visible.map((item) => `
-    <article class="success-case-card">
-      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}案例场景" />
-      <div class="success-case-copy">
-        <h2>${escapeHtml(item.title)}</h2>
-        <p>${escapeHtml(item.summary)}</p>
-        <div class="success-case-metrics">${item.metrics.map((metric, index) => `<div class="${index === 0 && item.id !== "CASE-TRANSFER-01" && item.id !== "CASE-RETURN-01" ? "positive" : ""}"><strong>${escapeHtml(metric[0])}</strong><span>${escapeHtml(metric[1])}</span></div>`).join("")}</div>
-        <div class="success-case-footer"><p><b>适用场景：</b>${escapeHtml(item.scenario)}</p><button type="button" data-case-detail="${escapeHtml(item.id)}">查看详情 <span class="material-symbols-rounded">arrow_forward</span></button></div>
-      </div>
-    </article>`).join("") || '<div class="case-library-empty">当前分类还没有精选案例。</div>';
+  const tabs = $("#case-category-tabs"), target = $("#case-library");
+  const categories = ["all", ...new Set(caseItems().map((item) => item.category))];
+  if (!categories.includes(state.caseFilter)) state.caseFilter = "all";
+  tabs.innerHTML = categories.map((category) => `<button role="tab" aria-selected="${category === state.caseFilter}" data-case-category="${escapeHtml(category)}">${escapeHtml(category === "all" ? "全部核查" : category)} (${caseCategoryCount(category)})</button>`).join("");
+  if (requests.get("cases").status !== "ready") { target.innerHTML = resourceNotice("cases"); return; }
+  const visible = caseItems().filter((item) => state.caseFilter === "all" || item.category === state.caseFilter);
+  target.innerHTML = visible.map((item) => `<article class="success-case-card"><div class="success-case-copy"><span class="evidence-badge">核查已确认 · 效果${escapeHtml(item.status)}</span><h2>${escapeHtml(item.title)}</h2><p>${escapeHtml(item.summary)}</p><p>事实版本 ${escapeHtml(item.factVersion)}；核查记录不代表处置成功或现金到账。</p><button class="secondary-action" data-case-detail="${escapeHtml(item.id)}">查看证据</button></div></article>`).join("") || '<div class="empty-state">暂无已确认的核查案例。完成反馈确认后，记录会从服务载入。</div>';
 }
 
 function openCaseDetail(caseId) {
-  const item = featuredCases.find((entry) => entry.id === caseId);
+  const item = caseItems().find((entry) => entry.id === caseId);
   if (!item) return;
   state.selectedCaseId = item.id;
   $("#case-detail-category").textContent = item.category;
   $("#case-detail-title").textContent = item.title;
-  $("#case-detail-summary").textContent = item.summary;
-  $("#case-detail-body").innerHTML = `<img class="case-detail-cover" src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" /><div class="case-detail-metrics">${item.metrics.map((metric) => `<div><strong>${escapeHtml(metric[0])}</strong><span>${escapeHtml(metric[1])}</span></div>`).join("")}</div><p class="case-detail-story">该案例来自同区域门店的已完成实践，展示的是当时的业务背景、人工确认后的处置动作与实际结果。复用时仍会依据当前门店库存、销量、效期与执行约束重新计算，不会直接套用历史结论。</p><p class="case-detail-scenario"><b>适用场景：</b>${escapeHtml(item.scenario)}</p>`;
-  const modal = $("#case-detail-modal");
-  modal.classList.add("open");
-  modal.setAttribute("aria-hidden", "false");
+  $("#case-detail-summary").textContent = "核查记录；处置效果与实际现金需另有执行回执证明。";
+  $("#case-detail-body").innerHTML = `<pre class="evidence-json">${escapeHtml(JSON.stringify(item.content, null, 2))}</pre>`;
+  $("#case-detail-modal").classList.add("open");
+  $("#case-detail-modal").setAttribute("aria-hidden", "false");
 }
 
 function closeCaseDetail() {
@@ -1207,7 +1281,8 @@ function renderRoute() {
   };
   document.title = `资金活水 Agent · ${titles[route]}`;
   if (route === "cases") renderCaseLibrary();
-  if (["transfer", "expiry-rescue", "procurement-brake"].includes(route) && state.dashboard) loadWorkbench(route);
+  renderAgentRuntime(route);
+  if (["transfer", "expiry-rescue", "procurement-brake"].includes(route) && state.dashboard && !state.workbenches[route]) loadWorkbench(route);
   if (route === "slow-diagnosis" && state.dashboard) {
     const diagnosisId = state.risks.some((risk) => Number(risk.id) === Number(state.diagnosisRiskId)) ? state.diagnosisRiskId : scopedRisks()[0]?.id;
     if (diagnosisId) loadDiagnosisReport(diagnosisId);
@@ -1228,87 +1303,94 @@ function closeAgent() {
 
 function openInvestigationModal(focusField = "") {
   const risk = selectedRisk();
-  $("#investigation-title").textContent = `核查 ${risk.product}`;
+  if (!risk || requests.get("detail").status !== "ready") return;
+  state.feedbackRevision++;
+  state.feedbackRiskId = risk.id;
+  state.feedbackId = null; state.feedback = null;
+  $("#investigation-title").textContent = `核查 ${risk.product} · ${risk.store}`;
   $("#feedback-text").value = focusField ? `请补充${missingLabel(focusField)}：` : $("#case-note").value.trim();
+  $("#feedback-draft").hidden = true;
+  $("#feedback-reviewed").checked = false;
+  $("#confirm-feedback").disabled = true;
+  $("#feedback-status").textContent = "第 1 步：描述发现；当前使用规则草稿，未经模型分析";
+  $$(".modal-steps li").forEach((step, index) => step.classList.toggle("active", index === 0));
   $("#investigation-modal").classList.add("open");
   $("#investigation-modal").setAttribute("aria-hidden", "false");
-  setTimeout(() => $("#feedback-text").focus(), 0);
+  $("#feedback-text").focus();
 }
 
 function closeInvestigationModal() {
+  state.feedbackRevision++;
   $("#investigation-modal").classList.remove("open");
   $("#investigation-modal").setAttribute("aria-hidden", "true");
 }
 
 async function createInvestigation() {
   const risk = selectedRisk();
-  if (!risk) return;
-  try {
-    const investigation = API_BASE
-      ? await api(`/risks/${risk.id}/investigations`, { method: "POST", body: JSON.stringify({}) })
-      : { id: "INV-STATIC" };
+  if (!risk || requests.get("detail").status !== "ready") return;
+  await performAction("investigation", "创建核查任务", () => api(`/risks/${risk.id}/investigations`, { method: "POST", body: "{}" }), (investigation) => {
+    if (state.selectedId !== risk.id) return;
     state.investigationId = investigation.id;
     risk.investigation_status = "pending";
-    renderRiskList();
-    renderSelectedDetail();
-    openInvestigationModal();
-  } catch (error) {
-    showToast(`核查任务创建失败：${error.message}`, "error");
-  }
+    renderRiskList(); renderSelectedDetail(); openInvestigationModal();
+  });
 }
 
 async function submitFeedback() {
   const rawText = $("#feedback-text").value.trim();
-  if (!rawText) {
-    showToast("请先描述核查发现", "error");
-    return;
-  }
-  if (!state.investigationId) {
-    await createInvestigation();
-    if (!state.investigationId) return;
-  }
-  try {
-    const feedback = API_BASE
-      ? await api(`/investigations/${state.investigationId}/feedback`, { method: "POST", body: JSON.stringify({ raw_text: rawText, submitted_at: new Date().toISOString() }) })
-      : { id: "FB-STATIC" };
-    state.feedbackId = feedback.id;
-    $("#confirm-feedback").disabled = false;
-    $("#feedback-status").textContent = "第 2 步：草稿已生成，请检查后确认";
-    const steps = $$(".modal-steps li");
-    steps[0].classList.remove("active");
-    steps[1].classList.add("active");
-    showToast("原文已留存，正式事实尚未改变");
-  } catch (error) {
-    showToast(`反馈草稿失败：${error.message}`, "error");
-  }
+  const riskId = state.feedbackRiskId;
+  const revision = state.feedbackRevision;
+  let investigationId = state.investigationId;
+  if (!rawText || !riskId) { showToast("请先描述核查发现", "error"); return; }
+  $("#submit-feedback").disabled = true; $("#confirm-feedback").disabled = true;
+  await performAction("feedback", "生成规则核查草稿", async () => {
+    if (!investigationId) {
+      const investigation = await api(`/risks/${riskId}/investigations`, { method: "POST", body: "{}" });
+      investigationId = investigation.id;
+    }
+    return api(`/investigations/${investigationId}/feedback`, { method: "POST", body: JSON.stringify({ raw_text: rawText, submitted_at: new Date().toISOString() }) });
+  }, (feedback) => {
+    if (revision !== state.feedbackRevision || state.feedbackRiskId !== riskId || $("#feedback-text").value.trim() !== rawText) return;
+    state.investigationId = investigationId;
+    state.feedbackId = feedback.id; state.feedback = feedback;
+    const panel = $("#feedback-draft"); panel.hidden = false;
+    panel.innerHTML = `<h3>请逐项核对原文和规则草稿</h3><p>当前草稿含预设因子，不能作为 AI 结论。请修正后再确认；无法核实的内容应标为未知。</p><h4>原始反馈</h4><p>${escapeHtml(feedback.raw_text)}</p><h4>后端草稿（留作对照）</h4><pre>${escapeHtml(JSON.stringify(feedback.draft, null, 2))}</pre><label for="feedback-correction">确认事实（可修改）</label><textarea id="feedback-correction" rows="4">${escapeHtml(feedback.raw_text)}</textarea>`;
+    $("#feedback-reviewed").checked = false;
+    $("#feedback-status").textContent = "第 2 步：草稿待核对；勾选确认后才能保存正式事实";
+    $$(".modal-steps li").forEach((step, index) => step.classList.toggle("active", index === 1));
+  });
+  $("#submit-feedback").disabled = false;
 }
 
 async function confirmFeedback() {
-  if (!state.feedbackId) return;
-  try {
-    if (API_BASE) {
-      await api(`/feedback/${state.feedbackId}/confirm`, {
-        method: "POST",
-        body: JSON.stringify({ confirmed: { verification_method: $("#verification-status").value, remediation_status: "unknown", user_checked: true } }),
-      });
+  if (!state.feedbackId || !$("#feedback-reviewed").checked) return;
+  const confirmedText = $("#feedback-correction")?.value.trim();
+  if (!confirmedText) { showToast("请填写经人工核对的事实，未知项可明确写未知", "error"); return; }
+  $("#confirm-feedback").disabled = true;
+  const feedbackId = state.feedbackId;
+  const revision = state.feedbackRevision;
+  const ok = await performAction("confirmFeedback", "保存人工确认的事实", () => api(`/feedback/${feedbackId}/confirm`, {
+    method: "POST", body: JSON.stringify({ confirmed: { verification_method: $("#verification-status").value, confirmed_text: confirmedText, remediation_status: "unknown", user_checked: true } }),
+  }), async () => {
+    state.workbenches = {}; state.todayWorkbenchCache = {};
+    invalidateSimulation("核查事实已更新，请重新计算工作台与现金模拟。");
+    for (const route of WORKBENCH_ROUTES) {
+      state.workbenchRevisions[route] = (state.workbenchRevisions[route] || 0) + 1;
+      requests.invalidate(route);
     }
-    $("#feedback-status").textContent = "第 3 步：反馈已确认，受影响方案需要重算";
-    $("#confirm-feedback").disabled = true;
-    const steps = $$(".modal-steps li");
-    steps[1].classList.remove("active");
-    steps[2].classList.add("active");
+    for (const [key] of requests.entries()) if (key.startsWith("today:")) requests.invalidate(key);
+    $("#feedback-status").textContent = "第 3 步：事实已确认，旧审批方案需要重算";
+    if (revision === state.feedbackRevision) closeInvestigationModal();
     await hydrate();
-    showToast("新事实已保存；旧方案已失效并等待重新评估");
-    setTimeout(closeInvestigationModal, 700);
-  } catch (error) {
-    showToast(`确认失败：${error.message}`, "error");
-  }
+    showToast("新事实已保存；请在对应工作台重新计算方案");
+  });
+  if (!ok && revision === state.feedbackRevision) $("#confirm-feedback").disabled = !$("#feedback-reviewed").checked;
 }
 
 function renderChat() {
   const thread = $("#agent-chat-thread");
   if (!thread) return;
-  const greeting = { role: "agent", text: `我是现金流 Agent。当前分析范围是“${REGIONS[state.region]?.label || "全市门店"}”。你可以直接说“30天内释放20万元，不要降价”，我会同步到测算并如实标记未知数据。` };
+  const greeting = { role: "agent", text: `当前是规则模式，未接入语言模型。当前分析范围是“${REGIONS[state.region]?.label || "全市门店"}”。你可以直接说“30天内释放20万元，不要降价”，文本只按关键词预填表单，请人工核对金额、期限与约束后点击生成方案。` };
   const messages = [greeting, ...state.chatMessages];
   thread.innerHTML = messages.map((message) => `<article class="chat-message ${message.role}"><span class="chat-avatar"><span class="material-symbols-rounded">${message.role === "agent" ? "auto_awesome" : "person"}</span></span><div class="chat-bubble">${escapeHtml(message.text)}</div></article>`).join("");
   thread.scrollTop = thread.scrollHeight;
@@ -1321,6 +1403,14 @@ function parseChatRequest(text) {
   return { targetWan: amount ? Number(amount[1]) : null, days: days ? days[1] : null, constraints: constraintTerms.join("，") };
 }
 
+function invalidateSimulation(message = "输入已变化，请重新运行模拟。") {
+  requests.invalidate("simulation");
+  state.simulationResult = null; state.simulationInput = null; state.simulationCandidates = []; state.simulationExcluded = [];
+  $("#simulation-status").textContent = "待重新计算";
+  $("#simulation-output").innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
+  renderAgentRuntime("simulation");
+}
+
 async function sendChatMessage(rawText) {
   const text = rawText.trim();
   if (!text) return;
@@ -1328,223 +1418,244 @@ async function sendChatMessage(rawText) {
   const parsed = parseChatRequest(text);
   if (parsed.targetWan !== null) $("#simulation-target").value = parsed.targetWan;
   if (parsed.days) $("#simulation-days").value = parsed.days;
-  if (parsed.constraints) $("#simulation-constraints").value = parsed.constraints;
+  $("#simulation-constraints").value = parsed.constraints;
   $("#simulation-request").value = text;
-  renderChat();
-  const result = await runSimulation();
-  const goal = money(Number($("#simulation-target").value || 0) * 10000);
-  const period = $("#simulation-days").value;
-  if (!result) {
-    state.chatMessages.push({ role: "agent", text: "当前测算接口未能返回结果，已保留你的输入；请稍后重试。" });
-  } else if (result.cash_basis?.completeness === "unavailable") {
-    state.chatMessages.push({ role: "agent", text: `我已将你的描述同步为 ${period} 天内 ${goal}。当前区域没有可确认的现金事件，缺少：${(result.cash_basis.missing_fields || []).join("、")}。我不会把调拨或未验证促销当作现金释放。` });
-  } else {
-    state.chatMessages.push({ role: "agent", text: `我已按 ${period} 天、目标 ${goal} 重新组合当前工作台草稿。预计可计算净现金改善 ${money(result.achieved)}，仍有缺口 ${money(result.gap)}；可在右侧排除动作后再次统一计算。` });
-  }
+  invalidateSimulation();
+  state.chatMessages.push({ role: "agent", text: "已按关键词预填目标表单。规则仅识别部分金额、期限和约束；请打开现金流模拟逐项确认后再计算。" });
+  $("#simulation-understanding").textContent = "关键词预填草稿：请人工核对目标、期限和业务约束。";
   renderChat();
 }
 
 async function runSimulation(event) {
   event?.preventDefault();
-  const targetWan = Number($("#simulation-target").value);
-  const horizonDays = Number($("#simulation-days").value);
-  const constraints = $("#simulation-constraints").value.trim();
-  const naturalRequest = $("#simulation-request").value.trim();
-  const region = REGIONS[state.region] || REGIONS.all;
+  if (!$("#simulation-form").reportValidity()) return null;
+  await Promise.all(Object.values(state.workbenchQueues));
+  const dirtyRoutes = WORKBENCH_ROUTES.filter((route) => state.workbenches[route]?.dirty);
+  if (dirtyRoutes.length) {
+    $("#simulation-status").textContent = "待重新计算工作台";
+    $("#simulation-output").innerHTML = `<div class="empty-state">请先重新计算：${dirtyRoutes.map((route) => AGENT_NAMES[route]).join("、")}，再运行现金模拟。</div>`;
+    return null;
+  }
+  const input = { target: Number($("#simulation-target").value) * 10000, horizon_days: Number($("#simulation-days").value), constraints: { text: $("#simulation-constraints").value.trim(), natural_request: $("#simulation-request").value.trim(), region_store_keywords: (REGIONS[state.region] || REGIONS.all).stores }, excluded_action_ids: [...state.simulationExcluded] };
+  state.simulationInput = input;
+  state.simulationResult = null;
+  const token = requests.start("simulation", "组合规则计算中");
   $("#simulation-status").textContent = "正在计算";
+  $("#simulation-output").innerHTML = '<div class="empty-state" role="status">正在计算当前草稿组合…</div>';
   try {
-    const result = API_BASE
-      ? await api("/scenarios/simulate", { method: "POST", body: JSON.stringify({ target: targetWan * 10000, horizon_days: horizonDays, constraints: { text: constraints, natural_request: naturalRequest, region_store_keywords: region.stores }, excluded_action_ids: state.simulationExcluded || [] }) })
-      : { status: "gap", achieved: 5600, gap: targetWan * 10000 - 5600, selected: [] };
+    const result = await api("/scenarios/simulate", { method: "POST", body: JSON.stringify(input) });
+    if (requests.get("simulation").token !== token) return null;
     state.simulationResult = result;
-    $("#simulation-status").textContent = result.status === "feasible" ? "可行建议" : `仍有缺口 ${money(result.gap)}`;
-    $("#simulation-understanding").textContent = `已确认输入：${naturalRequest || "未提供自然语言描述"}；按 ${horizonDays} 天、目标 ${money(targetWan * 10000)}、约束“${constraints || "无"}”计算。`;
-    $("#simulation-output").className = "";
-    $("#simulation-output").innerHTML = `<div class="simulation-summary"><span>基准方案 <b>${money(0)}</b></span><span>调整方案 <b>${money(result.achieved)}</b></span><span>目标缺口 <b>${money(result.gap)}</b></span><span>现金口径 <b>${escapeHtml(result.cash_basis?.completeness || "未知")}</b></span></div><div class="cash-curve"><i style="width:${Math.min(100, Number(result.achieved || 0) / Math.max(1, Number(result.target || 1)) * 100)}%"></i><span>第 0 天</span><span>第 ${horizonDays} 天</span></div>${(result.selected || []).map((item) => `<label class="simulation-result-row"><input type="checkbox" data-simulation-action="${escapeHtml(item.id)}" checked /><div><strong>${escapeHtml(item.label)}</strong><p>来自当前已计算工作台；同一草稿仅计一次。缺项：${escapeHtml((item.missing_fields || []).join("、") || "无")}</p></div><b>${money(item.cash_effect)}</b></label>`).join("") || '<div class="empty-state">当前约束下没有可计算的候选动作；请先在工作台完成计算，或补充缺失事实。</div>'}<p class="workbench-footnote">风险与缺项：${escapeHtml((result.cash_basis?.missing_fields || []).join("、") || "已按当前草稿检查；内部调拨和无回款依据的近效期动作不计入净现金改善。")}</p>`;
-    $$('[data-simulation-action]', $("#simulation-output")).forEach((box) => box.addEventListener("change", () => { state.simulationExcluded = $$('[data-simulation-action]', $("#simulation-output")).filter((item) => !item.checked).map((item) => item.dataset.simulationAction); runSimulation(); }));
+    state.simulationCandidates = [...new Map([...state.simulationCandidates, ...(result.selected || [])].map((item) => [item.id, item])).values()];
+    requests.finish("simulation", token, "ready");
+    $("#simulation-status").textContent = result.status === "feasible" ? "模拟可行，待人工检查" : `仍有缺口 ${money(result.gap)}`;
+    $("#simulation-understanding").textContent = `规则计算采用：${input.horizon_days} 天、目标 ${money(input.target)}，约束“${input.constraints.text || "无"}”；未调用语言模型。`;
+    $("#simulation-output").innerHTML = `<div class="simulation-summary"><span>模拟净现金改善 <b>${money(result.achieved)}</b></span><span>目标缺口 <b>${money(result.gap)}</b></span><span>现金口径 <b>${escapeHtml(result.cash_basis?.completeness || "未知")}</b></span></div>${state.simulationCandidates.map((item) => `<label class="simulation-result-row"><input type="checkbox" data-simulation-action="${escapeHtml(item.id)}" ${state.simulationExcluded.includes(item.id) ? "" : "checked"} /><div><strong>${escapeHtml(item.label)}</strong><p>后端工作台草稿 ${escapeHtml(item.id)}；当前${result.selected?.some((selected) => selected.id === item.id) ? "已选入" : "未选入"}组合。</p></div><b>${money(item.cash_effect)}</b></label>`).join("") || '<div class="empty-state">当前约束下没有可计算的候选动作。请先完成工作台计算或补充缺失事实。</div>'}<p>缺项：${escapeHtml((result.cash_basis?.missing_fields || []).join("、") || "以本次结果为准")}</p><p>组合校验：${escapeHtml((result.bundle_validation?.errors || []).join("；") || (result.bundle_validation?.valid ? "通过" : "未提供"))}</p><p class="workbench-footnote">这是模拟测算，不代表真实收益；内部调拨不等同于现金到账。</p>`;
     return result;
   } catch (error) {
-    $("#simulation-status").textContent = "计算失败";
-    showToast(`模拟失败：${error.message}`, "error");
+    if (requests.finish("simulation", token, "error", error)) {
+      $("#simulation-status").textContent = "计算失败";
+      $("#simulation-output").innerHTML = resourceNotice("simulation");
+    }
     return null;
   }
 }
 
+async function resetDemo() {
+  if (state.resetting || state.apiPending || state.mutationCount || Object.values(state.workbenchPending).some(Boolean)) return;
+  if (requests.get("dataCenter").status !== "ready" || state.dataCenter?.mode !== "sample_replay" || requests.get("health").status !== "ready" || state.health?.sample_data !== true) return;
+  if (!window.confirm("重置将清空当前演示库的核查、审批和执行记录，恢复后端内置合成样例。确认重置？")) return;
+  state.resetting = true; renderRuntimeStatus();
+  state.datasetEpoch++;
+  for (const [key] of requests.entries()) requests.invalidate(key);
+  try {
+    const health = await api("/health");
+    const source = await api("/data-center");
+    if (health.sample_data !== true || source.mode !== "sample_replay") throw new Error("当前并非演示模式，已阻止重置");
+    await api("/demo/reset", { method: "POST" });
+    Object.assign(state, { risks: [], dashboard: null, selectedId: null, diagnosisRiskId: null, detail: null, diagnosisDetail: null, workbenches: {}, todayWorkbenchCache: {}, proposals: [], executionTasks: [], confirmedCases: [], workItems: [], investigationId: null, feedbackId: null, feedback: null, simulationResult: null, simulationCandidates: [], simulationExcluded: [], chatMessages: [] });
+    $("#simulation-output").innerHTML = '<div class="empty-state">演示已重置，请重新运行模拟。</div>';
+    $("#simulation-status").textContent = "尚未运行";
+    closeInvestigationModal(); closeCaseDetail();
+    showToast("后端合成样例已重置");
+  } catch (error) { showToast(errorCopy(error), "error"); }
+  finally { state.resetting = false; await hydrate(); renderChat(); }
+}
+
+async function loadSampleManifest() {
+  const target = $("#sample-data-panel");
+  try {
+    const manifest = await createApiClient({ baseUrl: "/sample-data" })("/manifest.json");
+    state.manifest = manifest;
+    target.innerHTML = `<div><strong>固定种子场景包</strong><p>${escapeHtml(manifest.scenario_count ?? manifest.metadata?.scenario_count ?? manifest.scenarios?.length)} 个合成场景；下载文件用于字段校验和测试，不会替换当前快照。<a href="sample-data/README.md">数据说明</a></p></div><div class="sample-downloads">${["inventory", "sales", "purchase", "expiry"].map((key) => `<button class="secondary-action" data-sample-file="${key}">${{inventory:"库存",sales:"销售",purchase:"采购",expiry:"效期"}[key]} CSV</button>`).join("")}</div>`;
+  } catch (error) { target.textContent = `场景包读取失败：${errorCopy(error)}`; }
+}
+
+
+async function refreshView() {
+  if (state.resetting || requests.get("refresh").status === "loading") return;
+  const token = requests.start("refresh", "重新读取");
+  const ok = await hydrate();
+  requests.finish("refresh", token, "ready");
+  if (ok) showToast("已重新读取服务快照");
+}
+
+async function retryResource(key) {
+  if (WORKBENCH_ROUTES.includes(key)) return loadWorkbench(key);
+  if (key === "detail") return loadSelectedDetail();
+  if (key === "diagnosis") return loadDiagnosisReport(state.diagnosisRiskId);
+  if (key === "diagnosisCandidates") return loadDiagnosisCandidates();
+  if (key === "simulation") return runSimulation();
+  if (key.startsWith("today:")) { requests.invalidate(key); renderSupportPages(); return; }
+  const loader = RESOURCE_LOADERS[key];
+  if (loader) await readResource(key, loader.path, loader.apply, loader.label);
+  renderRiskList(); renderSupportPages(); renderCaseLibrary();
+}
+
+function renderSelectedFiles() {
+  const files = [...($("#import-file").files || [])];
+  $("#import-file-name").textContent = files.length ? `已选择 ${files.length} 个文件` : "尚未选择文件";
+  $("#selected-file-count").textContent = String(files.length);
+  $("#selected-file-list").innerHTML = files.map((file, index) => `<div class="selected-file-row"><span><strong>${escapeHtml(file.name)}</strong><small>${(file.size / 1024).toFixed(1)} KB</small></span><b>已选择，尚未上传</b><button type="button" data-remove-file="${index}" aria-label="移除 ${escapeHtml(file.name)}">移除</button></div>`).join("") || '<div class="selected-files-empty">选择文件后会显示在这里</div>';
+  $("#import-status").textContent = files.length ? "等待字段校验；同批文件使用下方所选数据类型" : "尚未选择文件";
+}
+
+async function importFiles(event) {
+  event.preventDefault();
+  const files = [...($("#import-file").files || [])];
+  if (!files.length) return;
+  const kind = $("#import-kind").value;
+  const sheet = $("#import-sheet-name").value.trim() || null;
+  const form = $("#data-import-form");
+  $$("button, input, select", form).forEach((node) => { node.disabled = true; });
+  $("#import-status").textContent = "正在逐个校验文件…";
+  const results = [];
+  const ok = await performAction("import", "文件字段校验", async () => {
+    for (const file of files) {
+      const result = await api("/data-center/imports", { method: "POST", body: JSON.stringify({ filename: file.name, file_base64: await fileAsBase64(file), data_kind: kind, sheet_name: sheet, mode: "erp_file" }) });
+      results.push(`${file.name}：${result.status === "validated" ? "仅字段校验通过，未覆写快照" : (result.errors || []).map((error) => error.message).join("；") || "校验失败"}`);
+      $("#import-status").textContent = results.join("；");
+    }
+  });
+  if (!ok) $("#import-status").textContent = `${results.join("；")} ${errorCopy(requests.get("import").error)}`;
+  $$("button, input, select", form).forEach((node) => { node.disabled = false; });
+  await refreshCommonRecords();
+}
+
 function bindEvents() {
   window.addEventListener("hashchange", renderRoute);
-  document.addEventListener("click", (event) => {
-    const go = event.target.closest("[data-go]");
-    if (go) {
-      window.location.hash = go.dataset.go;
-      const riskId = Number(go.dataset.workbenchRisk || 0);
-      const linkedRisk = state.risks.find((risk) => Number(risk.id) === riskId);
-      if (riskId && linkedRisk && agentRouteForRisk(linkedRisk) === go.dataset.go) loadWorkbench(go.dataset.go, riskId);
+  document.addEventListener("click", async (event) => {
+    const button = event.target.closest("button, a");
+    if (!button || button.disabled) return;
+    if (button.hasAttribute("data-refresh-all")) return refreshView();
+    if (button.dataset.retryResource) return retryResource(button.dataset.retryResource);
+    if (button.dataset.sampleFile) {
+      try { downloadSample(state.manifest, button.dataset.sampleFile); } catch (error) { showToast(error.message, "error"); }
+      return;
+    }
+    if (button.dataset.templateKind) {
+      try { downloadTemplate(button.dataset.templateKind, state.dataCenter?.import_schemas?.[button.dataset.templateKind]); } catch (error) { showToast(error.message, "error"); }
+      return;
+    }
+    if (button.dataset.todayFilter) { state.todayFilter = button.dataset.todayFilter; state.todaySelectedItemId = null; renderSupportPages(); return; }
+    if (button.dataset.todaySelect) { state.todaySelectedItemId = button.dataset.todaySelect; renderSupportPages(); return; }
+    if (button.dataset.openRisk) {
+      const id = Number(button.dataset.openRisk);
+      const risk = [...state.risks, ...(state.diagnosisRisks || [])].find((item) => Number(item.id) === id);
+      if (!risk) return;
+      if (!state.risks.some((item) => Number(item.id) === id)) state.risks.push(risk);
+      state.selectedId = id; state.parentRoute = button.dataset.sourceRoute || agentRouteForRisk(risk);
+      window.location.hash = "risks"; renderRiskList(); await loadSelectedDetail(); return;
+    }
+    if (button.dataset.go) {
+      const id = Number(button.dataset.workbenchRisk || 0);
+      window.location.hash = button.dataset.go;
+      if (id && WORKBENCH_ROUTES.includes(button.dataset.go)) await loadWorkbench(button.dataset.go, id);
     }
   });
-  $("#overview-toggle-store-chart").addEventListener("click", () => {
-    state.overviewShowAllStores = !state.overviewShowAllStores;
-    renderOperatingOverview();
-  });
+  $("#overview-toggle-store-chart").addEventListener("click", () => { state.overviewShowAllStores = !state.overviewShowAllStores; renderOperatingOverview(); });
   $("#overview-store-bars").addEventListener("click", (event) => {
     const bar = event.target.closest("[data-overview-store]");
-    if (!bar) return;
-    state.overviewSelectedStore = state.overviewSelectedStore === bar.dataset.overviewStore ? null : bar.dataset.overviewStore;
-    renderOperatingOverview();
+    if (bar) { state.overviewSelectedStore = state.overviewSelectedStore === bar.dataset.overviewStore ? null : bar.dataset.overviewStore; renderOperatingOverview(); }
   });
-  $("#overview-clear-store-filter").addEventListener("click", () => {
-    state.overviewSelectedStore = null;
-    renderOperatingOverview();
-  });
-  $("#priority-filter").addEventListener("change", (event) => { state.priorityFilter = event.target.value; renderRiskList(); });
-  $("#type-filter").addEventListener("change", (event) => { state.typeFilter = event.target.value; renderRiskList(); });
-  $("#evidence-filter").addEventListener("change", (event) => { state.evidenceFilter = event.target.value; renderRiskList(); });
+  $("#overview-clear-store-filter").addEventListener("click", () => { state.overviewSelectedStore = null; renderOperatingOverview(); });
+  [["#priority-filter", "priorityFilter"], ["#type-filter", "typeFilter"], ["#evidence-filter", "evidenceFilter"]].forEach(([selector, key]) => $(selector).addEventListener("change", (event) => { state[key] = event.target.value; renderRiskList(); }));
   $("#filter-toggle").addEventListener("click", () => { $("#filter-row").hidden = !$("#filter-row").hidden; });
-  $$(".queue-tabs button").forEach((button) => button.addEventListener("click", () => {
-    $$(".queue-tabs button").forEach((item) => item.classList.toggle("active", item === button));
-  }));
-  $("#global-search").addEventListener("input", (event) => {
-    state.search = event.target.value;
-    if (state.search && currentRoute() !== "risks") window.location.hash = "risks";
-    renderRiskList();
-  });
+  $("#global-search").addEventListener("input", (event) => { state.search = event.target.value; if (state.search) window.location.hash = "risks"; renderRiskList(); });
   document.addEventListener("keydown", (event) => {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-      event.preventDefault();
-      $("#global-search").focus();
-    }
-    if (event.key === "Escape") {
-      closeAgent();
-      closeInvestigationModal();
-      closeCaseDetail();
-      document.body.classList.remove("nav-open");
-      $("#drawer-backdrop").classList.remove("open");
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); $("#global-search").focus(); }
+    if (event.key === "Escape") { closeAgent(); closeInvestigationModal(); closeCaseDetail(); document.body.classList.remove("nav-open"); $("#drawer-backdrop").classList.remove("open"); }
+    const modal = document.querySelector('.modal-backdrop.open .modal');
+    if (event.key === "Tab" && modal) {
+      const focusable = [...modal.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea, select, a[href], summary')].filter((node) => node.getClientRects().length);
+      const first = focusable[0], last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }
   });
-  $("#refresh-data").addEventListener("click", async (event) => {
-    event.currentTarget.disabled = true;
-    await hydrate();
-    event.currentTarget.disabled = false;
-    showToast("已重新读取本地数据快照");
-  });
+  $("#refresh-data").addEventListener("click", refreshView);
+  $("#slow-refresh-analysis").addEventListener("click", refreshView);
+  $("#demo-reset").addEventListener("click", resetDemo);
   $("#agent-toggle").addEventListener("click", openAgent);
   $("#agent-close").addEventListener("click", closeAgent);
-  $("#drawer-backdrop").addEventListener("click", () => {
-    closeAgent();
-    document.body.classList.remove("nav-open");
-    $("#drawer-backdrop").classList.remove("open");
-  });
-  $("#mobile-nav").addEventListener("click", () => {
-    document.body.classList.toggle("nav-open");
-    $("#drawer-backdrop").classList.toggle("open", document.body.classList.contains("nav-open"));
-  });
+  $("#drawer-backdrop").addEventListener("click", () => { closeAgent(); document.body.classList.remove("nav-open"); $("#drawer-backdrop").classList.remove("open"); });
+  $("#mobile-nav").addEventListener("click", () => { document.body.classList.toggle("nav-open"); $("#drawer-backdrop").classList.toggle("open", document.body.classList.contains("nav-open")); });
   $("#mobile-back").addEventListener("click", () => $(".risk-module").classList.remove("show-detail"));
   $("#create-investigation").addEventListener("click", createInvestigation);
-  $("#defer-case").addEventListener("click", () => showToast("案件保留在待核查队列，业务状态未改变"));
+  $("#defer-case").addEventListener("click", () => showToast("案件仍在待核查队列，业务状态未改变"));
   $("#case-note").addEventListener("input", (event) => { $("#note-count").textContent = event.target.value.length; });
   $("#toast button").addEventListener("click", () => $("#toast").classList.remove("show"));
   $("#modal-close").addEventListener("click", closeInvestigationModal);
   $("#investigation-modal").addEventListener("click", (event) => { if (event.target === $("#investigation-modal")) closeInvestigationModal(); });
-  $("#case-category-tabs").addEventListener("click", (event) => {
-    const tab = event.target.closest("[data-case-category]");
-    if (!tab) return;
-    state.caseFilter = tab.dataset.caseCategory;
-    renderCaseLibrary();
-  });
-  $("#case-sort").addEventListener("change", (event) => { state.caseSort = event.target.value; renderCaseLibrary(); });
-  $("#case-library").addEventListener("click", (event) => {
-    const detail = event.target.closest("[data-case-detail]");
-    if (detail) openCaseDetail(detail.dataset.caseDetail);
-  });
-  $("#request-case").addEventListener("click", () => showToast("案例收录申请已创建，管理员会核查事实与执行结果后入库"));
+  $("#case-category-tabs").addEventListener("click", (event) => { const tab = event.target.closest("[data-case-category]"); if (tab) { state.caseFilter = tab.dataset.caseCategory; renderCaseLibrary(); } });
+  $("#case-library").addEventListener("click", (event) => { const detail = event.target.closest("[data-case-detail]"); if (detail) openCaseDetail(detail.dataset.caseDetail); });
   $("#case-detail-close").addEventListener("click", closeCaseDetail);
   $("#case-detail-modal").addEventListener("click", (event) => { if (event.target === $("#case-detail-modal")) closeCaseDetail(); });
-  $("#case-detail-use").addEventListener("click", () => { closeCaseDetail(); showToast("已将案例加入参考，系统会按当前门店数据重新计算方案"); });
-  $("#case-detail-secondary").addEventListener("click", () => {
-    const item = featuredCases.find((entry) => entry.id === state.selectedCaseId);
-    if (!item) return;
-    closeCaseDetail();
-    window.location.hash = item.route;
-  });
+  $("#case-detail-use").addEventListener("click", closeCaseDetail);
+  $("#case-detail-secondary").addEventListener("click", () => { const item = caseItems().find((entry) => entry.id === state.selectedCaseId); if (item) { closeCaseDetail(); window.location.hash = item.route; } });
   $("#submit-feedback").addEventListener("click", submitFeedback);
   $("#confirm-feedback").addEventListener("click", confirmFeedback);
+  $("#feedback-reviewed").addEventListener("change", (event) => { $("#confirm-feedback").disabled = !event.target.checked || !state.feedbackId; });
+  $("#feedback-text").addEventListener("input", () => { state.feedbackRevision++; state.feedbackId = null; state.feedback = null; $("#feedback-draft").hidden = true; $("#feedback-reviewed").checked = false; $("#confirm-feedback").disabled = true; });
   $("#simulation-form").addEventListener("submit", runSimulation);
-  $("#region-select").addEventListener("change", (event) => switchRegion(event.target.value));
-  $("#agent-chat-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const input = $("#agent-chat-input");
-    const text = input.value;
-    input.value = "";
-    await sendChatMessage(text);
+  $("#simulation-output").addEventListener("change", (event) => {
+    const box = event.target.closest("[data-simulation-action]"); if (!box) return;
+    const ids = new Set(state.simulationExcluded);
+    if (box.checked) ids.delete(box.dataset.simulationAction); else ids.add(box.dataset.simulationAction);
+    state.simulationExcluded = [...ids]; runSimulation();
   });
+  $("#region-select").addEventListener("change", (event) => switchRegion(event.target.value));
+  $("#agent-chat-form").addEventListener("submit", (event) => { event.preventDefault(); const input = $("#agent-chat-input"); sendChatMessage(input.value); input.value = ""; });
   $$("[data-chat-prompt]").forEach((button) => button.addEventListener("click", () => sendChatMessage(button.dataset.chatPrompt)));
   ["#simulation-target", "#simulation-days", "#simulation-constraints", "#simulation-request"].forEach((selector) => $(selector).addEventListener("input", () => {
-    $("#simulation-understanding").textContent = `待确认输入：${$("#simulation-request").value.trim() || "未提供自然语言描述"}；${$("#simulation-days").value} 天内目标 ${money(Number($("#simulation-target").value || 0) * 10000)}。`;
+    invalidateSimulation();
+    $("#simulation-understanding").textContent = `待人工确认：${$("#simulation-days").value} 天内目标 ${money(Number($("#simulation-target").value) * 10000)}。`;
   }));
   $("#import-kind").addEventListener("change", renderDataCenter);
-  $("#import-select-file").addEventListener("click", () => $("#import-file").click());
-  $("#import-template").addEventListener("click", () => showToast("已打开数据模板选择；请先选择对应的数据类型"));
-  $("#download-all-templates").addEventListener("click", () => showToast("全部数据模板已准备好，可按右侧数据类型逐项下载"));
-  $$('[data-template-kind]').forEach((button) => button.addEventListener("click", () => showToast(`${button.dataset.templateKind === "store" ? "门店基础信息" : button.dataset.templateKind} 模板下载功能已就绪`)));
-  $("#clear-import-files").addEventListener("click", () => {
-    const input = $("#import-file");
-    input.value = "";
-    $("#import-file-name").textContent = "尚未选择文件";
-    $("#selected-file-count").textContent = "0";
-    $("#selected-file-list").innerHTML = '<div class="selected-files-empty">选择文件后会显示在这里</div>';
-    $("#import-status").textContent = "尚未选择文件";
+  $("#import-select-file").addEventListener("click", (event) => { event.preventDefault(); $("#import-file").click(); });
+  $("#import-template").addEventListener("click", (event) => {
+    event.preventDefault();
+    const kind = $("#import-kind").value;
+    try { downloadTemplate(kind, state.dataCenter?.import_schemas?.[kind]); } catch (error) { showToast(error.message, "error"); }
   });
-  $("#import-file").addEventListener("change", (event) => {
-    const files = [...(event.target.files || [])];
-    $("#import-file-name").textContent = files.length ? `${files.length} 个文件已选择` : "尚未选择文件";
-    $("#selected-file-count").textContent = String(files.length);
-    $("#selected-file-list").innerHTML = files.map((file) => {
-      const extension = file.name.split(".").pop()?.toLowerCase() || "file";
-      const icon = extension === "csv" ? "description" : "table_view";
-      return `<div class="selected-file-row"><i class="material-symbols-rounded ${extension === "csv" ? "violet" : "green"}">${icon}</i><span><strong>${escapeHtml(file.name)}</strong><small>${(file.size / 1024 / 1024).toFixed(1)} MB</small></span><b><span class="material-symbols-rounded">check_circle</span>上传成功</b><button type="button" aria-label="移除 ${escapeHtml(file.name)}">close</button></div>`;
-    }).join("") || '<div class="selected-files-empty">选择文件后会显示在这里</div>';
-    $("#import-status").textContent = files.length ? "文件已选择，等待字段校验" : "尚未选择文件";
-  });
+  $("#clear-import-files").addEventListener("click", () => { $("#import-file").value = ""; renderSelectedFiles(); });
+  $("#import-file").addEventListener("change", renderSelectedFiles);
   $("#selected-file-list").addEventListener("click", (event) => {
-    const remove = event.target.closest("button");
-    if (!remove) return;
-    const row = remove.closest(".selected-file-row");
-    const name = row?.querySelector("strong")?.textContent;
-    const input = $("#import-file");
-    const remaining = [...(input.files || [])].filter((file) => file.name !== name);
-    const transfer = new DataTransfer();
-    remaining.forEach((file) => transfer.items.add(file));
-    input.files = transfer.files;
-    input.dispatchEvent(new Event("change", { bubbles: true }));
+    const remove = event.target.closest("[data-remove-file]"); if (!remove) return;
+    const files = new DataTransfer();
+    [...$("#import-file").files].forEach((file, index) => { if (index !== Number(remove.dataset.removeFile)) files.items.add(file); });
+    $("#import-file").files = files.files; renderSelectedFiles();
   });
   $("#analysis-search").addEventListener("input", (event) => { state.analysisSearch = event.target.value; renderDataCenter(); });
   $("#analysis-status-filter").addEventListener("change", (event) => { state.analysisStatus = event.target.value; renderDataCenter(); });
   $("#analysis-sort").addEventListener("change", (event) => { state.analysisSort = event.target.value; renderDataCenter(); });
-  $("#data-view-files")?.addEventListener("click", () => showToast("本次分析包含库存、销售与采购共 3 份文件"));
-  $("#import-history").addEventListener("click", (event) => {
-    const fileAction = event.target.closest("[data-history-files]");
-    if (fileAction) showToast(`已展开“${fileAction.dataset.historyFiles}”使用的文件`);
-  });
-  $("#data-import-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const file = $("#import-file").files?.[0];
-    if (!file) { $("#import-status").textContent = "请先选择一份 .xlsx、.csv 或 .tsv 文件"; return; }
-    $("#import-status").textContent = "正在读取文件并校验字段…";
-    try {
-      const result = await api("/data-center/imports", { method: "POST", body: JSON.stringify({
-        filename: file.name,
-        file_base64: await fileAsBase64(file),
-        data_kind: $("#import-kind").value,
-        sheet_name: $("#import-sheet-name").value.trim() || null,
-        mode: "erp_file",
-      }) });
-      $("#import-status").textContent = result.status === "validated" ? "字段校验通过，已保存导入批次；尚未覆写当前分析快照。" : `校验失败：${(result.errors || []).map((item) => item.message).join("；")}`;
-      await refreshCommonRecords();
-    } catch (error) { $("#import-status").textContent = `导入失败：${error.message}`; }
-  });
+  $("#data-import-form").addEventListener("submit", importFiles);
 }
 
 bindEvents();
-if (!window.location.hash || !validRoutes.has(window.location.hash.replace("#", ""))) window.location.hash = "overview";
+if (!window.location.hash || !validRoutes.has(window.location.hash.slice(1))) window.location.hash = "overview";
 renderRoute();
+renderRuntimeStatus();
 renderChat();
 hydrate();
+loadSampleManifest();

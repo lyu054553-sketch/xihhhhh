@@ -6,12 +6,13 @@
     <meta name="description" content="德源堂资金活水智能决策系统" />
     <title>资金活水 Agent · 风险案件</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260920-diagnosis-workspace-v2" />
+    <link rel="preload" href="assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="styles.css?v=zmj-20261002" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <noscript>请启用 JavaScript，并通过本地服务打开系统。</noscript>
     <div class="app-shell">
       <aside class="sidebar" aria-label="系统导航">
         <a class="brand" href="#overview" aria-label="资金活水 Agent 总览">
@@ -23,15 +24,15 @@
           <div class="nav-group">
             <span class="nav-group-label">经营入口</span>
             <a href="#overview" data-route="overview"><span class="material-symbols-rounded" aria-hidden="true">space_dashboard</span><b>经营总览</b></a>
-            <a href="#today" data-route="today"><span class="material-symbols-rounded" aria-hidden="true">today</span><b>今日工作台</b><i id="today-nav-count">6</i></a>
+            <a href="#today" data-route="today"><span class="material-symbols-rounded" aria-hidden="true">today</span><b>今日工作台</b><i id="today-nav-count">—</i></a>
           </div>
 
           <div class="nav-group agent-nav-group">
             <span class="nav-group-label">智能业务</span>
-            <a href="#slow-diagnosis" data-route="slow-diagnosis"><span class="material-symbols-rounded" aria-hidden="true">troubleshoot</span><b>滞销库存诊断</b><i id="slow-nav-count">4</i></a>
-            <a href="#transfer" data-route="transfer"><span class="material-symbols-rounded" aria-hidden="true">swap_horiz</span><b>跨门店智能调拨</b><i id="transfer-nav-count">2</i></a>
-            <a href="#expiry-rescue" data-route="expiry-rescue"><span class="material-symbols-rounded" aria-hidden="true">timer</span><b>近效期现金抢救</b><i id="expiry-nav-count">1</i></a>
-            <a href="#procurement-brake" data-route="procurement-brake"><span class="material-symbols-rounded" aria-hidden="true">front_hand</span><b>采购刹车</b><i id="procurement-nav-count">1</i></a>
+            <a href="#slow-diagnosis" data-route="slow-diagnosis"><span class="material-symbols-rounded" aria-hidden="true">troubleshoot</span><b>滞销库存诊断</b><i id="slow-nav-count">—</i></a>
+            <a href="#transfer" data-route="transfer"><span class="material-symbols-rounded" aria-hidden="true">swap_horiz</span><b>跨门店智能调拨</b><i id="transfer-nav-count">—</i></a>
+            <a href="#expiry-rescue" data-route="expiry-rescue"><span class="material-symbols-rounded" aria-hidden="true">timer</span><b>近效期现金抢救</b><i id="expiry-nav-count">—</i></a>
+            <a href="#procurement-brake" data-route="procurement-brake"><span class="material-symbols-rounded" aria-hidden="true">front_hand</span><b>采购刹车</b><i id="procurement-nav-count">—</i></a>
             <a href="#simulation" data-route="simulation"><span class="material-symbols-rounded" aria-hidden="true">finance_mode</span><b>现金流模拟</b></a>
           </div>
 
@@ -40,9 +41,15 @@
             <a href="#cases" data-route="cases"><span class="material-symbols-rounded" aria-hidden="true">menu_book</span><b>案例库</b></a>
             <a href="#data" data-route="data"><span class="material-symbols-rounded" aria-hidden="true">database</span><b>数据中心</b></a>
           </div>
+          <div class="nav-group"><span class="nav-group-label">协同执行</span>
+            <a href="#risks" data-route="risks"><span class="material-symbols-rounded" aria-hidden="true">fact_check</span><b>风险与人工核查</b></a>
+            <a href="#tasks" data-route="tasks"><span class="material-symbols-rounded" aria-hidden="true">assignment</span><b>核查任务</b></a>
+            <a href="#approvals" data-route="approvals"><span class="material-symbols-rounded" aria-hidden="true">approval</span><b>方案审批</b></a>
+            <a href="#execution" data-route="execution"><span class="material-symbols-rounded" aria-hidden="true">local_shipping</span><b>执行追踪</b></a>
+          </div>
         </nav>
 
-        <a class="settings-link" href="#settings" data-route="settings">
+        <a hidden class="settings-link" href="#settings" data-route="settings">
           <span class="material-symbols-rounded" aria-hidden="true">settings</span><b>系统设置</b>
         </a>
       </aside>
@@ -50,26 +57,27 @@
       <div class="app-main">
         <header class="topbar">
           <button class="mobile-nav" id="mobile-nav" aria-label="展开导航"><span class="material-symbols-rounded">menu</span></button>
-          <label class="region-select" for="region-select"><span class="material-symbols-rounded">location_on</span><select id="region-select" aria-label="切换经营区域"><option value="all" selected>杭州市 · 全部50家门店</option><option value="west-lake">西湖区区域</option><option value="shangcheng">上城区区域</option><option value="gongshu">拱墅区区域</option><option value="yuhang">余杭区区域</option><option value="linping">临平区区域</option><option value="binjiang">滨江区区域</option><option value="xiaoshan">萧山区区域</option><option value="qiantang">钱塘区区域</option><option value="fuyang">富阳区区域</option></select><span class="material-symbols-rounded">expand_more</span></label>
+          <label class="region-select" for="region-select"><span class="material-symbols-rounded">location_on</span><select id="region-select" aria-label="切换经营区域"><option value="all" selected>当前全部门店</option><option value="west-lake">西湖区区域</option><option value="shangcheng">上城区区域</option><option value="gongshu">拱墅区区域</option><option value="yuhang">余杭区区域</option><option value="linping">临平区区域</option><option value="binjiang">滨江区区域</option><option value="xiaoshan">萧山区区域</option><option value="qiantang">钱塘区区域</option><option value="fuyang">富阳区区域</option></select><span class="material-symbols-rounded">expand_more</span></label>
           <label class="global-search">
             <span class="material-symbols-rounded">search</span>
             <input id="global-search" type="search" placeholder="搜索商品、门店、风险类型或案例..." autocomplete="off" />
             <kbd>⌘ K</kbd>
           </label>
           <div class="top-actions">
-            <span class="data-status" id="data-freshness">数据更新于 08:32</span>
+            <span class="data-status" id="data-freshness">尚未读取快照</span>
             <button id="refresh-data" aria-label="刷新数据"><span class="material-symbols-rounded">refresh</span></button>
-            <button aria-label="通知" class="notification-button"><span class="material-symbols-rounded">notifications</span><i>3</i></button>
-            <button aria-label="帮助"><span class="material-symbols-rounded">help</span></button>
+
+            <a href="docs/DEMO_RUNBOOK.md" aria-label="演示说明"><span class="material-symbols-rounded">help</span></a>
             <div class="profile">
               <span class="profile-avatar">张</span>
-              <span><strong>张经理</strong><small id="profile-region-name">杭州市 · 全部50家门店</small></span>
+              <span><strong>张经理</strong><small id="profile-region-name">当前全部门店</small></span>
               <span class="material-symbols-rounded">expand_more</span>
             </div>
           </div>
         </header>
 
-        <main class="workspace">
+        <div id="runtime-status" class="runtime-status" role="status" aria-live="polite"></div>
+        <main id="main-content" class="workspace" tabindex="-1">
           <section class="module-view" data-view="overview">
             <div class="overview-priority-grid">
               <article class="overview-priority-card inventory">
@@ -102,16 +110,17 @@
               </section>
               <section class="focused-surface store-detail-panel">
                 <div class="surface-toolbar"><div><h2>门店库存经营明细</h2><p id="overview-store-detail-caption">默认展示库存成本最高的 10 家门店。</p></div><div class="overview-detail-actions"><span id="overview-store-total">0 家门店</span><button id="overview-clear-store-filter" class="text-link" type="button" hidden>清除筛选</button></div></div>
-                <div class="store-overview-head"><span>门店</span><span>库存成本</span><span>需关注库存</span><span>关注占比</span><span>近效期／调拨／滞销</span><span>操作</span></div>
-                <div id="overview-store-list" class="store-overview-list"></div>
+                <div class="store-overview-table" tabindex="0" role="region" aria-label="门店库存经营明细，可横向滚动">
+                  <div class="store-overview-head"><span>门店</span><span>库存成本</span><span>需关注库存</span><span>关注占比</span><span>近效期／调拨／滞销</span><span>操作</span></div>
+                  <div id="overview-store-list" class="store-overview-list"></div>
+                </div>
               </section>
-              <aside class="agent-health-card" aria-label="Agent 工作状态"><span class="agent-health-label">Agent 工作正常</span><div class="agent-health-list"><div><i></i><span>滞销诊断</span><small>正常</small></div><div><i></i><span>跨店调拨</span><small>正常</small></div><div><i></i><span>近效期处置</span><small>正常</small></div><div><i></i><span>采购刹车</span><small>正常</small></div><div><i></i><span>现金流模拟</span><small>正常</small></div></div></aside>
             </div>
           </section>
 
           <section class="module-view agent-module-page agent-slow" data-view="slow-diagnosis">
             <header class="module-header slow-page-header"><div><h1>滞销库存诊断 <span class="material-symbols-rounded slow-title-icon" aria-hidden="true">troubleshoot</span></h1><p>按库存、销量和成本识别库存候选；形成原因与后续处置仍需以核查证据为准。</p></div><div class="slow-page-actions"><span id="slow-snapshot-label">当前库存快照</span><button id="slow-refresh-analysis" class="primary-action" type="button"><span class="material-symbols-rounded">refresh</span>刷新分析结果</button></div></header>
-            <div id="slow-list" class="slow-dashboard" aria-live="polite"></div>
+            <section class="agent-runtime" data-agent-runtime="slow-diagnosis" aria-label="Agent 运行过程"></section><div id="slow-list" class="slow-dashboard" aria-live="polite"></div>
           </section>
 
           <section class="module-view agent-module-page agent-transfer transfer-workbench-page" data-view="transfer">
@@ -122,19 +131,19 @@
               <article><span class="material-symbols-rounded">fact_check</span><div><small>当前方案状态</small><strong id="transfer-approval-count">—</strong><em>需要负责人确认</em></div></article>
               <article><span class="material-symbols-rounded">local_shipping</span><div><small>执行中调拨</small><strong id="transfer-execution-count">0</strong><em>以执行回执为准</em></div></article>
             </div>
-            <div id="transfer-list" class="transfer-workspace" aria-live="polite"></div>
+            <section class="agent-runtime" data-agent-runtime="transfer" aria-label="Agent 运行过程"></section><div id="transfer-list" class="transfer-workspace" aria-live="polite"></div>
           </section>
 
           <section class="module-view agent-module-page agent-expiry" data-view="expiry-rescue">
             <header class="module-header"><div><span class="agent-page-mark"><span class="material-symbols-rounded" aria-hidden="true">timer</span>近效期 Agent</span><h1>近效期商品现金抢救</h1><p>根据剩余效期和销售速度，依次评估调拨、促销、退供与预计报损。</p></div></header>
             <div class="summary-strip"><div><span>待抢救批次</span><strong id="expiry-count">1</strong></div><div><span>近效期库存成本</span><strong id="expiry-amount">¥0</strong></div><div><span>当前重点</span><strong class="summary-status">核查可售天数</strong></div></div>
-            <section class="focused-surface agent-workbench"><div class="surface-toolbar"><div><h2>近效期队列</h2><p>优先处理无法按当前速度售完的商品批次。</p></div><span>效期倒计时</span></div><div id="expiry-list" class="agent-case-list"></div></section>
+            <section class="focused-surface agent-workbench"><div class="surface-toolbar"><div><h2>近效期队列</h2><p>优先处理无法按当前速度售完的商品批次。</p></div><span>效期倒计时</span></div><section class="agent-runtime" data-agent-runtime="expiry-rescue" aria-label="Agent 运行过程"></section><div id="expiry-list" class="agent-case-list"></div></section>
           </section>
 
           <section class="module-view agent-module-page agent-procurement" data-view="procurement-brake">
             <header class="module-header"><div><span class="agent-page-mark"><span class="material-symbols-rounded" aria-hidden="true">front_hand</span>采购 Agent</span><h1>采购刹车</h1><p>联动现有库存、在途采购和订单状态，阻止积压继续扩大。</p></div></header>
             <div class="summary-strip"><div><span>采购敞口</span><strong id="procurement-count">1</strong></div><div><span>相关库存成本</span><strong id="procurement-amount">¥0</strong></div><div><span>当前重点</span><strong class="summary-status">核对在途订单</strong></div></div>
-            <section class="focused-surface agent-workbench"><div class="surface-toolbar"><div><h2>采购调整队列</h2><p>确认订单能否暂停、减量或延迟到货。</p></div><span>避免现金流出</span></div><div id="procurement-list" class="agent-case-list"></div></section>
+            <section class="focused-surface agent-workbench"><div class="surface-toolbar"><div><h2>采购调整队列</h2><p>确认订单能否暂停、减量或延迟到货。</p></div><span>避免现金流出</span></div><section class="agent-runtime" data-agent-runtime="procurement-brake" aria-label="Agent 运行过程"></section><div id="procurement-list" class="agent-case-list"></div></section>
           </section>
 
           <section class="module-view risk-module" data-view="risks">
@@ -175,15 +184,15 @@
                   </select>
                 </div>
                 <div class="risk-list" id="risk-list" aria-live="polite"></div>
-                <footer class="list-footer"><span id="list-total">共 5 条</span><div><button disabled><span class="material-symbols-rounded">chevron_left</span></button><button class="current">1</button><button disabled><span class="material-symbols-rounded">chevron_right</span></button></div></footer>
+                <footer class="list-footer"><span id="list-total">尚未读取</span><div><button disabled><span class="material-symbols-rounded">chevron_left</span></button><button class="current">1</button><button disabled><span class="material-symbols-rounded">chevron_right</span></button></div></footer>
               </section>
 
-              <section class="case-pane panel" id="case-pane">
+              <section class="case-pane panel is-unavailable" id="case-pane">
                 <header class="case-header">
                   <button class="mobile-back" id="mobile-back"><span class="material-symbols-rounded">arrow_back</span>返回案件</button>
-                  <div class="case-kicker"><span id="case-id">RISK-88310</span><span class="priority-badge urgent" id="case-priority">紧急</span></div>
+                  <div class="case-kicker"><span id="case-id">—</span><span class="priority-badge urgent" id="case-priority">待读取</span></div>
                   <div class="case-title-row">
-                    <div><h2 id="case-title">钙维生素D软胶囊 · 西湖文三店</h2><p><span id="case-risk-type">风险类型　滞销风险</span><i></i><span id="case-created">数据快照　2026-09-18 08:32</span></p></div>
+                    <div><h2 id="case-title">请选择风险案件</h2><p><span id="case-risk-type">风险类型　滞销风险</span><i></i><span id="case-created">数据快照尚未读取</span></p></div>
                     <button class="agent-toggle" id="agent-toggle"><span class="material-symbols-rounded">auto_awesome</span>Agent 助手</button>
                   </div>
                 </header>
@@ -201,11 +210,11 @@
                     <header><h3>观察事实</h3><p>异常信号来自库存与销售数据，需要进一步核查以判断原因。</p></header>
                     <div class="fact-block">
                       <p class="fact-label">需关注的销售差异</p>
-                      <p class="fact-copy" id="fact-copy">近30天销量 12 盒，对照门店中位数 30 盒，差异 60%；尚未推断形成原因。</p>
+                      <p class="fact-copy" id="fact-copy">事实与证据尚未读取</p>
                       <div class="fact-metrics">
-                        <div><span>关注库存成本</span><strong id="attention-cost">¥9,600</strong></div>
+                        <div><span>关注库存成本</span><strong id="attention-cost">—</strong></div>
                         <div><span>预计净现金改善</span><strong>未知</strong></div>
-                        <div><span>已知执行支出</span><strong id="known-cost">¥86（已知）</strong></div>
+                        <div><span>已知执行支出</span><strong id="known-cost">待计算</strong></div>
                       </div>
                     </div>
                   </section>
@@ -228,7 +237,7 @@
                 <div class="agent-content">
                   <section class="agent-section">
                     <div class="agent-section-title"><span class="agent-icon blue"><span class="material-symbols-rounded">description</span></span><h3>为什么需要核查</h3></div>
-                    <p id="agent-why">该商品近30天销量低于同类门店中位数 60%。这可能由陈列位置、缺货、季节性或门店需求变化等多种因素导致，尚未推断形成原因。</p>
+                    <p id="agent-why">请先读取风险详情，再核查原因</p>
                   </section>
                   <section class="agent-section">
                     <div class="agent-section-title"><span class="agent-icon violet"><span class="material-symbols-rounded">person_search</span></span><h3>当前判断</h3></div>
@@ -237,7 +246,7 @@
                   <section class="agent-section next-step-section">
                     <div class="agent-section-title"><span class="agent-icon green"><span class="material-symbols-rounded">chat_bubble</span></span><h3>建议的下一步</h3></div>
                     <div class="suggestion-box"><strong id="agent-action">补充证据后评估跨店调拨</strong><p>需要进一步核查在库、热销规则、跨店积压事件后才能提交。</p></div>
-                    <div class="expected-effect"><h4>预期效果</h4><div><span>预计净现金改善</span><strong>未知</strong></div><div><span>已知执行支出</span><strong id="agent-cost">¥86（已知）</strong></div></div>
+                    <div class="expected-effect"><h4>预期效果</h4><div><span>预计净现金改善</span><strong>未知</strong></div><div><span>已知执行支出</span><strong id="agent-cost">待计算</strong></div></div>
                   </section>
                 </div>
                 <footer class="agent-actions"><button class="primary-action" id="create-investigation"><span class="material-symbols-rounded">assignment_add</span>创建核查任务</button><button class="text-action" id="defer-case">暂缓此案件</button></footer>
@@ -287,9 +296,9 @@
           </section>
 
           <section class="module-view" data-view="simulation">
-            <header class="module-header"><div><p class="eyebrow">SCENARIO</p><h1>现金流情景模拟</h1><p>设定现金目标与业务约束，查看候选动作和未满足缺口。</p></div></header>
-            <div class="simulation-layout">
-              <form class="focused-surface simulation-form" id="simulation-form"><label>自然语言目标<textarea id="simulation-request" placeholder="例如：30天内释放20万元，不要降价"></textarea></label><label>目标释放现金<input id="simulation-target" type="number" min="1" value="20" /><span>万元</span></label><label>时间范围<select id="simulation-days"><option value="15">15 天</option><option value="30" selected>30 天</option><option value="45">45 天</option></select></label><label>业务约束<textarea id="simulation-constraints" placeholder="例如：不要降价，乙店不接收"></textarea></label><p class="simulation-understanding" id="simulation-understanding">请确认：系统将按当前草稿计算 30 天内 ¥200,000 的净现金改善。</p><button class="primary-action" type="submit">生成释放方案</button></form>
+            <header class="module-header"><div><p class="eyebrow">SCENARIO</p><h1>现金流情景模拟</h1><p>按明确输入组合后端规则草稿；自定义约束需人工核查，结果仅作模拟测算。</p></div></header>
+            <section class="agent-runtime" data-agent-runtime="simulation" aria-label="现金流模拟过程"></section><div class="simulation-layout">
+              <form class="focused-surface simulation-form" id="simulation-form"><label>自然语言目标<textarea id="simulation-request" placeholder="例如：30天内释放20万元，不要降价"></textarea></label><label>目标释放现金<input id="simulation-target" type="number" min="0.01" step="0.01" required value="20" /><span>万元</span></label><label>时间范围<select id="simulation-days"><option value="15">15 天</option><option value="30" selected>30 天</option><option value="45">45 天</option></select></label><label>业务约束<textarea id="simulation-constraints" placeholder="当前支持：不要降价、不促销、不调拨"></textarea></label><p class="simulation-understanding" id="simulation-understanding">请确认：系统将按当前草稿计算 30 天内 ¥200,000 的净现金改善。</p><button class="primary-action" type="submit">生成释放方案</button></form>
               <section class="focused-surface simulation-result"><header><h2>统一现金测算</h2><span id="simulation-status">尚未运行</span></header><div id="simulation-output" class="empty-state">输入目标后运行模拟；结果仅包含可计算的已知现金事件。</div></section>
             </div>
             <section class="focused-surface simulation-chat" aria-labelledby="agent-chat-title">
@@ -303,37 +312,37 @@
 
           <section class="module-view case-library-view" data-view="cases">
             <header class="module-header case-library-header">
-              <div><p class="eyebrow"><span class="material-symbols-rounded">arrow_back</span>知识沉淀</p><h1>精选成功案例</h1><p>看看其他门店如何盘活库存、减少浪费。真实的实践经验，帮你更快找到适合的解决方案。</p></div>
+              <div><p class="eyebrow"><span class="material-symbols-rounded">arrow_back</span>知识沉淀</p><h1>已确认核查案例</h1><p>核查原文与确认事实由后端留存；处置效果和实际收益仍需执行证据。</p></div>
               <span class="case-library-slogan">好方法，<br />让更多门店用起来<i></i></span>
             </header>
             <div class="case-library-toolbar">
               <div class="case-category-tabs" id="case-category-tabs" role="tablist" aria-label="案例分类"></div>
-              <label class="case-sort"><span class="sr-only">案例排序</span><select id="case-sort"><option value="featured">推荐排序</option><option value="impact">库存改善优先</option><option value="speed">完成速度优先</option><option value="amount">金额最高优先</option></select><span class="material-symbols-rounded">expand_more</span></label>
+
             </div>
             <div id="case-library" class="case-library-grid" aria-live="polite"></div>
             <aside class="case-library-cta">
               <span class="material-symbols-rounded">layers</span>
               <div><strong>没有找到合适的案例？</strong><p>你可以根据当前门店、商品或问题类型，搜索更多案例，或联系管理员申请将新的成功经验加入案例库。</p></div>
-              <button type="button" class="primary-action" id="request-case"><span class="material-symbols-rounded">add</span>申请收录案例</button>
+
             </aside>
           </section>
 
           <section class="module-view" data-view="data">
-            <header class="module-header data-header"><button class="page-back" type="button" data-go="overview"><span class="material-symbols-rounded">arrow_back</span>返回首页</button><div><p class="eyebrow">数据底座</p><h1>数据中心</h1><p>上传季度数据或待分析数据，完成字段校验、导入留痕和后续分析。所有数据仅用于本系统分析，不会同步到其他系统。</p></div></header>
-            <div id="data-sources"></div>
+            <header class="module-header data-header"><button class="page-back" type="button" data-go="overview"><span class="material-symbols-rounded">arrow_back</span>返回首页</button><div><p class="eyebrow">数据底座</p><h1>数据中心</h1><p>选择本地表格并检查必填字段，保留每次校验的批次记录。校验通过不会自动替换当前分析快照，也不会同步到其他系统。</p></div></header>
+            <div class="demo-controls"><div><strong>演示数据管理</strong><p>合成测试数据；重置会清空当前演示库的核查、审批和执行记录。</p></div><button id="demo-reset" class="secondary-action" type="button" disabled>重置演示数据</button></div><section id="sample-data-panel" class="sample-data-panel" aria-label="合成场景数据">正在读取场景包…</section><div id="data-sources"></div>
             <form class="data-import-panel" id="data-import-form">
               <section class="focused-surface data-import-card">
-                <div class="data-section-heading"><div><h2>导入新数据</h2><p>按步骤完成数据上传、识别、校验和分析。</p></div></div>
-                <ol class="data-import-steps"><li class="active"><b>1</b><span><strong>上传文件</strong><small>选择或拖拽文件</small></span></li><li><b>2</b><span><strong>识别与映射</strong><small>系统自动识别字段</small></span></li><li><b>3</b><span><strong>数据校验</strong><small>检查数据质量</small></span></li><li><b>4</b><span><strong>确认并分析</strong><small>生成分析结果</small></span></li></ol>
+                <div class="data-section-heading"><div><h2>导入新数据</h2><p>选择文件和数据类型，提交字段校验后查看批次记录。</p></div></div>
+                <ol class="data-import-steps"><li class="active"><b>1</b><span><strong>选择文件</strong><small>选择本地表格</small></span></li><li><b>2</b><span><strong>选择类型</strong><small>指定数据类别</small></span></li><li><b>3</b><span><strong>字段校验</strong><small>检查必填列</small></span></li><li><b>4</b><span><strong>查看批次</strong><small>核对校验记录</small></span></li></ol>
                 <div class="data-upload-grid">
-                  <label class="data-drop-zone"><input id="import-file" type="file" accept=".xlsx,.csv,.tsv" multiple required /><span class="material-symbols-rounded">cloud_upload</span><strong>把本次需要分析的表格拖到这里</strong><small>支持 .xlsx、.xls、.csv 格式，可同时上传多个文件<br />也可以上传一份综合表。</small><span class="data-drop-actions"><button id="import-select-file" class="primary-action" type="button">选择文件</button><button id="import-template" class="secondary-action" type="button">查看模板</button></span><em id="import-file-name">尚未选择文件</em></label>
+                  <label class="data-drop-zone"><input id="import-file" type="file" accept=".xlsx,.csv,.tsv" multiple required /><span class="material-symbols-rounded">cloud_upload</span><strong>选择本次需要校验的表格</strong><small>支持 .xlsx、.csv、.tsv，可选择多个相同类型的文件。<br />这里只做字段校验，不会替换当前分析快照。</small><span class="data-drop-actions"><button id="import-select-file" class="primary-action" type="button">选择文件</button><button id="import-template" class="secondary-action" type="button">查看模板</button></span><em id="import-file-name">尚未选择文件</em></label>
                   <div class="selected-files-card"><div class="selected-files-heading"><strong>已选择的文件（<span id="selected-file-count">0</span>）</strong><button id="clear-import-files" class="text-link" type="button">清空</button></div><div id="selected-file-list" class="selected-file-list"><div class="selected-files-empty">选择文件后会显示在这里</div></div></div>
                 </div>
                 <div class="data-import-advanced"><label>数据类型<select id="import-kind"><option value="inventory">库存表</option><option value="sales">销售表</option><option value="purchase">采购表</option><option value="expiry">效期批次表</option></select></label><label>工作表名称（可选）<input id="import-sheet-name" placeholder="留空则读取第一个工作表" /></label><div class="import-requirements" id="import-requirements"></div><button class="primary-action" type="submit">校验并保存导入记录</button><small id="import-status">尚未选择文件</small></div>
               </section>
-              <aside class="focused-surface data-prep-card"><div class="data-section-heading"><div><h2>数据准备指引</h2><p>建议根据你的实际情况准备以下数据（可不全部提供）：</p></div><button id="download-all-templates" class="text-link" type="button">下载全部模板</button></div><div class="data-template-list"><div><i class="material-symbols-rounded green">table_view</i><strong>库存数据</strong><span>用于在库商品统计、门店库存对比</span><button data-template-kind="inventory" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded blue">analytics</i><strong>销售数据</strong><span>用于销量分析、滞销识别、门店对比</span><button data-template-kind="sales" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded orange">receipt_long</i><strong>采购/入库数据</strong><span>用于采购分析、补货建议</span><button data-template-kind="purchase" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded violet">event</i><strong>批次/效期数据</strong><span>用于近效期识别、处置方案</span><button data-template-kind="expiry" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded red">store</i><strong>门店基础信息</strong><span>用于门店分组、区域分析（可选）</span><button data-template-kind="store" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div></div><div class="data-tip"><span class="material-symbols-rounded">lightbulb</span><div><strong>小提示</strong><p>文件列名不需要和模板完全一致，系统会自动识别并让你确认。</p><p>建议首次按季度整理时间范围，便于和历史分析对比。</p><p>如有列名无法识别，系统会在下一步提示并支持手动映射。</p></div></div></aside>
+              <aside class="focused-surface data-prep-card"><div class="data-section-heading"><div><h2>数据准备指引</h2><p>建议根据你的实际情况准备以下数据（可不全部提供）：</p></div></div><div class="data-template-list"><div><i class="material-symbols-rounded green">table_view</i><strong>库存数据</strong><span>用于在库商品统计、门店库存对比</span><button data-template-kind="inventory" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded blue">analytics</i><strong>销售数据</strong><span>用于销量分析、滞销识别、门店对比</span><button data-template-kind="sales" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded orange">receipt_long</i><strong>采购/入库数据</strong><span>用于采购分析、补货建议</span><button data-template-kind="purchase" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded violet">event</i><strong>批次/效期数据</strong><span>用于近效期识别、处置方案</span><button data-template-kind="expiry" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div></div><div class="data-tip"><span class="material-symbols-rounded">lightbulb</span><div><strong>小提示</strong><p>请按接口模板提供必填列；下载模板只有表头，不包含业务结果。</p><p>建议同一批次使用一致的时间范围，便于核对来源。</p><p>不支持的列名需在文件中修正后重新校验。</p></div></div></aside>
             </form>
-            <section class="focused-surface data-history-card"><div class="data-history-heading"><div><h2>历史分析记录</h2><p>每次分析都会保留独立快照，便于回看结果和使用过的文件。</p></div><div class="data-history-filters"><label><span class="material-symbols-rounded">search</span><input id="analysis-search" placeholder="搜索分析名称..." /></label><select id="analysis-status-filter"><option>全部状态</option><option>已完成</option><option>待修正</option></select><select id="analysis-sort"><option>按创建时间</option><option>按销售期间</option></select></div></div><div class="analysis-history-head"><span>分析名称</span><span>销售期间</span><span>库存时点</span><span>门店范围</span><span>文件数量</span><span>状态</span><span>创建时间</span><span>操作</span></div><div id="import-history" class="analysis-history-list"></div><footer class="analysis-history-footer"><span id="analysis-count">共 5 条记录</span><span>‹</span><b>1</b><span>›</span><select><option>10 条/页</option></select></footer></section>
+            <section class="focused-surface data-history-card"><div class="data-history-heading"><div><h2>文件校验记录</h2><p>只展示后端留存的文件校验结果；校验通过不表示已生成分析快照。</p></div><div class="data-history-filters"><label><span class="material-symbols-rounded">search</span><input id="analysis-search" placeholder="搜索文件名称..." /></label><select id="analysis-status-filter"><option>全部状态</option><option>仅字段校验通过</option><option>校验失败</option><option>待处理</option></select><select id="analysis-sort"><option>按创建时间</option><option>按文件名</option></select></div></div><div class="analysis-history-head"><span>文件</span><span>类型</span><span>字段</span><span>行数</span><span>导入方式</span><span>校验状态</span><span>创建时间</span><span>详情</span></div><div id="import-history" class="analysis-history-list"></div><footer class="analysis-history-footer"><span id="analysis-count">共 0 条校验记录</span></footer></section>
           </section>
 
           <section class="module-view" data-view="settings">
@@ -355,7 +364,7 @@
         <textarea id="feedback-text" rows="5" placeholder="例如：上个月有20天商品放在仓库，没有摆上货架，今天已经补上了"></textarea>
         <label class="field-label" for="verification-status">核查方式</label>
         <select id="verification-status"><option value="unknown">未知 / 待补证据</option><option value="personal_judgement">个人判断</option><option value="现场核查">本人已现场核查</option><option value="业务记录佐证">有业务记录佐证</option></select>
-        <div class="modal-status" id="feedback-status">第 1 步：描述发现</div>
+        <section id="feedback-draft" class="feedback-draft" hidden></section><label class="feedback-review"><input type="checkbox" id="feedback-reviewed" />我已核对原文、规则草稿和确认事实，未知项保持未知</label><div class="modal-status" id="feedback-status">第 1 步：描述发现</div>
         <footer><button class="secondary-action" id="submit-feedback">生成待确认草稿</button><button class="primary-action" id="confirm-feedback" disabled>确认反馈版本</button></footer>
       </section>
     </div>
@@ -364,10 +373,10 @@
       <section class="modal case-detail-modal" role="dialog" aria-modal="true" aria-labelledby="case-detail-title">
         <header><div><span class="modal-eyebrow" id="case-detail-category">成功案例</span><h2 id="case-detail-title">案例详情</h2><p id="case-detail-summary"></p></div><button id="case-detail-close" aria-label="关闭案例详情"><span class="material-symbols-rounded">close</span></button></header>
         <div class="case-detail-body" id="case-detail-body"></div>
-        <footer><button class="secondary-action" id="case-detail-secondary">查看对应处理工作台</button><button class="primary-action" id="case-detail-use">参考此方案</button></footer>
+        <footer><button class="secondary-action" id="case-detail-secondary">查看对应处理工作台</button><button class="primary-action" id="case-detail-use">关闭</button></footer>
       </section>
     </div>
 
-    <script src="app.js?v=20260920-diagnosis-workspace-v2"></script>
+    <script type="module" src="app.js?v=zmj-20261002"></script>
   </body>
 </html>
