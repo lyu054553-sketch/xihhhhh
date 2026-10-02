@@ -1,100 +1,78 @@
-# 朱负责的前端集成说明
+# 货不压钱 · v0.3 前端对接说明
 
-本说明依据当前 `backend/api.py`、`backend/store.py` 和 `backend/domain.py`，记录现有接口的消费方式及待接入能力，不新增或冻结正式契约。正式字段、错误码和 Agent 状态由魏在 `docs/agent-api-contract.md` 中维护。
+唯一字段、单位和状态依据为[魏的 API Contract v0.3 原文](API_CONTRACT.md)。本文件记录朱的消费方式与尚待协商的口径，不替换或修改契约。[职责与交付清单](ZHU_DELIVERY.md)列明双方边界。
 
-## 单一业务来源
+本轮检查的远程 `main` 为 `d27f959`，仍未实现统一 Agent 运行接口。当前前端验证依赖测试夹具；真实后端、模型与工具未完成联调。
 
-浏览器只请求同源 `/api/v1`。风险、计算结果、方案版本、审批状态和执行任务由后端返回。前端只负责格式化、筛选、输入校验及交互状态，不计算新的调拨数量、现金收益、效期结论或模型回复。空数组表示没有记录，`null` 表示未知，不与 0 混用。
-
-局部失败展示所属资源的错误，不能改变来源或填充演示值。若保留上次成功数据，必须标为不可操作的过期结果。错误由用户显式重试，不在渲染函数中循环请求。
-
-演示重置必须同时满足 `/health` 的 `sample_data=true` 与 `/data-center` 的 `mode=sample_replay`，且两个资源均读取成功。真实模式缺快照时，当前数据中心接口可能返回演示模式，故不能单独据此允许重置。这个前端条件仍不能替代后端真实模式禁止重置。
-
-统一请求层统计本页面的全部在途请求，只有请求完成后才允许重置；重置期间阻止新资源读取和排队写入，结束后重新获取页面数据。联调曾在并行 GET 与重置时复现后端 `NoneType` / `InterfaceError`。页面时序控制只约束当前页面，无法隔离另一个标签页或客户端，也不能替代数据库事务、连接隔离和服务端重置锁。
-
-## 当前实现架构
+## 当前结构
 
 ```mermaid
 flowchart LR
-    UI["五个业务入口 · 表单 · 状态 · 人工确认"] --> CLIENT["同源 API 客户端 · 请求版本 · 错误处理"]
-    CLIENT --> API["FastAPI 既有接口"]
-    API --> TOOLS["domain.py 确定性业务工具"]
-    API --> DB["SQLite · 事实版本 · 方案 · 审批 · 执行草稿"]
+    UI["五个 Agent · 范围/参数 · 状态 · 证据"] --> CLIENT["统一请求与契约校验"]
+    CLIENT --> PROXY["标准库前端开发服务"]
+    PROXY --> API["魏的 v0.3 API · 待接入"]
+    INPUT["合成输入清单 · 版本 · 筛选项"] --> UI
 ```
 
-此图只包含当前实现。真实模型适配和 ERP 连接器尚未进入这条链路；[架构基线](ARCHITECTURE.md)描述后续演进方案。
+`scripts/serve_frontend.py` 只提供公开静态文件和指定 POST 转发，不计算、不造响应、不读写数据库。未配置 API 时返回 `503 API_NOT_CONFIGURED`；网络错误为 502，上游超时为 504，HTTP 错误保留上游状态与响应体。请求体不超过 2 MiB，不自动重试或跟随重定向。
 
-## 接口对照
+`serve(root, api_base=None, host='127.0.0.1', port=8000, timeout=30.0)` 返回已绑定的 `ThreadingHTTPServer`，调用者负责运行、停止和关闭，便于使用临时端口验证。上游 URL 必须完整包含 `/api/v1`，只能来自显式 CLI/环境配置。
 
-以下省略 `/api/v1` 前缀。`module_type` 仅为 `transfer`、`expiry-rescue`、`procurement-brake`。
+## 两条业务接口
 
-| 页面/操作 | 接口 | 依赖的结果 |
+| 用途 | 请求 | 前端责任 |
 | --- | --- | --- |
-| 环境 | `GET /health` | `status`、`sample_data`；服务可用不等于模型可用 |
-| 总览 | `GET /dashboard` | `snapshot_id`、`source_label`、金额、`operating_summary`、`teacher_baseline` |
-| 风险/诊断 | `GET /risks`、`GET /risks/{id}` | `items`、`total`，详情 `risk/facts/factors/diagnosis` |
-| 核查 | `POST /risks/{id}/investigations` | 核查编号；不能生成本地假编号 |
-| 反馈草稿 | `POST /investigations/{id}/feedback` | 原文、`draft`、版本与确认状态 |
-| 确认反馈 | `POST /feedback/{id}/confirm` | 确认状态；之后重读事实与方案 |
-| 工作台 | `GET /workbenches/{module_type}?risk_id={id}` | `input/calculation/draft/proposal/snapshot_id` |
-| 暂存 | `POST /workbenches/{module_type}/draft` | 草稿状态；旧计算失效 |
-| 重算 | `POST /workbenches/{module_type}/calculate` | `input`、`calculation.valid/errors`、`draft` |
-| 保存 | `POST /workbenches/{module_type}/save` | 后端再次校验后的 `proposal/calculation` |
-| 提交/审批/执行 | `POST /proposals/{id}/submit`、`/approve`、`/execute` | 方案状态和任务编号；审批/执行传 `Idempotency-Key` |
-| 回执 | `POST /execution-tasks/{id}/status` | 状态与人工填入的 `receipt_ref`；外部真实性待接入 |
-| 现金模拟 | `POST /scenarios/simulate` | `selected/achieved/gap/cash_basis/bundle_validation` |
-| 导入 | `POST /data-center/imports` | `status/errors/summary`；仅校验和保存导入批次 |
-| 记录 | `GET /work-items`、`/proposals`、`/execution-tasks`、`/cases`、`/data-center` | 列表、快照和已确认记录 |
+| 统一运行 | `POST /api/v1/agent-runs` | UUID `request_id`、Agent 类型、`scope`、`params`、数据/规则版本；按响应展示步骤、结果、缺项与告警 |
+| 模拟决策 | `POST /api/v1/agent-runs/{run_id}/decisions` | 关联 `item_id`、`recommendation_id`，发送 `approve/reject` 与备注；只有服务返回 `recorded`、`simulation` 才展示已记录 |
 
-工作台请求体为 `{ "input": { ...当前表单字段 } }`，保留 `risk_id` 与已有上下文。模拟请求包括 `target`、`horizon_days`、`constraints`、`excluded_action_ids`。前端不得把任意自然语言约束认定为已由后端支持。
+五种类型为 `slow_moving`、`store_transfer`、`near_expiry`、`procurement_brake`、`cashflow_simulation`。前端不调用旧版 `workbenches`、`feedback`、`proposals`、`execution-tasks`、导入或重置接口。
 
-## 状态与请求生命周期
+请求范围和表单选项来自合成输入清单，只说明本地有哪些输入可供选择，不代表上游已经加载该版本。实际响应的关联 ID、Agent、数据/规则版本和结构须通过校验后才采用。
 
-1. 输入事件立即标为待重算，清理旧方案的可提交性。
-2. 同一工作台的暂存、重算、保存和提交有序执行；旧响应不得覆盖后续编辑。
-3. 读取按资源请求序号及目标单据判断有效性。快速切换风险或门店后，旧响应不能作为当前结果。
-4. 草稿 `calculated/saved/needs_recalculation/blocked` 和方案 `draft/pending_approval/approved/needs_replan/execution_task_created` 分别处理。
-5. 按钮可用性来自后端状态及编辑状态。失败保留输入，不报告成功或自动重复写入。
-6. 固定页面事件只绑定一次，动态列表采用容器代理或替换节点绑定，避免重复审批请求。
+## 状态与交互
 
-来自 API、上传文件或反馈的字符串不得直接注入 HTML、属性或 CSS。未知值与缺项明确展示；数据源标签在移动端也应可见。
+| 状态 | 页面行为 |
+| --- | --- |
+| 请求中 | 展示等待与取消等待；返回后才展示已发生的 `steps` |
+| `succeeded` | 展示结果、证据与建议 |
+| `partial` | 展示已有结果，同时保留告警 |
+| `no_data` | 明确空状态，保留本次范围 |
+| `needs_input` | 展示缺项、问题或冲突，引导修改表单 |
+| `awaiting_confirmation` | 只显示消息、情景与假设，不显示结果指标 |
+| `failed`、HTTP/网络/格式错误 | 展示错误并允许显式重试，不伪造成功或自动重复写入 |
 
-## 运行过程的含义
-
-五个入口说明：输入与快照 → 实际返回的规则/工具结果 → 证据和缺项 → 人工确认。当前不存在真实模型调用接口，故模型状态为“未接入 / 规则模式”，不能从 `calculation` 推导“模型调用成功”，也不能用动画伪造调用轨迹。
-
-反馈接口目前使用固定因素模板与日期规则，不能理解任意反馈。必须展示原文与返回草稿供人工核对；确认记录的是核查版本，不表示后端验证了全部语义。
+修改输入会使已有结果和待确认情景失效。请求完成时同时检查页面所属 Agent 与输入版本，旧响应不能覆盖后续编辑。每种 Agent 保留自身表单状态；取消等待不等于撤销服务端已开始的运行。来自接口的文本经过转义，不作为 HTML 注入。
 
 ```mermaid
 flowchart TD
-    R["风险事实与证据"] --> I["发起核查 · 提交反馈原文"]
-    I --> F["查看返回草稿 · 人工核对"]
-    F --> C["确认反馈 · 更新事实版本"]
-    C --> T["填写调拨参数 · 后端重算"]
-    T --> V{"约束是否通过？"}
-    V -- 否 --> E["显示错误 · 修改输入"]
-    E --> T
-    V -- 是 --> P["保存方案 · 提交审批"]
-    P --> A["负责人确认"]
-    A --> D["创建执行草稿 · 等待外部执行与回执"]
+    INPUT["描述调整 · 填写范围"] --> PREVIEW["operation=preview"]
+    PREVIEW --> CARD["awaiting_confirmation · 情景卡 · 空 items"]
+    CARD --> REVIEW["人工核对调整与假设"]
+    REVIEW --> SIM["同一 session_id/scenario_id · confirmed=true · simulate"]
+    SIM --> RESULT["基线/方案 · 预计采购承诺 · 库存占用 · 缺货风险"]
+    RESULT --> DECISION["模拟确认或拒绝建议"]
+    DECISION --> RECORD["recorded · execution_mode=simulation"]
 ```
 
-输入或事实改变后，旧计算及旧方案不能继续进入审批。任何 API 失败停留在所属步骤并提供重试，不凭前端状态推进到下一步。
+情景确认与建议决策是两步不同操作，均不代表执行采购、调拨或促销。
 
-## 魏需要补齐的集成点
+## 金额与参考数据
 
-| 优先级 | 缺口 | 验收条件 |
-| --- | --- | --- |
-| P0 | 真实模式 `/demo/reset` 无服务端禁止条件 | real 拒绝重置且数据保持不变；独立 demo 可重置 |
-| P0 | 静态服务挂载整个项目根目录 | 只公开网页与资源白名单，数据库/凭证/真实文件不能下载 |
-| P0 | 同连接并发访问及重置可触发 `NoneType` / `InterfaceError`，缺少版本前置条件 | 事务、连接隔离与服务端重置保护；并发冲突响应携带当前版本，跨客户端访问可重复验证 |
-| P1 | 模型适配和运行契约缺失 | request/run/model ID、原文、校验结果、工具、证据和失败类型 |
-| P1 | 反馈固定模板 | 真实抽取或明确的纯规则结果；未知实体和冲突约束可识别 |
-| P1 | 真实快照与演示工作台边界 | real 不返回合成方案，按缺项阻断 |
-| P1 | 本地身份/权限上下文 | 服务端鉴权、租户范围、审批角色和 actor 校验 |
+金额字段以 `_fen` 结尾并传整数分，页面只做展示换算；比例用 0–1，数量保留原单位。`null` 显示未知，0 显示真实零值。前端不推算库存、效期、现金改善或模型结论。
 
-这些缺口不能通过前端填字段、假时间线、固定金额或静默回退解决。前端按钮保护不等于服务端并发与权限保证。
+`sample-data/generated/` 是输入包；`sample-data/reference/` 是测试参考，不能作为在线响应。浏览器夹具专门验证响应呈现与交互，标注“非真实后端 / 非模型调用”，不承担业务计算实现。
 
-## 双人协作
+## 待魏确认并集成
 
-魏维护后端、模型、数据库和正式契约；朱维护前端、场景、测试及演示。朱的变更均在 `zmj`，不复制后端计算。集成时先确认契约，再验证诊断/反馈、调拨审批、另外三个入口、错误与并发；结论写明 commit、数据源、命令和实际输出。
+| 事项 | 需明确的结果 |
+| --- | --- |
+| v0.3 后端地址与版本加载 | 实现两个接口，识别 `snack-demo-v1`、`snack-policy-v1`，提供真实请求与响应 |
+| 库存资金计算时点 | 基线/方案指标是期初、期末还是期间均值；`inventory_capital_series` 的每日取值时点一致 |
+| 日内到货顺序 | 明确到货、销售与缺货判断的顺序；PO-003 参考期望按 3 天消耗后再到货，不能视作已冻结算法 |
+| 近效期预测日期 | 参考场景将未来销售窗设为 2026-10-03 至 2026-10-18，共 16 天；需确认到期日当天是否可售及 FEFO 分配 |
+| 箱规适用范围 | 当前整箱约束是采购参考假设，不自动套用到调拨或拆零销售；最低采购量与取整策略需后端明确 |
+| 30 天资金模拟 | 未假设后续补货时，PO-003 基线与减购方案均可能缺货；必须返回两方案的时间序列、假设与风险，不能只显示节省金额 |
+| 模型与工具 | 模型结构校验、证据、失败类型与实际步骤；金额和硬约束由工具验证 |
+| 并发和模拟决策 | 输入版本、重复提交、会话绑定与跨客户端冲突；`recorded` 不得被解读为真实业务执行 |
+
+以上口径不能通过前端填固定数值解决。联调顺序遵循契约第 10 节；每次记录代码版本、数据/规则版本、请求、响应及真实测试输出。

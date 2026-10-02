@@ -1,80 +1,122 @@
-"""Build the Chinese demo deck from one source: HTML and editable PowerPoint.
-
-Usage: .venv/Scripts/python.exe scripts/build_demo_slides.py
-Optional dependency for PowerPoint: python-pptx.
-"""
+"""Build v0.3 HTML and editable PowerPoint from one source. Requires python-pptx."""
 
 from html import escape
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SLIDES = [
     {
-        "eyebrow": "INVENTORY CASH AGENT",
-        "title": "让库存决策\n走到人工确认",
-        "subtitle": "从门店反馈到执行草稿，一条可以核对的业务流程。",
-        "points": ["发现库存异常与资金占用", "以证据、计算和约束支持决策", "以版本、审批和回执保留责任边界"],
-        "note": "合成演示数据 · 当前为规则计算版本",
-        "speaker": "我们解决多门店库存占资和协同处置的问题。今天展示合成数据上的真实接口交互，不把模拟测算说成客户收益，也不把规则工具说成真实大模型。",
+        "eyebrow": "HUO BU YA QIAN / CONTRACT v0.3",
+        "title": "货不压钱\n让库存建议有据可查",
+        "subtitle": "五个业务入口，一份零售通用契约，使用虚构零食数据演示。",
+        "points": [
+            "范围与参数形成统一请求",
+            "结果、证据、告警由服务返回",
+            "情景先确认，建议只记录模拟决策"
+        ],
+        "note": "当前为前端契约交付 · 真实 v0.3 后端与模型尚未联调",
+        "speaker": "货不压钱关注连锁零售中的库存成本占用和预计采购支出。本轮交付是依照魏的 v0.3 唯一契约整理的前端、合成数据和测试。演示录像明确使用接口夹具，不把它称为真实模型或后端计算结果。"
     },
     {
-        "eyebrow": "01 / PRODUCT",
-        "title": "五个入口\n共用一条流程",
-        "subtitle": "同一份事实、同一套后端计算、同一套人工审批。",
-        "points": ["滞销诊断：事实、原因假设、证据与缺项", "跨店调拨：门店、数量、费用与安全库存", "近效期：正常销售、调拨、促销、退供", "采购刹车：库存、在途、未执行量与付款", "现金模拟：候选组合、业务约束与目标缺口"],
-        "note": "已有业务入口与规则工具；真实模型适配仍待接入",
-        "speaker": "五个入口不是五套后端。当前调用既有确定性接口，页面负责把输入、证据、结果和下一步连起来。",
+        "eyebrow": "01 / FIVE AGENTS",
+        "title": "五个业务入口\n共用事实与返回结构",
+        "subtitle": "门店、商品、库存、销量、采购、批次和经营规则保持通用模型。",
+        "points": [
+            "滞销诊断：低动销、高占款及证据",
+            "跨店调拨：两店库存、数量及约束",
+            "近效期：预测窗口、批次与成本风险",
+            "采购刹车：可调整采购量及缺货风险",
+            "资金周转模拟：基线、方案、假设与风险"
+        ],
+        "note": "门店、SKU、供应商与交易数据均为合成；不对应真实连锁企业",
+        "speaker": "五个入口通过同一运行接口提交分析范围、参数和版本。前端不重复实现五套业务计算，也不会把参考预期作为页面结果。金额和约束由魏的工具层计算，模型负责理解、组织与解释。"
     },
     {
-        "eyebrow": "02 / WALKTHROUGH",
-        "title": "反馈 → 诊断 → 调拨\n确认后生成执行草稿",
-        "subtitle": "演示西湖文三店的合成库存案例。",
-        "points": ["01  核对库存、销量与原因缺项", "02  留存反馈原文，人工检查返回草稿", "03  修改数量并请求后端重算", "04  保存方案、提交审批、负责人确认", "05  生成执行任务，后续回执另行记录"],
-        "note": "输入改变需重算；任务创建不等于 ERP 已执行",
-        "speaker": "先将数量改成100观察约束错误，再用默认参数中的40重算。实际结果以当前后端为准。保存审批后生成的是草稿，不会直接向ERP发货。",
+        "eyebrow": "02 / CONTRACT",
+        "title": "统一运行\n统一呈现结果",
+        "subtitle": "POST /api/v1/agent-runs",
+        "points": [
+            "请求：request_id、scope、params、数据与规则版本",
+            "响应：run_id、状态、步骤、证据和建议",
+            "收到响应后才展示实际返回步骤",
+            "空值保持未知，空结果保持空",
+            "关联信息或结构不符时阻止使用结果"
+        ],
+        "note": "现有 main 旧后端尚无统一路由；前端不会调用旧工作台伪装兼容",
+        "speaker": "现在可以独立启动前端、查看输入包。没有配置 v0.3 服务时，运行会明确报 API_NOT_CONFIGURED。浏览器测试只验证给定契约响应下的界面行为，真实后端上线后还要重新联调。"
     },
     {
-        "eyebrow": "03 / MEASUREMENT",
-        "title": "四种金额\n分别回答四个问题",
-        "subtitle": "页面不会把库存搬动或预计报损减少当成现金回款。",
-        "points": ["库存成本：这些货占用了多少成本？", "预计避免报损：处置可能减少多少损失？", "模拟净现金改善：期限内有哪些可计算现金事件？", "实际回款：是否已有财务或执行回执支持？"],
-        "note": "未知保持未知；不相加生成虚构 ROI",
-        "speaker": "这些指标边界不同。内部调拨改变库存位置，可能产生配送费；它本身不能证明现金释放。实际回款还需要外部证据。",
+        "eyebrow": "03 / CONFIRMATION",
+        "title": "先核对情景\n再开始模拟",
+        "subtitle": "描述调整 → preview → 人工核对 → simulate → 模拟决策。",
+        "points": [
+            "预览只有结构化调整与假设，items 为空",
+            "确认后复用 session_id 和 scenario_id",
+            "confirmed=true 只允许开始计算",
+            "修改输入使旧情景与旧结果失效",
+            "建议确认需返回 recorded / simulation"
+        ],
+        "note": "情景确认与建议确认均不修改真实库存、采购单或收银数据",
+        "speaker": "以城西店每日坚果 PO-003 少采购六袋为输入例子。先核对后端返回的门店、商品、采购单、数量和周期。预览没有模拟结果金额；点击确认后才计算。之后的模拟确认只记录演示决策。"
     },
     {
-        "eyebrow": "04 / FAILURE STATES",
-        "title": "失败要看得见\n旧结果不能继续用",
-        "subtitle": "交互状态直接进入现有请求与单据生命周期。",
-        "points": ["API 失败：显示错误、保留输入、显式重试", "快速切换：旧响应不能覆盖最后选择", "修改输入：旧计算和可提交状态立即失效", "约束不通过：展示原因，阻止下一步", "模型未接入：明确规则模式，不伪造推理轨迹"],
-        "note": "前端交互保护不能替代服务端事务和权限控制",
-        "speaker": "现场用浏览器离线模式展示一次失败，然后恢复重试。错误状态不是用一组样例数字填平，成功提示必须来自接口成功响应。",
+        "eyebrow": "04 / MONEY AND RISK",
+        "title": "分清金额含义\n同时解释风险",
+        "subtitle": "传输采用整数分，页面只换算显示，不自行生成业务数字。",
+        "points": [
+            "库存成本占用不等于银行账户余额",
+            "采购减量表示预计避免未来采购承诺",
+            "内部调拨不直接降低全链路库存总额",
+            "近效期金额是成本风险敞口估算",
+            "没有后续补货时，两种采购方案都可能缺货"
+        ],
+        "note": "模拟必须展示基线、方案、时间口径、假设与缺货风险",
+        "speaker": "这里不声称客户已经获得收益。三十天模拟如果不安排后续补货，基线和减量方案都可能断货。只展示减少采购金额会误导决策，所以必须连同库存资金曲线、缺货风险和计算时点解释。"
     },
     {
-        "eyebrow": "05 / REPRODUCIBILITY",
-        "title": "同一场景\n能够重复验证",
-        "subtitle": "固定种子、预期结果与独立演示库。",
-        "points": ["场景覆盖滞销、临期、采购过量和门店缺货", "缺字段、零销量与库存冲突有明确预期", "测试检查工具结果、输入失效和错误恢复", "独立演示库只承载合成数据与演示记录", "通过数量与证据以本次运行报告为准"],
-        "note": "场景文件与后端内置快照分开标注，生成文件不自动导入",
-        "speaker": "测试场景与实际页面共享接口约束。生成器用于回放和验证，不会静默改写正在演示的数据库。测试数字必须从本次运行产生。",
+        "eyebrow": "05 / FAILURE STATES",
+        "title": "错误可以核对\n旧结果不能继续使用",
+        "subtitle": "失败处理进入统一请求与页面状态，不由临时替代数据掩盖。",
+        "points": [
+            "no_data：清晰空状态；needs_input：补充缺项",
+            "partial：已有结果与告警同时保留",
+            "超时、网络和非法响应明确报错",
+            "快速切换时，旧响应不覆盖当前输入",
+            "取消等待不等于撤销服务端运行"
+        ],
+        "note": "夹具中的 AI_TIMEOUT 等是故障注入，不证明真实模型已完成故障测试",
+        "speaker": "失败演示可以检查页面是否保留上下文、是否阻止错误决策。开发代理不自动重试写入。真实模型超时和恢复需要在魏的服务接入后单独验收，不能用浏览器夹具的通过数量代替。"
     },
     {
-        "eyebrow": "06 / OWNERSHIP",
-        "title": "前端负责清楚呈现\n后端负责业务计算",
-        "subtitle": "浏览器 → 同源 API → 领域工具 → 事实与方案版本。",
-        "points": ["朱：五入口、表单、状态、确认、合成场景、测试和演示", "魏：模型适配、业务工具、数据库、事务与正式契约", "接口变化先写契约，再调整消费者", "zmj 分支完成朱的开发；双方在集成分支验收"],
-        "note": "沿用模块化单体，不在前端复制业务算法",
-        "speaker": "我们尊重代码所有权。朱的工作是展示接口与组织交互，后端的缺口会记录并交接，不通过前端补金额或增加假状态来绕开。",
+        "eyebrow": "06 / REPRODUCIBILITY",
+        "title": "输入可复现\n验证边界可说明",
+        "subtitle": "snack-demo-v1 · snack-policy-v1 · 固定种子与文件校验值。",
+        "points": [
+            "七类共享模型提供 CSV 与完整 JSON 输入包",
+            "参考场景和预期独立保存，不注入在线结果",
+            "公开静态资源白名单与两个 POST 透明转发",
+            "浏览器夹具验证界面，传输夹具验证代理",
+            "实测 Node 52 项、Python 前端相关 46 项通过"
+        ],
+        "note": "另有 39 项旧后端回归；夹具验证不证明真实 v0.3 后端通过",
+        "speaker": "朱交付前端、合成场景、测试和演示。启动前端只需要 Python 标准库，不启动旧数据库或业务后端。录像展示真实浏览器操作，但响应来自显式测试夹具，因此它只能证明前端交互。"
     },
     {
-        "eyebrow": "07 / NEXT",
-        "title": "今天能演示的\n与下一步要完成的",
-        "subtitle": "先交付可信的流程，再接入真实智能与真实执行。",
-        "points": ["本次：合成场景、五入口、规则测算、人工审批、执行草稿", "模型：真实请求、结构校验、证据引用与失败恢复", "后端：重置保护、资源隔离、事务、版本冲突和权限", "集成：ERP 数据与执行回执、财务结果核验"],
-        "note": "GitHub / lyu054553-sketch/xihhhhh · 分支 zmj",
-        "speaker": "本次前端演示交付不等于整个八模块项目已完成。真实模型、生产权限事务和ERP连接仍然是后续集成工作。",
-    },
+        "eyebrow": "07 / INTEGRATION",
+        "title": "下一步\n接入魏的真实 v0.3 服务",
+        "subtitle": "先跑通滞销样例，再验证五个 Agent、会话模拟和错误恢复。",
+        "points": [
+            "实现两条路由并加载约定的数据与规则版本",
+            "确认库存资金时点与日内到货顺序",
+            "确认效期预测日期和 FEFO 分配",
+            "确认采购箱规与后续补货假设",
+            "实测模型、工具、证据、并发与模拟决策"
+        ],
+        "note": "GitHub / lyu054553-sketch/xihhhhh · 朱的开发分支 zmj",
+        "speaker": "库存资金的取值时点、到货与销售先后、到期日能否销售，以及箱规和后续补货尚需双方冻结。本次不替魏实现后端，也不从前端补算这些数字。联调通过后再发布真实服务演示与模型评测结果。"
+    }
 ]
+
 
 
 def build_html() -> None:
@@ -91,7 +133,7 @@ def build_html() -> None:
         )
     html = '''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>库存现金智能体 · 演示稿</title><style>
+<title>货不压钱 · 演示稿</title><style>
 :root{color-scheme:dark;font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:#0d1723;color:#eef3f6}
 *{box-sizing:border-box}body{margin:0;padding:24px}main{max-width:1240px;margin:auto}
 .slide{position:relative;min-height:697px;padding:52px 64px 70px;border:1px solid #2b3b4b;background:#132232}
@@ -109,7 +151,7 @@ button,a{font:inherit;border:1px solid #4e6273;color:#eef3f6;border-radius:4px;b
 <nav aria-label="演示页控制"><button id="previous" type="button">上一页</button><span id="position" aria-live="polite"></span><button id="next" type="button">下一页</button><button id="print" type="button">打印 / PDF</button><a href="DEMO_SLIDES.pptx">下载 PowerPoint</a></nav>
 <script>
 const slides=[...document.querySelectorAll('.slide')];let current=0;
-function show(index){current=Math.max(0,Math.min(slides.length-1,index));slides.forEach((slide,i)=>{slide.hidden=i!==current});document.querySelector('#position').textContent=`${current+1} / ${slides.length}`;document.querySelector('#previous').disabled=current===0;document.querySelector('#next').disabled=current===slides.length-1;document.title=`${current+1}/${slides.length} · 库存现金智能体演示稿`;}
+function show(index){current=Math.max(0,Math.min(slides.length-1,index));slides.forEach((slide,i)=>{slide.hidden=i!==current});document.querySelector('#position').textContent=`${current+1} / ${slides.length}`;document.querySelector('#previous').disabled=current===0;document.querySelector('#next').disabled=current===slides.length-1;document.title=`${current+1}/${slides.length} · 货不压钱演示稿`;}
 document.querySelector('#previous').addEventListener('click',()=>show(current-1));document.querySelector('#next').addEventListener('click',()=>show(current+1));document.querySelector('#print').addEventListener('click',()=>window.print());document.addEventListener('keydown',event=>{if(['ArrowRight','PageDown'].includes(event.key)){event.preventDefault();show(current+1)}else if(['ArrowLeft','PageUp'].includes(event.key)){event.preventDefault();show(current-1)}});show(0);
 </script></body></html>'''
     (ROOT / "docs/DEMO_SLIDES.html").write_text(html, encoding="utf-8")
@@ -124,9 +166,9 @@ def build_powerpoint() -> None:
     presentation = Presentation()
     presentation.slide_width = Inches(13.333)
     presentation.slide_height = Inches(7.5)
-    presentation.core_properties.title = "库存现金智能体 · 规则版本演示"
-    presentation.core_properties.subject = "合成数据 / 朱负责的前端交付 / zmj"
-    presentation.core_properties.author = "库存现金智能体项目组"
+    presentation.core_properties.title = "货不压钱 · v0.3 契约演示"
+    presentation.core_properties.subject = "v0.3 / 合成零食数据 / 朱的前端交付 / zmj"
+    presentation.core_properties.author = "货不压钱项目组"
     presentation.core_properties.language = "zh-CN"
 
     def text_box(slide, value, left, top, width, height, size, color, bold=False):
