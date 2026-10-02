@@ -1,0 +1,31 @@
+# Local databases may contain private store, SKU, sales, and cost data.
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Imported ERP files and local secrets.
+.env
+.env.*
+!.env.example
+uploads/
+private-data/
+data/private/
+*.xlsx
+*.xls
+
+# Python, editor, and operating-system artifacts.
+__pycache__/
+*.py[cod]
+.DS_Store
+.idea/
+.vscode/
+.venv/
+venv/
+
+# Rendered previews and delivery bundles are generated artifacts.
+tmp/
+output/
+design-qa-assets/
+*.zip
