@@ -1,0 +1,3 @@
+# The generated package is verified by SHA-256; checkout must preserve its bytes.
+sample-data/manifest.json text eol=lf
+sample-data/generated/* text eol=lf
