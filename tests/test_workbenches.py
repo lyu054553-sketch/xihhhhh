@@ -1,6 +1,7 @@
 """本轮工作台纵向闭环的确定性回归。"""
 
 import base64
+from contextlib import closing
 import io
 import os
 import tempfile
@@ -53,7 +54,8 @@ class WorkbenchTests(unittest.TestCase):
         input_data = self.store.default_workbench_input("transfer", 1)
         input_data["quantity"] = 41
         self.store.mark_workbench_dirty("transfer", 1, input_data)
-        persisted = Store(self.temp.name).workbench_draft("transfer", 1)
+        with closing(Store(self.temp.name)) as reopened:
+            persisted = reopened.workbench_draft("transfer", 1)
         self.assertEqual(persisted["status"], "needs_recalculation")
         self.assertEqual(int(persisted["input"]["quantity"]), 41)
         conflict = validate_action_bundle(
