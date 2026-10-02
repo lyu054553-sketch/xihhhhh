@@ -1,0 +1,7 @@
+{
+  "request_id": "00000000-0000-4000-8000-000000000008", "run_id": "fixture-missing-001", "agent_type": "slow_moving", "status": "needs_input",
+  "summary": "成本字段缺失，无法给出库存金额。", "session_id": null, "assistant_message": "测试响应：请补充单位成本，不把未知金额当作0元。",
+  "scenario_preview": null, "steps": [{"step_id": "cost-1", "name": "validate_cost", "label": "校验成本", "status": "failed", "message": "独立无效输入夹具缺少成本"}], "items": [],
+  "missing_fields": ["unit_cost_fen"], "follow_up_questions": ["请确认该SKU的单位成本（人民币分）。"], "warnings": [{"code": "MISSING_REQUIRED_DATA", "message": "该夹具不属于有效snack-demo-v1数据集。"}], "error": null,
+  "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1", "created_at": "2026-10-03T00:00:00+08:00", "completed_at": "2026-10-03T00:00:01+08:00"
+}

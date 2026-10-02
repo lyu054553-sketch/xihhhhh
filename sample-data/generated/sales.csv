@@ -1,9 +1,0 @@
-scenario_id,is_sample,sku,store,period_start,period_end,sales_qty,sales_90,sales_cost_30
-healthy,True,SYN-268803-01,合成门店-01,2026-09-01,2026-09-30,22,66,220
-slow_mover,True,SYN-810273-02,合成门店-02,2026-09-01,2026-09-30,12,36,120
-near_expiry,True,SYN-248394-03,合成门店-03,2026-09-01,2026-09-30,18,54,180
-over_purchase,True,SYN-667625-04,合成门店-04,2026-09-01,2026-09-30,18,54,180
-store_shortage,True,SYN-488456-05,合成门店-05,2026-09-01,2026-09-30,36,108,360
-zero_sales,True,SYN-525565-06,合成门店-06,2026-09-01,2026-09-30,0,0,0
-missing_fields,True,SYN-834389-07,合成门店-07,2026-09-01,2026-09-30,,,
-inventory_conflict,True,SYN-470437-08,合成门店-08,2026-09-01,2026-09-30,14,42,140

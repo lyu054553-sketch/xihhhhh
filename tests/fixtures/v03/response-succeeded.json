@@ -1,0 +1,21 @@
+{
+  "request_id": "00000000-0000-4000-8000-000000000001", "run_id": "fixture-slow-001", "agent_type": "slow_moving", "status": "succeeded",
+  "summary": "合成契约参考：滨江店每日坚果近14天无销售。", "session_id": null,
+  "assistant_message": "测试响应：库存成本220元，超额库存17袋；建议暂停补货并人工复核。不是模型实测结果。",
+  "scenario_preview": null,
+  "steps": [{"step_id": "query-1", "name": "query_inventory", "label": "查询库存与销售", "status": "succeeded", "message": "读取固定合成数据"}, {"step_id": "tool-1", "name": "calculate_priority", "label": "规则工具计算", "status": "succeeded", "message": "本文件为隔离测试预期，未运行真实模型"}],
+  "items": [{
+    "item_id": "ITEM-SLOW-001", "entity": {"type": "store_sku", "id": "STORE-HZ-001:SNK-002", "store_id": "STORE-HZ-001", "store_name": "滨江店", "sku_id": "SNK-002", "sku_name": "每日坚果组合"}, "priority": "high",
+    "metrics": [{"key": "inventory_value_at_cost_fen", "label": "当前库存成本金额", "value": 22000, "unit": "fen"}, {"key": "excess_qty", "label": "可用超额库存", "value": 17, "unit": "bag"}, {"key": "days_since_last_sale", "label": "距最近销售", "value": 19, "unit": "day"}],
+    "evidence": [
+      {"source": "inventory_snapshots", "record_id": "INV-STORE-HZ-001-SNK-002-20261002", "field": "on_hand_qty", "value": 25, "as_of": "2026-10-02"},
+      {"source": "skus", "record_id": "SNK-002", "field": "unit_cost_fen", "value": 880, "as_of": "2026-10-02"},
+      {"source": "sales_daily", "record_id": "STORE-HZ-001:SNK-002:2026-09-13", "field": "net_sold_qty", "value": 1, "as_of": "2026-09-13"},
+      {"source": "policies", "record_id": "POLICY-NUTS", "field": "min_display_qty", "value": 8, "as_of": "2026-10-02"}
+    ],
+    "recommendations": [{"recommendation_id": "REC-SLOW-001", "action_type": "pause_replenishment", "action_params": {"store_id": "STORE-HZ-001", "sku_id": "SNK-002"}, "rationale": "零销量且库存超过最低陈列量，需人工复核补货计划。", "evidence_ids": ["INV-STORE-HZ-001-SNK-002-20261002", "POLICY-NUTS"], "approval_required": true, "impact_estimate": {"kind": "avoid_future_purchase", "amount_fen": null, "period_days": 30, "assumptions": ["缺采购计划，不能测算暂停补货金额"]}}],
+    "details": {"avg_daily_sales_qty": 0, "days_since_last_sale": 19, "days_of_supply": null, "target_stock_qty": 8, "excess_qty": 17, "excess_value_at_cost_fen": 14960}
+  }],
+  "missing_fields": [], "follow_up_questions": [], "warnings": [{"code": "NO_RECENT_SALES", "message": "平均日净销量为0，覆盖天数未知。"}], "error": null,
+  "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1", "created_at": "2026-10-03T00:00:00+08:00", "completed_at": "2026-10-03T00:00:01+08:00"
+}

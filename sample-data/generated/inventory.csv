@@ -1,9 +1,0 @@
-scenario_id,is_sample,snapshot_id,as_of_date,sku,store,product_name,unit,inventory_qty,inventory_amount,unit_cost,sales_30,sales_90,sales_cost_30,stat_class,purchase_status
-healthy,True,snapshot-synthetic-v1,2026-09-30,SYN-268803-01,合成门店-01,合成商品-01,盒,34,340,10,22,66,220,A,正常采购
-slow_mover,True,snapshot-synthetic-v1,2026-09-30,SYN-810273-02,合成门店-02,合成商品-02,盒,120,1200,10,12,36,120,A,正常采购
-near_expiry,True,snapshot-synthetic-v1,2026-09-30,SYN-248394-03,合成门店-03,合成商品-03,盒,44,440,10,18,54,180,A,正常采购
-over_purchase,True,snapshot-synthetic-v1,2026-09-30,SYN-667625-04,合成门店-04,合成商品-04,盒,56,560,10,18,54,180,A,正常采购
-store_shortage,True,snapshot-synthetic-v1,2026-09-30,SYN-488456-05,合成门店-05,合成商品-05,盒,0,0,10,36,108,360,A,正常采购
-zero_sales,True,snapshot-synthetic-v1,2026-09-30,SYN-525565-06,合成门店-06,合成商品-06,盒,16,160,10,0,0,0,A,停止采购
-missing_fields,True,snapshot-synthetic-v1,2026-09-30,SYN-834389-07,合成门店-07,合成商品-07,盒,25,250,10,,,,A,正常采购
-inventory_conflict,True,snapshot-synthetic-v1,2026-09-30,SYN-470437-08,合成门店-08,合成商品-08,盒,10,100,10,14,42,140,A,正常采购

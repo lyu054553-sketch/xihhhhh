@@ -1,0 +1,2 @@
+po_id,store_id,sku_id,supplier_id,ordered_qty,received_qty,open_qty,expected_arrival_date,lead_time_days,cancellable_until
+PO-003,STORE-HZ-003,SNK-002,SUP-001,30,0,30,2026-10-05,3,2026-10-04

@@ -1,0 +1,39 @@
+{
+  "contract_version": "v0.3", "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1", "synthetic": true,
+  "items": [
+    {"id": "slow-moving-zero-sales", "title": "滨江店坚果零销量", "request": {
+      "request_id": "00000000-0000-4000-8000-000000000001", "agent_type": "slow_moving", "user_input": "找出滨江店近两周未销售的坚果商品",
+      "scope": {"as_of": "2026-10-02", "store_ids": ["STORE-HZ-001"], "sku_ids": ["SNK-002"], "category_ids": ["SNACK-NUTS"]},
+      "params": {"sales_window_days": 14, "no_sale_days_gte": 14, "min_inventory_value_fen": 20000, "limit": 10},
+      "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1"
+    }},
+    {"id": "transfer-chips", "title": "脆片跨店调拨", "request": {
+      "request_id": "00000000-0000-4000-8000-000000000002", "agent_type": "store_transfer", "user_input": "把滨江店脆片调到文二路店，保留两店至少两周库存",
+      "scope": {"as_of": "2026-10-02", "store_ids": ["STORE-HZ-001", "STORE-HZ-002"], "sku_ids": ["SNK-001"], "category_ids": ["SNACK-CHIPS"]},
+      "params": {"source_store_ids": ["STORE-HZ-001"], "target_store_ids": ["STORE-HZ-002"], "sales_window_days": 14, "min_source_cover_days": 14, "target_cover_days": 14, "max_transfer_qty": 50},
+      "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1"
+    }},
+    {"id": "near-expiry-bean", "title": "香辣豆干临期风险", "request": {
+      "request_id": "00000000-0000-4000-8000-000000000003", "agent_type": "near_expiry", "user_input": "检查文二路店香辣豆干的临期风险",
+      "scope": {"as_of": "2026-10-02", "store_ids": ["STORE-HZ-002"], "sku_ids": ["SNK-004"], "category_ids": ["SNACK-BEAN"]},
+      "params": {"within_days": 30, "sales_window_days": 14, "limit": 10},
+      "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1"
+    }},
+    {"id": "procurement-nuts", "title": "城西店坚果采购刹车", "request": {
+      "request_id": "00000000-0000-4000-8000-000000000004", "agent_type": "procurement_brake", "user_input": "检查城西店每日坚果采购单PO-003是否可以减量",
+      "scope": {"as_of": "2026-10-02", "store_ids": ["STORE-HZ-003"], "sku_ids": ["SNK-002"], "category_ids": ["SNACK-NUTS"]},
+      "params": {"horizon_days": 14, "min_safety_stock_days": 5, "include_open_orders": true},
+      "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1"
+    }},
+    {"id": "cashflow-reduce-six", "title": "减少6袋采购承诺的模拟", "request": {
+      "request_id": "00000000-0000-4000-8000-000000000005", "session_id": "00000000-0000-4000-8000-000000000105", "agent_type": "cashflow_simulation", "user_input": "确认仅模拟PO-003少采购6袋，不执行采购修改",
+      "scope": {"as_of": "2026-10-02", "store_ids": ["STORE-HZ-003"], "sku_ids": ["SNK-002"], "category_ids": ["SNACK-NUTS"]},
+      "params": {"operation": "simulate", "horizon_days": 30, "scenario_id": "SCN-PO-003-REDUCE-6", "confirmed": true, "adjustments": [{"action_type": "reduce_open_purchase_order", "action_params": {"po_id": "PO-003", "store_id": "STORE-HZ-003", "sku_id": "SNK-002", "qty": 6, "unit": "bag"}}], "assumptions": ["仅减少未收货且仍可取消的采购量", "未提供后续补货计划，需保留周期内缺货风险"]},
+      "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1"
+    }, "preview_request": {
+      "request_id": "00000000-0000-4000-8000-000000000006", "session_id": "00000000-0000-4000-8000-000000000105", "agent_type": "cashflow_simulation", "user_input": "城西店每日坚果PO-003少采购6袋，先让我确认模拟情景",
+      "scope": {"as_of": "2026-10-02", "store_ids": ["STORE-HZ-003"], "sku_ids": ["SNK-002"], "category_ids": ["SNACK-NUTS"]},
+      "params": {"operation": "preview", "horizon_days": 30}, "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1"
+    }}
+  ]
+}

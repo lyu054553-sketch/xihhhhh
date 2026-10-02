@@ -1,0 +1,110 @@
+{
+  "request_id": "00000000-0000-4000-8000-000000000020",
+  "run_id": "fixture-store_transfer",
+  "agent_type": "store_transfer",
+  "status": "succeeded",
+  "summary": "合成契约参考：用于页面验证，非真实后端执行。",
+  "session_id": null,
+  "assistant_message": "测试夹具按独立参考预期固定，未调用模型。",
+  "scenario_preview": null,
+  "steps": [
+    {
+      "step_id": "query-1",
+      "name": "query_inventory",
+      "label": "查询库存与销售",
+      "status": "succeeded",
+      "message": "读取固定合成数据"
+    },
+    {
+      "step_id": "tool-1",
+      "name": "calculate_priority",
+      "label": "规则工具计算",
+      "status": "succeeded",
+      "message": "本文件为隔离测试预期，未运行真实模型"
+    }
+  ],
+  "items": [
+    {
+      "item_id": "ITEM-store_transfer",
+      "entity": {
+        "type": "store_sku",
+        "id": "STORE-HZ-001:SNK-001",
+        "store_id": "STORE-HZ-001",
+        "store_name": "滨江店",
+        "sku_id": "SNK-001",
+        "sku_name": "椒盐海苔脆片",
+        "unit": "bag"
+      },
+      "priority": "high",
+      "metrics": [
+        {
+          "key": "recommended_transfer_qty",
+          "label": "建议调拨量",
+          "value": 50,
+          "unit": "bag"
+        }
+      ],
+      "evidence": [
+        {
+          "source": "inventory_snapshots",
+          "record_id": "INV-STORE-HZ-001-SNK-001-20261002",
+          "field": "on_hand_qty",
+          "value": 90,
+          "as_of": "2026-10-02"
+        }
+      ],
+      "recommendations": [
+        {
+          "recommendation_id": "REC-store_transfer",
+          "action_type": "transfer_stock",
+          "action_params": {
+            "source_store_id": "STORE-HZ-001",
+            "target_store_id": "STORE-HZ-002",
+            "sku_id": "SNK-001",
+            "qty": 50,
+            "unit": "bag"
+          },
+          "rationale": "测试建议；仅在核对证据与假设后记录模拟确认。",
+          "evidence_ids": [
+            "INV-STORE-HZ-001-SNK-001-20261002"
+          ],
+          "approval_required": true,
+          "impact_estimate": {
+            "kind": "inventory_reallocation",
+            "amount_fen": null,
+            "period_days": 14,
+            "assumptions": [
+              "按袋调拨；箱规仅作为采购约束",
+              "两店均未预留库存",
+              "不声称内部调拨释放现金"
+            ]
+          }
+        }
+      ],
+      "details": {
+        "source_avg_daily_sales_qty": 2,
+        "target_avg_daily_sales_qty": 4,
+        "source_available_qty": 90,
+        "target_available_qty": 6,
+        "recommended_transfer_qty": 50,
+        "source_after_qty": 40,
+        "target_after_qty": 56,
+        "source_cover_days_before": 45,
+        "target_cover_days_before": 1.5,
+        "source_cover_days_after": 20,
+        "target_cover_days_after": 14,
+        "chain_inventory_value_before_fen": 33600,
+        "chain_inventory_value_after_fen": 33600,
+        "unit": "bag"
+      }
+    }
+  ],
+  "missing_fields": [],
+  "follow_up_questions": [],
+  "warnings": [],
+  "error": null,
+  "data_version": "snack-demo-v1",
+  "policy_version": "snack-policy-v1",
+  "created_at": "2026-10-03T00:00:00+08:00",
+  "completed_at": "2026-10-03T00:00:01+08:00"
+}

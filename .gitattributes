@@ -1,3 +1,5 @@
 # The generated package is verified by SHA-256; checkout must preserve its bytes.
 sample-data/manifest.json text eol=lf
 sample-data/generated/* text eol=lf
+# Preserve Wei's supplied snapshot, including Markdown hard-break spaces.
+docs/API_CONTRACT.md text eol=lf whitespace=-blank-at-eol

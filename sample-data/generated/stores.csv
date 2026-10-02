@@ -1,0 +1,4 @@
+store_id,store_name,region_id,status
+STORE-HZ-001,滨江店,HZ-BJ,active
+STORE-HZ-002,文二路店,HZ-XH,active
+STORE-HZ-003,城西店,HZ-XH,active

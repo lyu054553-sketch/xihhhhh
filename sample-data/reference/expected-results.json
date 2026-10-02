@@ -1,0 +1,12 @@
+{
+  "contract_version": "v0.3", "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1", "synthetic": true,
+  "reference_status": "independent_contract_expectations_not_backend_execution",
+  "disclaimer": "独立验收参考，不是模型响应；不得在接口失败时返回给生产页面。",
+  "items": [
+    {"scenario_id": "slow-moving-zero-sales", "agent_type": "slow_moving", "expected": {"inventory_value_at_cost_fen": 22000, "avg_daily_sales_qty": 0, "days_since_last_sale": 19, "days_of_supply": null, "target_stock_qty": 8, "excess_qty": 17, "excess_value_at_cost_fen": 14960}, "warnings": ["NO_RECENT_SALES"], "assumptions": ["最近正销量记录为2026-09-13，其后每日均明确为0", "坚果促销底价未知，只能建议人工复核"]},
+    {"scenario_id": "transfer-chips", "agent_type": "store_transfer", "expected": {"source_avg_daily_sales_qty": 2, "target_avg_daily_sales_qty": 4, "source_available_qty": 90, "target_available_qty": 6, "recommended_transfer_qty": 50, "source_after_qty": 40, "target_after_qty": 56, "source_cover_days_before": 45, "target_cover_days_before": 1.5, "source_cover_days_after": 20, "target_cover_days_after": 14, "chain_inventory_value_at_cost_before_fen": 33600, "chain_inventory_value_at_cost_after_fen": 33600}, "warnings": [], "assumptions": ["按袋调拨；箱规仅作为采购约束", "两店均未预留库存", "不声称内部调拨释放现金"]},
+    {"scenario_id": "near-expiry-bean", "agent_type": "near_expiry", "expected": {"lot_id": "LOT-004-01", "expiry_date": "2026-10-18", "days_to_expiry": 16, "qty": 40, "expected_sales_before_expiry_qty": 16, "risk_qty": 24, "risk_value_at_cost_fen": 6480}, "warnings": [], "assumptions": ["收盘基准后从10月3日预测，10月18日为本演示约定的最后可售日，共16天", "日均1袋仅为预测假设，风险金额不是确定损失", "此门店商品仅有一个批次，不重复分配同一段销量"]},
+    {"scenario_id": "procurement-nuts", "agent_type": "procurement_brake", "expected": {"open_qty": 30, "stock_before_arrival_qty": 4, "projected_stock_qty": 34, "target_stock_qty": 28, "recommended_order_qty": 24, "suggested_reduction_qty": 6, "case_pack_adjusted_qty": 24}, "warnings": [], "assumptions": ["按契约的3日销量扣减6袋，到货前余4袋；日内事件顺序需后端确认", "24袋是调整后的整箱采购量，减少量为6袋", "在途汇总和PO-003只计一次", "到货前4袋低于5天安全库存10袋，不能省略安全库存风险"]},
+    {"scenario_id": "cashflow-reduce-six", "agent_type": "cashflow_simulation", "expected": {"baseline_purchase_commitment_fen": 26400, "scenario_purchase_commitment_fen": 21120, "estimated_avoided_purchase_commitment_fen": 5280}, "warnings": [], "assumptions": ["金额只代表按默认单位成本估计的采购承诺，不代表银行余额变化", "30天没有后续补货计划，基线和减量方案都存在周期内缺货风险", "库存资金指标的时点和逐日时序需后端冻结，本参考不伪造曲线或缺货发生日期"]}
+  ]
+}

@@ -1,0 +1,4 @@
+policy_id,policy_version,category_id,target_cover_days,safety_stock_days,min_display_qty,near_expiry_days,markdown_floor_price_fen,transfer_enabled
+POLICY-NUTS,snack-policy-v1,SNACK-NUTS,14,5,8,30,,true
+POLICY-CHIPS,snack-policy-v1,SNACK-CHIPS,14,7,6,30,450,true
+POLICY-BEAN,snack-policy-v1,SNACK-BEAN,14,5,6,30,320,true

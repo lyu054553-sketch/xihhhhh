@@ -1,0 +1,892 @@
+{
+  "contract_version": "v0.3",
+  "data_version": "snack-demo-v1",
+  "policy_version": "snack-policy-v1",
+  "as_of": "2026-10-02",
+  "synthetic": true,
+  "seed": 20261002,
+  "timezone": "Asia/Shanghai",
+  "source_label": "虚构零食连锁合成演示数据",
+  "disclaimer": "仅用于接口联调与测试；不是客户数据，参考结果不代表模型输出或真实收益。",
+  "assumptions": [
+    "本数据集所有门店每日营业；销售窗口为2026-09-19至2026-10-02，含首尾日期，每个纳入的门店商品组合每日均有记录。",
+    "库存快照采用2026-10-02T23:59:59+08:00收盘基准，避免与当日完整销售统计的截止时点不一致。",
+    "预测自2026-10-03开始；演示近效期口径把到期日作为最后可售日，10月3日至18日共16天，此约定需魏的工具实现确认。",
+    "采购黄金场景按契约的3日销量扣减6袋，得到到货前4袋；逐日到货与销售时序尚需工具契约冻结，不在本数据包中伪造资金曲线。",
+    "PO-003的30袋未收货量与快照在途30袋是同一笔货物，不得相加为60袋。",
+    "仅文二路店香辣豆干提供可核验的临期批次；其余库存不编造效期，近效期全范围分析应返回缺批次告警。",
+    "SNK-003用于展示商品主数据，未声明任何门店库存或销量，不把未提供的门店商品组合当作零库存或零销量。",
+    "case_pack_qty和min_order_qty用于采购约束；本调拨参考场景允许按袋调拨50袋，不能擅自施加整箱24袋约束。",
+    "未提供后续补货计划；30天资金模拟必须保留缺货风险与逐日时序缺项，不承诺减量后无缺货。"
+  ],
+  "stores": [
+    {
+      "store_id": "STORE-HZ-001",
+      "store_name": "滨江店",
+      "region_id": "HZ-BJ",
+      "status": "active"
+    },
+    {
+      "store_id": "STORE-HZ-002",
+      "store_name": "文二路店",
+      "region_id": "HZ-XH",
+      "status": "active"
+    },
+    {
+      "store_id": "STORE-HZ-003",
+      "store_name": "城西店",
+      "region_id": "HZ-XH",
+      "status": "active"
+    }
+  ],
+  "skus": [
+    {
+      "sku_id": "SNK-001",
+      "sku_name": "椒盐海苔脆片",
+      "category_id": "SNACK-CHIPS",
+      "brand_name": null,
+      "barcode": null,
+      "specification": "45g/袋",
+      "unit": "bag",
+      "unit_cost_fen": 350,
+      "sale_price_fen": 600,
+      "shelf_life_days": 180,
+      "min_order_qty": 24,
+      "case_pack_qty": 24
+    },
+    {
+      "sku_id": "SNK-002",
+      "sku_name": "每日坚果组合",
+      "category_id": "SNACK-NUTS",
+      "brand_name": null,
+      "barcode": null,
+      "specification": "120g/袋",
+      "unit": "bag",
+      "unit_cost_fen": 880,
+      "sale_price_fen": 1290,
+      "shelf_life_days": 120,
+      "min_order_qty": 6,
+      "case_pack_qty": 6
+    },
+    {
+      "sku_id": "SNK-003",
+      "sku_name": "草莓牛奶",
+      "category_id": "SNACK-DRINK",
+      "brand_name": null,
+      "barcode": null,
+      "specification": "200ml/瓶",
+      "unit": "bottle",
+      "unit_cost_fen": 230,
+      "sale_price_fen": 350,
+      "shelf_life_days": 180,
+      "min_order_qty": 24,
+      "case_pack_qty": 24
+    },
+    {
+      "sku_id": "SNK-004",
+      "sku_name": "香辣豆干",
+      "category_id": "SNACK-BEAN",
+      "brand_name": null,
+      "barcode": null,
+      "specification": "90g/袋",
+      "unit": "bag",
+      "unit_cost_fen": 270,
+      "sale_price_fen": 450,
+      "shelf_life_days": 90,
+      "min_order_qty": 12,
+      "case_pack_qty": 12
+    }
+  ],
+  "inventory_snapshots": [
+    {
+      "snapshot_id": "INV-STORE-HZ-001-SNK-001-20261002",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "snapshot_at": "2026-10-02T23:59:59+08:00",
+      "on_hand_qty": 90,
+      "reserved_qty": 0,
+      "in_transit_qty": 0
+    },
+    {
+      "snapshot_id": "INV-STORE-HZ-002-SNK-001-20261002",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "snapshot_at": "2026-10-02T23:59:59+08:00",
+      "on_hand_qty": 6,
+      "reserved_qty": 0,
+      "in_transit_qty": 0
+    },
+    {
+      "snapshot_id": "INV-STORE-HZ-001-SNK-002-20261002",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "snapshot_at": "2026-10-02T23:59:59+08:00",
+      "on_hand_qty": 25,
+      "reserved_qty": 0,
+      "in_transit_qty": 0
+    },
+    {
+      "snapshot_id": "INV-STORE-HZ-002-SNK-004-20261002",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "snapshot_at": "2026-10-02T23:59:59+08:00",
+      "on_hand_qty": 40,
+      "reserved_qty": 0,
+      "in_transit_qty": 0
+    },
+    {
+      "snapshot_id": "INV-STORE-HZ-003-SNK-002-20261002",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "snapshot_at": "2026-10-02T23:59:59+08:00",
+      "on_hand_qty": 10,
+      "reserved_qty": 0,
+      "in_transit_qty": 30
+    }
+  ],
+  "sales_daily": [
+    {
+      "business_date": "2026-09-19",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 600,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-20",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 600,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-21",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-22",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-23",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-24",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-25",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 600,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-26",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-27",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 600,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-28",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-29",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 600,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-30",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-10-01",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 600,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-10-02",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 600,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-13",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 1290,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-14",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-15",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-16",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-17",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-18",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-19",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-20",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-21",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-22",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-23",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-24",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-25",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-26",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-27",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-28",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-29",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-30",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-10-01",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-10-02",
+      "store_id": "STORE-HZ-001",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-19",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 5,
+      "sales_amount_fen": 3000,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-20",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 5,
+      "sales_amount_fen": 3000,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-21",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-22",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-23",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-24",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-25",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-26",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 5,
+      "sales_amount_fen": 3000,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-27",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 5,
+      "sales_amount_fen": 3000,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-28",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-29",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 1800,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-30",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 5,
+      "sales_amount_fen": 3000,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-10-01",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 5,
+      "sales_amount_fen": 3000,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-10-02",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-001",
+      "net_sold_qty": 5,
+      "sales_amount_fen": 3000,
+      "is_promotion": false,
+      "unit_sale_price_fen": 600
+    },
+    {
+      "business_date": "2026-09-19",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-20",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 2,
+      "sales_amount_fen": 900,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-21",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-22",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-23",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-24",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 2,
+      "sales_amount_fen": 900,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-25",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 2,
+      "sales_amount_fen": 900,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-26",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-27",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 2,
+      "sales_amount_fen": 900,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-28",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 2,
+      "sales_amount_fen": 900,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-29",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 2,
+      "sales_amount_fen": 900,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-30",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 2,
+      "sales_amount_fen": 900,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-10-01",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-10-02",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "net_sold_qty": 0,
+      "sales_amount_fen": 0,
+      "is_promotion": false,
+      "unit_sale_price_fen": 450
+    },
+    {
+      "business_date": "2026-09-19",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 3870,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-20",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 1290,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-21",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 1290,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-22",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 3870,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-23",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 1290,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-24",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 1290,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-25",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 1290,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-26",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 3870,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-27",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 3870,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-28",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 3870,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-29",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 1290,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-09-30",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 3870,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-10-01",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 1,
+      "sales_amount_fen": 1290,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    },
+    {
+      "business_date": "2026-10-02",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "net_sold_qty": 3,
+      "sales_amount_fen": 3870,
+      "is_promotion": false,
+      "unit_sale_price_fen": 1290
+    }
+  ],
+  "purchase_orders": [
+    {
+      "po_id": "PO-003",
+      "store_id": "STORE-HZ-003",
+      "sku_id": "SNK-002",
+      "supplier_id": "SUP-001",
+      "ordered_qty": 30,
+      "received_qty": 0,
+      "open_qty": 30,
+      "expected_arrival_date": "2026-10-05",
+      "lead_time_days": 3,
+      "cancellable_until": "2026-10-04"
+    }
+  ],
+  "inventory_lots": [
+    {
+      "lot_id": "LOT-004-01",
+      "store_id": "STORE-HZ-002",
+      "sku_id": "SNK-004",
+      "qty": 40,
+      "expiry_date": "2026-10-18",
+      "unit_cost_fen": 270
+    }
+  ],
+  "policies": [
+    {
+      "policy_id": "POLICY-NUTS",
+      "policy_version": "snack-policy-v1",
+      "category_id": "SNACK-NUTS",
+      "target_cover_days": 14,
+      "safety_stock_days": 5,
+      "min_display_qty": 8,
+      "near_expiry_days": 30,
+      "markdown_floor_price_fen": null,
+      "transfer_enabled": true
+    },
+    {
+      "policy_id": "POLICY-CHIPS",
+      "policy_version": "snack-policy-v1",
+      "category_id": "SNACK-CHIPS",
+      "target_cover_days": 14,
+      "safety_stock_days": 7,
+      "min_display_qty": 6,
+      "near_expiry_days": 30,
+      "markdown_floor_price_fen": 450,
+      "transfer_enabled": true
+    },
+    {
+      "policy_id": "POLICY-BEAN",
+      "policy_version": "snack-policy-v1",
+      "category_id": "SNACK-BEAN",
+      "target_cover_days": 14,
+      "safety_stock_days": 5,
+      "min_display_qty": 6,
+      "near_expiry_days": 30,
+      "markdown_floor_price_fen": 320,
+      "transfer_enabled": true
+    }
+  ]
+}

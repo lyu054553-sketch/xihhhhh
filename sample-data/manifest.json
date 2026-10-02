@@ -1,109 +1,191 @@
 {
-  "metadata": {
-    "schema_version": "synthetic-scenarios-v1",
-    "source_label": "合成演示数据（固定种子）",
-    "is_sample": true,
-    "seed": 20261002,
-    "as_of_date": "2026-09-30",
-    "timezone": "Asia/Shanghai",
-    "scenario_count": 10,
-    "record_count": 8,
-    "disclaimer": "仅用于功能演示和测试；不是客户数据，测算结果不代表真实收益。"
+  "contract_version": "v0.3",
+  "data_version": "snack-demo-v1",
+  "policy_version": "snack-policy-v1",
+  "as_of": "2026-10-02",
+  "synthetic": true,
+  "seed": 20261002,
+  "timezone": "Asia/Shanghai",
+  "source_label": "虚构零食连锁合成演示数据",
+  "disclaimer": "仅用于接口联调与测试；不是客户数据，参考结果不代表模型输出或真实收益。",
+  "scenario_count": 5,
+  "record_counts": {
+    "stores": 3,
+    "skus": 4,
+    "inventory_snapshots": 5,
+    "sales_daily": 76,
+    "purchase_orders": 1,
+    "inventory_lots": 1,
+    "policies": 3
+  },
+  "scope_options": {
+    "stores": [
+      {
+        "store_id": "STORE-HZ-001",
+        "store_name": "滨江店",
+        "region_id": "HZ-BJ",
+        "status": "active"
+      },
+      {
+        "store_id": "STORE-HZ-002",
+        "store_name": "文二路店",
+        "region_id": "HZ-XH",
+        "status": "active"
+      },
+      {
+        "store_id": "STORE-HZ-003",
+        "store_name": "城西店",
+        "region_id": "HZ-XH",
+        "status": "active"
+      }
+    ],
+    "skus": [
+      {
+        "sku_id": "SNK-001",
+        "sku_name": "椒盐海苔脆片",
+        "category_id": "SNACK-CHIPS",
+        "brand_name": null,
+        "barcode": null,
+        "specification": "45g/袋",
+        "unit": "bag",
+        "unit_cost_fen": 350,
+        "sale_price_fen": 600,
+        "shelf_life_days": 180,
+        "min_order_qty": 24,
+        "case_pack_qty": 24
+      },
+      {
+        "sku_id": "SNK-002",
+        "sku_name": "每日坚果组合",
+        "category_id": "SNACK-NUTS",
+        "brand_name": null,
+        "barcode": null,
+        "specification": "120g/袋",
+        "unit": "bag",
+        "unit_cost_fen": 880,
+        "sale_price_fen": 1290,
+        "shelf_life_days": 120,
+        "min_order_qty": 6,
+        "case_pack_qty": 6
+      },
+      {
+        "sku_id": "SNK-003",
+        "sku_name": "草莓牛奶",
+        "category_id": "SNACK-DRINK",
+        "brand_name": null,
+        "barcode": null,
+        "specification": "200ml/瓶",
+        "unit": "bottle",
+        "unit_cost_fen": 230,
+        "sale_price_fen": 350,
+        "shelf_life_days": 180,
+        "min_order_qty": 24,
+        "case_pack_qty": 24
+      },
+      {
+        "sku_id": "SNK-004",
+        "sku_name": "香辣豆干",
+        "category_id": "SNACK-BEAN",
+        "brand_name": null,
+        "barcode": null,
+        "specification": "90g/袋",
+        "unit": "bag",
+        "unit_cost_fen": 270,
+        "sale_price_fen": 450,
+        "shelf_life_days": 90,
+        "min_order_qty": 12,
+        "case_pack_qty": 12
+      }
+    ],
+    "categories": [
+      {
+        "category_id": "SNACK-CHIPS",
+        "category_name": "脆片"
+      },
+      {
+        "category_id": "SNACK-NUTS",
+        "category_name": "坚果"
+      },
+      {
+        "category_id": "SNACK-DRINK",
+        "category_name": "饮品"
+      },
+      {
+        "category_id": "SNACK-BEAN",
+        "category_name": "豆制品"
+      }
+    ]
   },
   "scenarios": [
     {
-      "id": "healthy",
-      "title": "正常库存",
-      "description": "完整字段、库存金额低于三倍销售成本，不应生成降库存候选。",
-      "type": "domain"
+      "id": "slow-moving-zero-sales",
+      "title": "滨江店坚果零销量",
+      "agent_type": "slow_moving"
     },
     {
-      "id": "slow_mover",
-      "title": "滞销诊断",
-      "description": "同规格门店销量对照；差异是事实，原因仍需门店反馈确认。",
-      "type": "domain"
+      "id": "transfer-chips",
+      "title": "脆片跨店调拨",
+      "agent_type": "store_transfer"
     },
     {
-      "id": "near_expiry",
-      "title": "近效期处置",
-      "description": "12 天可售期；正常销售、调拨、促销和退供共同遵守批次数量守恒。",
-      "type": "domain"
+      "id": "near-expiry-bean",
+      "title": "香辣豆干临期风险",
+      "agent_type": "near_expiry"
     },
     {
-      "id": "over_purchase",
-      "title": "采购过量",
-      "description": "当前库存、在途和未执行采购分列；减量建议仍需人工审批。",
-      "type": "domain"
+      "id": "procurement-nuts",
+      "title": "城西店坚果采购刹车",
+      "agent_type": "procurement_brake"
     },
     {
-      "id": "store_shortage",
-      "title": "门店缺货与调拨",
-      "description": "接收门店零库存且有销量；调拨后补足库存，内部移动不计为现金收益。",
-      "type": "domain"
-    },
-    {
-      "id": "zero_sales",
-      "title": "零销量",
-      "description": "明确的零销量与未知销量分开；9999 是后端基线哨兵值，候选不等于已执行。",
-      "type": "domain"
-    },
-    {
-      "id": "missing_fields",
-      "title": "关键字段缺失",
-      "description": "未知销量和销售成本保留 null；导入表头校验通过不代表业务数据已完整。",
-      "type": "domain"
-    },
-    {
-      "id": "inventory_conflict",
-      "title": "共享库存冲突",
-      "description": "同批次仅剩 10 件，两个处置动作各占 6 件，必须阻止重复占用。",
-      "type": "domain"
-    },
-    {
-      "id": "cash_simulation",
-      "title": "现金目标模拟",
-      "description": "仅组合已知现金影响；模拟不足以达标时保留缺口，不制造收益。",
-      "type": "domain"
-    },
-    {
-      "id": "api_failure",
-      "title": "接口不可用",
-      "description": "由浏览器测试注入 HTTP 503；显示失败并允许重试，不能静默使用合成数据。",
-      "type": "transport"
+      "id": "cashflow-reduce-six",
+      "title": "减少6袋采购承诺的模拟",
+      "agent_type": "cashflow_simulation"
     }
   ],
   "files": {
-    "inventory": {
-      "path": "generated/inventory.csv",
-      "sha256": "55c1414d72b2bda07393169918be388a289f20fdcc071e0aee834be4801fa1d5",
-      "data_kind": "inventory"
+    "dataset": {
+      "path": "generated/dataset.json",
+      "sha256": "f8a7da7a6b1ffce44d43ca944aace249a905864aace174637e72b01e1c117bce"
     },
-    "sales": {
-      "path": "generated/sales.csv",
-      "sha256": "644dfe63c97ddc627efcc19b860f06a1f20add8e301d3ee4ce4f2f6fab5eb735",
-      "data_kind": "sales"
+    "stores": {
+      "path": "generated/stores.csv",
+      "sha256": "6c1d81b8f547fb16ef4f88d551a8eb7fffd67a60f606e152f3911b4ec133d7a0",
+      "model": "stores"
     },
-    "purchase": {
-      "path": "generated/purchase.csv",
-      "sha256": "fb4d37d36f69b76eaf5b7c3c69a2657cc327fed1ff6bffc521e5f42ddf7d6d24",
-      "data_kind": "purchase"
+    "skus": {
+      "path": "generated/skus.csv",
+      "sha256": "eff1abb159bd9b5be100cd4aa2e3753e368247413026b320c3e10a50fd966af6",
+      "model": "skus"
     },
-    "expiry": {
-      "path": "generated/expiry.csv",
-      "sha256": "e06f5736469f3d2d52be8080ca1cea4a60c3b6e021f91e846aef16c61c902eda",
-      "data_kind": "expiry"
+    "inventory_snapshots": {
+      "path": "generated/inventory_snapshots.csv",
+      "sha256": "b96d8c593cf9af3c99cf7e53f059571be80b2e09eea49c6156aeb5bc37b8195a",
+      "model": "inventory_snapshots"
     },
-    "snapshot": {
-      "path": "generated/snapshot.json",
-      "sha256": "17047115fe84d7ca3447a85fb0b86210c3d8e01ff82b74e2180dd319fa8c0888"
+    "sales_daily": {
+      "path": "generated/sales_daily.csv",
+      "sha256": "6e82b416ad48762662e749322307d7fbd203fd433feed05feccd6c0fa46f02bf",
+      "model": "sales_daily"
     },
-    "scenarios": {
-      "path": "generated/scenarios.json",
-      "sha256": "78fa24c832db9bbcb258bf66da08246593d066fd2216fc698ee05a690654e018"
+    "purchase_orders": {
+      "path": "generated/purchase_orders.csv",
+      "sha256": "c9e46ac72b17cec13067efb26d11e94cc5c9771ae3f272f566ea5ae6c530ff27",
+      "model": "purchase_orders"
     },
-    "expected_results": {
-      "path": "generated/expected_results.json",
-      "sha256": "0699e71950dae781797fc2b68f39d1aeeb437fce7afa39493a7585b0bc93c6d2"
+    "inventory_lots": {
+      "path": "generated/inventory_lots.csv",
+      "sha256": "617223269699555774f8bae36234bde6c6b632deb0d5c6ad6ee52e9e9e63bbb2",
+      "model": "inventory_lots"
+    },
+    "policies": {
+      "path": "generated/policies.csv",
+      "sha256": "ec759c262f142ceaeecaecda515ba2fd3796885ac473571df9cebc76242f153d",
+      "model": "policies"
+    },
+    "scenario_requests": {
+      "path": "generated/scenario_requests.json",
+      "sha256": "efe2665551621c3fe09b2391193c24bc1bfd5751fcf4a79517ae2efa594780e8"
     }
   }
 }

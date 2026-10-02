@@ -1,0 +1,8 @@
+{
+  "request_id": "00000000-0000-4000-8000-000000000006", "run_id": "fixture-preview-001", "agent_type": "cashflow_simulation", "status": "awaiting_confirmation",
+  "summary": "仅整理模拟输入，等待用户确认。", "session_id": "00000000-0000-4000-8000-000000000105",
+  "assistant_message": "测试响应：请确认采购减量情景。确认仅启动模拟，不批准或执行采购修改。",
+  "scenario_preview": {"scenario_id": "SCN-PO-003-REDUCE-6", "title": "城西店每日坚果采购减量", "horizon_days": 30, "store_ids": ["STORE-HZ-003"], "adjustments": [{"action_type": "reduce_open_purchase_order", "action_params": {"po_id": "PO-003", "store_id": "STORE-HZ-003", "sku_id": "SNK-002", "qty": 6, "unit": "bag"}}], "assumptions": ["只模拟仍可取消的未收货数量", "未提供后续补货，需复核周期内缺货风险"], "confirmation_required": true},
+  "steps": [], "items": [], "missing_fields": [], "follow_up_questions": [], "warnings": [], "error": null,
+  "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1", "created_at": "2026-10-03T00:00:00+08:00", "completed_at": "2026-10-03T00:00:00+08:00"
+}
