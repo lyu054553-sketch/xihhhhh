@@ -101,12 +101,12 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIsNotNone(network[0]["calculation"]["economic"]["potential_loss_without_transfer"])
         expiry_risks = [item for item in self.store.risks() if item["risk_type"] == "促销"]
         self.assertEqual(len(expiry_risks), 7)
-        self.assertEqual(self.store.default_workbench_input("expiry-rescue", 6)["product"], "复方氨酚烷胺胶囊")
+        self.assertEqual(self.store.default_workbench_input("expiry-rescue", 6)["product"], "海盐薯片分享装 80g×8")
 
     def test_today_work_copy_states_store_product_action_and_reason(self):
         transfer = self.store.risk(1)
         title, reason = _work_item_copy(transfer)
-        self.assertEqual(title, "西湖文三店 · 钙维生素D软胶囊 滞销待调拨")
+        self.assertEqual(title, "西湖文三店 · 每日坚果礼盒 750g 滞销待调拨")
         self.assertIn("库存 120 件", reason)
         self.assertIn("预计需 168 天售完", reason)
 

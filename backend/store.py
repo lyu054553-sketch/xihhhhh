@@ -125,44 +125,44 @@ CREATE INDEX IF NOT EXISTS idx_real_inventory_lines_snapshot_sku
 WORKBENCH_DEFAULTS: Dict[str, Dict[str, Any]] = {
     "transfer": {
         "risk_id": 1, "lot_id": "LOT-A-001", "source_store": "西湖文三店", "source_store_id": "STORE-001",
-        "target_store": "余杭未来店", "target_store_id": "STORE-002", "product": "钙维生素D软胶囊",
-        "batch": "2026-11-30", "quantity": 40, "source_on_hand": 120, "source_safety": 30, "source_daily_sales": "0.71",
+        "target_store": "余杭未来店", "target_store_id": "STORE-002", "product": "每日坚果礼盒 750g",
+        "batch": "2026-12-15", "quantity": 40, "source_on_hand": 120, "source_safety": 30, "source_daily_sales": "0.71",
         "target_on_hand": 15, "target_capacity": 65, "target_safety": 12, "target_daily_sales": "1.20",
-        "sellable_days": 73, "eta_days": 1, "transport_fee": "86", "unit_cost": "80", "eta_at": "2026-09-19",
+        "sellable_days": 73, "eta_days": 1, "transport_fee": "86", "unit_cost": "80", "eta_at": "2026-10-04",
     },
     "expiry-rescue": {
-        "risk_id": 3, "lot_id": "LOT-EXP-003", "store": "拱墅运河店", "store_id": "STORE-003", "product": "藿香正气口服液",
-        "batch": "2026-10-10", "inventory_qty": 90, "unit_cost": "76", "sales_30": 16, "sellable_days": 22,
-        "latest_disposal_date": "2026-10-06", "transfer_qty": 18, "transfer_fee": "42", "promo_qty": 12,
+        "risk_id": 3, "lot_id": "LOT-EXP-003", "store": "拱墅运河店", "store_id": "STORE-003", "product": "纯牛奶整箱 250ml×24",
+        "batch": "2026-10-25", "inventory_qty": 90, "unit_cost": "76", "sales_30": 16, "sellable_days": 22,
+        "latest_disposal_date": "2026-10-21", "transfer_qty": 18, "transfer_fee": "42", "promo_qty": 12,
         "promo_price": "52", "promo_fee": "120", "return_qty": 10,
     },
     "procurement-brake": {
-        "risk_id": 4, "po_number": "PO-202609-048", "line_number": "2", "product": "乳酸菌素片 32片", "store": "上城庆春店",
+        "risk_id": 4, "po_number": "PO-202609-048", "line_number": "2", "product": "酸奶夹心饼干整箱 100g×12", "store": "上城庆春店",
         "current_inventory": 80, "in_transit_qty": 40, "open_purchase_qty": 60, "adjustment_qty": 40, "unit_cost": "59",
-        "safety_stock": 50, "arrival_date": "2026-09-24", "payment_date": "2026-09-28", "new_payment_date": "2026-10-28",
-        "cutoff_date": "2026-10-18", "order_status": "待供应商确认", "action": "delay_payment",
+        "safety_stock": 50, "arrival_date": "2026-10-09", "payment_date": "2026-10-13", "new_payment_date": "2026-11-12",
+        "cutoff_date": "2026-11-02", "order_status": "待供应商确认", "action": "delay_payment",
     },
     "slow-diagnosis": {"risk_id": 1},
 }
 
 EXPIRY_WORKBENCH_DEFAULTS: Dict[int, Dict[str, Any]] = {
     3: WORKBENCH_DEFAULTS["expiry-rescue"],
-    6: {"risk_id": 6, "lot_id": "LOT-EXP-006", "store": "西湖古荡店", "store_id": "STORE-006", "product": "复方氨酚烷胺胶囊", "batch": "2026-10-02", "inventory_qty": 64, "unit_cost": "38", "sales_30": 10, "sellable_days": 14, "latest_disposal_date": "2026-09-30", "transfer_qty": 20, "transfer_fee": "35", "promo_qty": 12, "promo_price": "29", "promo_fee": "80", "return_qty": 8},
-    7: {"risk_id": 7, "lot_id": "LOT-EXP-007", "store": "上城湖滨店", "store_id": "STORE-007", "product": "维生素C泡腾片", "batch": "2026-10-06", "inventory_qty": 48, "unit_cost": "42", "sales_30": 9, "sellable_days": 18, "latest_disposal_date": "2026-10-03", "transfer_qty": 10, "transfer_fee": "28", "promo_qty": 16, "promo_price": "35", "promo_fee": "75", "return_qty": 6},
-    8: {"risk_id": 8, "lot_id": "LOT-EXP-008", "store": "拱墅大关店", "store_id": "STORE-008", "product": "健胃消食片", "batch": "2026-10-12", "inventory_qty": 72, "unit_cost": "31", "sales_30": 12, "sellable_days": 24, "latest_disposal_date": "2026-10-08", "transfer_qty": 18, "transfer_fee": "41", "promo_qty": 18, "promo_price": "25", "promo_fee": "90", "return_qty": 10},
-    9: {"risk_id": 9, "lot_id": "LOT-EXP-009", "store": "余杭仓前店", "store_id": "STORE-009", "product": "藿香正气水", "batch": "2026-10-16", "inventory_qty": 56, "unit_cost": "68", "sales_30": 8, "sellable_days": 28, "latest_disposal_date": "2026-10-12", "transfer_qty": 16, "transfer_fee": "46", "promo_qty": 12, "promo_price": "48", "promo_fee": "95", "return_qty": 8},
-    10: {"risk_id": 10, "lot_id": "LOT-EXP-010", "store": "临平星桥店", "store_id": "STORE-010", "product": "医用退热贴", "batch": "2026-10-22", "inventory_qty": 84, "unit_cost": "27", "sales_30": 11, "sellable_days": 34, "latest_disposal_date": "2026-10-18", "transfer_qty": 20, "transfer_fee": "52", "promo_qty": 18, "promo_price": "20", "promo_fee": "110", "return_qty": 12},
-    11: {"risk_id": 11, "lot_id": "LOT-EXP-011", "store": "西湖学院路店", "store_id": "STORE-052", "product": "蒙脱石散", "batch": "2026-10-08", "inventory_qty": 58, "unit_cost": "34", "sales_30": 6, "sellable_days": 20, "latest_disposal_date": "2026-10-04", "transfer_qty": 14, "transfer_fee": "32", "promo_qty": 16, "promo_price": "25", "promo_fee": "65", "return_qty": 8},
+    6: {"risk_id": 6, "lot_id": "LOT-EXP-006", "store": "西湖古荡店", "store_id": "STORE-006", "product": "海盐薯片分享装 80g×8", "batch": "2026-10-17", "inventory_qty": 64, "unit_cost": "38", "sales_30": 10, "sellable_days": 14, "latest_disposal_date": "2026-10-15", "transfer_qty": 20, "transfer_fee": "35", "promo_qty": 12, "promo_price": "29", "promo_fee": "80", "return_qty": 8},
+    7: {"risk_id": 7, "lot_id": "LOT-EXP-007", "store": "上城湖滨店", "store_id": "STORE-007", "product": "气泡果汁整箱 330ml×12", "batch": "2026-10-21", "inventory_qty": 48, "unit_cost": "42", "sales_30": 9, "sellable_days": 18, "latest_disposal_date": "2026-10-18", "transfer_qty": 10, "transfer_fee": "28", "promo_qty": 16, "promo_price": "35", "promo_fee": "75", "return_qty": 6},
+    8: {"risk_id": 8, "lot_id": "LOT-EXP-008", "store": "拱墅大关店", "store_id": "STORE-008", "product": "水果果冻分享桶 1kg", "batch": "2026-10-27", "inventory_qty": 72, "unit_cost": "31", "sales_30": 12, "sellable_days": 24, "latest_disposal_date": "2026-10-23", "transfer_qty": 18, "transfer_fee": "41", "promo_qty": 18, "promo_price": "25", "promo_fee": "90", "return_qty": 10},
+    9: {"risk_id": 9, "lot_id": "LOT-EXP-009", "store": "余杭仓前店", "store_id": "STORE-009", "product": "乌龙茶整箱 500ml×15", "batch": "2026-10-31", "inventory_qty": 56, "unit_cost": "68", "sales_30": 8, "sellable_days": 28, "latest_disposal_date": "2026-10-27", "transfer_qty": 16, "transfer_fee": "46", "promo_qty": 12, "promo_price": "48", "promo_fee": "95", "return_qty": 8},
+    10: {"risk_id": 10, "lot_id": "LOT-EXP-010", "store": "临平星桥店", "store_id": "STORE-010", "product": "奶香蛋卷礼盒 400g", "batch": "2026-11-06", "inventory_qty": 84, "unit_cost": "27", "sales_30": 11, "sellable_days": 34, "latest_disposal_date": "2026-11-02", "transfer_qty": 20, "transfer_fee": "52", "promo_qty": 18, "promo_price": "20", "promo_fee": "110", "return_qty": 12},
+    11: {"risk_id": 11, "lot_id": "LOT-EXP-011", "store": "西湖学院路店", "store_id": "STORE-052", "product": "芝士威化组合装 500g", "batch": "2026-10-23", "inventory_qty": 58, "unit_cost": "34", "sales_30": 6, "sellable_days": 20, "latest_disposal_date": "2026-10-19", "transfer_qty": 14, "transfer_fee": "32", "promo_qty": 16, "promo_price": "25", "promo_fee": "65", "return_qty": 8},
 }
 
 TRANSFER_WORKBENCH_DEFAULTS: Dict[int, Dict[str, Any]] = {
     1: WORKBENCH_DEFAULTS["transfer"],
-    5: {"risk_id": 5, "lot_id": "LOT-A-005", "source_store": "临平东湖店", "source_store_id": "STORE-005", "target_store": "西湖古荡店", "target_store_id": "STORE-006", "product": "血糖试纸 50片", "batch": "2027-03-31", "quantity": 35, "source_on_hand": 70, "source_safety": 20, "source_daily_sales": "0.67", "target_on_hand": 10, "target_capacity": 58, "target_safety": 12, "target_daily_sales": "1.10", "sellable_days": 120, "eta_days": 1, "transport_fee": "98", "unit_cost": "55", "eta_at": "2026-09-19"},
+    5: {"risk_id": 5, "lot_id": "LOT-A-005", "source_store": "临平东湖店", "source_store_id": "STORE-005", "target_store": "西湖古荡店", "target_store_id": "STORE-006", "product": "山楂果脯礼盒 1kg", "batch": "2027-04-15", "quantity": 35, "source_on_hand": 70, "source_safety": 20, "source_daily_sales": "0.67", "target_on_hand": 10, "target_capacity": 58, "target_safety": 12, "target_daily_sales": "1.10", "sellable_days": 120, "eta_days": 1, "transport_fee": "98", "unit_cost": "55", "eta_at": "2026-10-04"},
 }
 
 PROCUREMENT_WORKBENCH_DEFAULTS: Dict[int, Dict[str, Any]] = {
     4: WORKBENCH_DEFAULTS["procurement-brake"],
-    12: {"risk_id": 12, "po_number": "PO-202609-062", "line_number": "1", "product": "益生菌粉 30袋", "store": "西湖蒋村店", "current_inventory": 66, "in_transit_qty": 24, "open_purchase_qty": 48, "adjustment_qty": 30, "unit_cost": "46", "safety_stock": 36, "arrival_date": "2026-09-25", "payment_date": "2026-09-29", "new_payment_date": "2026-10-29", "cutoff_date": "2026-10-18", "order_status": "待供应商确认", "action": "reduce"},
+    12: {"risk_id": 12, "po_number": "PO-202609-062", "line_number": "1", "product": "黑巧燕麦棒整盒 30g×20", "store": "西湖蒋村店", "current_inventory": 66, "in_transit_qty": 24, "open_purchase_qty": 48, "adjustment_qty": 30, "unit_cost": "46", "safety_stock": 36, "arrival_date": "2026-10-10", "payment_date": "2026-10-14", "new_payment_date": "2026-11-13", "cutoff_date": "2026-11-02", "order_status": "待供应商确认", "action": "reduce"},
 }
 
 
@@ -227,25 +227,28 @@ class Store:
         self.seed_demo()
 
     def seed_demo(self) -> None:
+        # 用户已导入真实库存时，不新增或迁移任何演示商品。
+        if self.real_inventory_snapshot("demo"):
+            return
         created = now_iso()
         self.conn.execute(
             "INSERT OR IGNORE INTO snapshots(id, tenant_id, kind, created_at, source, is_sample, metadata_json) VALUES(?,?,?,?,?,?,?)",
-            ("snapshot-demo-v1", "demo", "sample_replay", created, "sample-data/ac01", 1, json.dumps({"label": "合成样例回放"}, ensure_ascii=False)),
+            ("snapshot-demo-v1", "demo", "sample_replay", created, "sample-data/ac01", 1, json.dumps({"label": "合成样例回放", "as_of_date": "2026-10-03", "is_demo": True}, ensure_ascii=False)),
         )
         risks = [
-            (1, "SKU-88310", "钙维生素D软胶囊", "西湖文三店", "STORE-001", 12, [18, 22, 26, 30, 30, 34, 38, 42], 120, "80", ["slow", "near_expiry"], 168, "调拨", "紧急", "近30天销量低于同规格对照门店中位数 60%；原因待核查。", "partial", ["shelf_availability", "stockout_records"]),
-            (2, "SKU-10428", "阿胶块 250g", "余杭未来店", "STORE-002", 8, [12, 18, 20, 25], 110, "80", ["slow"], 214, "退供", "高", "库存覆盖天数偏高；采购量与退换条件待核查。", "insufficient", ["supplier_return_terms"]),
-            (3, "SKU-34106", "藿香正气口服液", "拱墅运河店", "STORE-003", 16, [18, 22, 25], 90, "76", ["near_expiry"], 146, "促销", "紧急", "近效期批次预计无法在当前速度下售完；需求与效期证据部分支持。", "partial", ["sellable_days"]),
-            (4, "SKU-55091", "乳酸菌素片 32片", "上城庆春店", "STORE-004", 14, [19, 20, 23], 80, "59", ["overpurchase"], 137, "采购刹车", "高", "销量下降但在途采购状态待核查。", "insufficient", ["purchase_order_status"]),
-            (5, "SKU-79033", "血糖试纸 50片", "临平东湖店", "STORE-005", 20, [24, 28, 30], 70, "55", ["mismatch"], 119, "调拨", "中", "门店间销量差异需结合规模和可售天数核查。", "insufficient", ["store_scale", "sellable_days"]),
-            (6, "SKU-22016", "复方氨酚烷胺胶囊", "西湖古荡店", "STORE-006", 10, [14, 16, 18], 64, "38", ["near_expiry"], 192, "促销", "紧急", "批次距最晚处置日仅14天，按当前销量预计无法售完。", "partial", ["price_sales_elasticity"]),
-            (7, "SKU-33718", "维生素C泡腾片", "上城湖滨店", "STORE-007", 9, [12, 15, 17], 48, "42", ["near_expiry"], 160, "促销", "高", "批次可售时间不足，需比较调拨、促销和退供。", "partial", ["supplier_return_terms"]),
-            (8, "SKU-44107", "健胃消食片", "拱墅大关店", "STORE-008", 12, [16, 18, 21], 72, "31", ["near_expiry"], 180, "促销", "高", "批次接近处置窗口，当前销量无法覆盖库存。", "partial", ["price_sales_elasticity"]),
-            (9, "SKU-56126", "藿香正气水", "余杭仓前店", "STORE-009", 8, [13, 15, 17], 56, "68", ["near_expiry"], 210, "促销", "高", "季节性商品接近效期，需优先确认门店与退供路径。", "partial", ["supplier_return_terms"]),
-            (10, "SKU-65031", "医用退热贴", "临平星桥店", "STORE-010", 11, [14, 16, 18], 84, "27", ["near_expiry"], 229, "促销", "中", "预计可售量低于批次库存，存在后续报损风险。", "partial", ["price_sales_elasticity"]),
-            (11, "SKU-71008", "蒙脱石散", "西湖学院路店", "STORE-052", 6, [10, 12, 14], 58, "34", ["near_expiry"], 290, "促销", "紧急", "批次剩余可售时间不足，按当前销量预计无法售完。", "partial", ["price_sales_elasticity"]),
-            (12, "SKU-81016", "益生菌粉 30袋", "西湖蒋村店", "STORE-014", 9, [15, 17, 19], 66, "46", ["overpurchase"], 220, "采购刹车", "高", "当前库存和在途采购叠加后偏高，需确认未执行采购是否减量。", "partial", ["purchase_order_status"]),
-            (13, "SKU-91021", "阿胶糕 10块", "西湖转塘店", "STORE-026", 5, [9, 11, 13], 46, "88", ["slow"], 276, "退供", "高", "库存周转偏慢，建议优先核对供应商退换条件。", "insufficient", ["supplier_return_terms"]),
+            (1, "SKU-88310", "每日坚果礼盒 750g", "西湖文三店", "STORE-001", 12, [18, 22, 26, 30, 30, 34, 38, 42], 120, "80", ["slow", "near_expiry"], 168, "调拨", "紧急", "近30天销量低于同规格对照门店中位数 60%；原因待核查。", "partial", ["shelf_availability", "stockout_records"]),
+            (2, "SKU-10428", "炭烤腰果礼盒 600g", "余杭未来店", "STORE-002", 8, [12, 18, 20, 25], 110, "80", ["slow"], 214, "退供", "高", "库存覆盖天数偏高；采购量与退换条件待核查。", "insufficient", ["supplier_return_terms"]),
+            (3, "SKU-34106", "纯牛奶整箱 250ml×24", "拱墅运河店", "STORE-003", 16, [18, 22, 25], 90, "76", ["near_expiry"], 146, "促销", "紧急", "近效期批次预计无法在当前速度下售完；需求与效期证据部分支持。", "partial", ["sellable_days"]),
+            (4, "SKU-55091", "酸奶夹心饼干整箱 100g×12", "上城庆春店", "STORE-004", 14, [19, 20, 23], 80, "59", ["overpurchase"], 137, "采购刹车", "高", "销量下降但在途采购状态待核查。", "insufficient", ["purchase_order_status"]),
+            (5, "SKU-79033", "山楂果脯礼盒 1kg", "临平东湖店", "STORE-005", 20, [24, 28, 30], 70, "55", ["mismatch"], 119, "调拨", "中", "门店间销量差异需结合规模和可售天数核查。", "insufficient", ["store_scale", "sellable_days"]),
+            (6, "SKU-22016", "海盐薯片分享装 80g×8", "西湖古荡店", "STORE-006", 10, [14, 16, 18], 64, "38", ["near_expiry"], 192, "促销", "紧急", "批次剩余可售时间仅14天，按当前销量预计无法售完。", "partial", ["price_sales_elasticity"]),
+            (7, "SKU-33718", "气泡果汁整箱 330ml×12", "上城湖滨店", "STORE-007", 9, [12, 15, 17], 48, "42", ["near_expiry"], 160, "促销", "高", "批次可售时间不足，需比较调拨、促销和退供。", "partial", ["supplier_return_terms"]),
+            (8, "SKU-44107", "水果果冻分享桶 1kg", "拱墅大关店", "STORE-008", 12, [16, 18, 21], 72, "31", ["near_expiry"], 180, "促销", "高", "批次接近处置窗口，当前销量无法覆盖库存。", "partial", ["price_sales_elasticity"]),
+            (9, "SKU-56126", "乌龙茶整箱 500ml×15", "余杭仓前店", "STORE-009", 8, [13, 15, 17], 56, "68", ["near_expiry"], 210, "促销", "高", "季节性商品接近效期，需优先确认门店与退供路径。", "partial", ["supplier_return_terms"]),
+            (10, "SKU-65031", "奶香蛋卷礼盒 400g", "临平星桥店", "STORE-010", 11, [14, 16, 18], 84, "27", ["near_expiry"], 229, "促销", "中", "预计可售量低于批次库存，存在后续报损风险。", "partial", ["price_sales_elasticity"]),
+            (11, "SKU-71008", "芝士威化组合装 500g", "西湖学院路店", "STORE-052", 6, [10, 12, 14], 58, "34", ["near_expiry"], 290, "促销", "紧急", "批次剩余可售时间不足，按当前销量预计无法售完。", "partial", ["price_sales_elasticity"]),
+            (12, "SKU-81016", "黑巧燕麦棒整盒 30g×20", "西湖蒋村店", "STORE-014", 9, [15, 17, 19], 66, "46", ["overpurchase"], 220, "采购刹车", "高", "当前库存和在途采购叠加后偏高，需确认未执行采购是否减量。", "partial", ["purchase_order_status"]),
+            (13, "SKU-91021", "混合坚果礼盒 1kg", "西湖转塘店", "STORE-026", 5, [9, 11, 13], 46, "88", ["slow"], 276, "退供", "高", "库存周转偏慢，建议优先核对供应商退换条件。", "insufficient", ["supplier_return_terms"]),
         ]
         for row in risks:
             (risk_id, sku, product, store, store_id, sales, comparison, inventory, unit_cost, tags, days, risk_type, priority, observation, level, missing) = row
@@ -257,6 +260,21 @@ class Store:
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (risk_id, "demo", "snapshot-demo-v1", sku, product, store, store_id, sales, json.dumps(comparison), inventory, unit_cost, json.dumps(tags), days, risk_type, priority, observation, level, json.dumps(missing, ensure_ascii=False), created),
             )
+        # 仅迁移旧版本的明确样例记录；不匹配用户修改后的名称。
+        sample = self.one("SELECT id, metadata_json FROM snapshots WHERE id='snapshot-demo-v1' AND tenant_id='demo' AND is_sample=1 AND source='sample-data/ac01'")
+        if sample:
+            metadata = json.loads(sample["metadata_json"])
+            metadata.update({"as_of_date": "2026-10-03", "is_demo": True})
+            self.conn.execute("UPDATE snapshots SET metadata_json=? WHERE id=?", (json.dumps(metadata, ensure_ascii=False), sample["id"]))
+            self.conn.execute("UPDATE risks SET observation=? WHERE id=6 AND tenant_id='demo' AND snapshot_id='snapshot-demo-v1' AND observation=?", ("批次剩余可售时间仅14天，按当前销量预计无法售完。", "批次距最晚处置日仅14天，按当前销量预计无法售完。"))
+            snack_names = {'钙维生素D软胶囊': '每日坚果礼盒 750g', '阿胶块 250g': '炭烤腰果礼盒 600g', '藿香正气口服液': '纯牛奶整箱 250ml×24', '乳酸菌素片 32片': '酸奶夹心饼干整箱 100g×12', '血糖试纸 50片': '山楂果脯礼盒 1kg', '复方氨酚烷胺胶囊': '海盐薯片分享装 80g×8', '维生素C泡腾片': '气泡果汁整箱 330ml×12', '健胃消食片': '水果果冻分享桶 1kg', '藿香正气水': '乌龙茶整箱 500ml×15', '医用退热贴': '奶香蛋卷礼盒 400g', '蒙脱石散': '芝士威化组合装 500g', '益生菌粉 30袋': '黑巧燕麦棒整盒 30g×20', '阿胶糕 10块': '混合坚果礼盒 1kg'}
+            for previous, current in snack_names.items():
+                self.conn.execute("UPDATE risks SET product=? WHERE tenant_id='demo' AND snapshot_id='snapshot-demo-v1' AND product=?", (current, previous))
+            for draft in self.rows("SELECT id, input_json FROM workbench_drafts WHERE tenant_id='demo' AND risk_id IN (SELECT id FROM risks WHERE snapshot_id='snapshot-demo-v1' AND tenant_id='demo')"):
+                data = json.loads(draft["input_json"])
+                if data.get("product") in snack_names:
+                    data["product"] = snack_names[data["product"]]
+                    self.conn.execute("UPDATE workbench_drafts SET input_json=? WHERE id=?", (json.dumps(data, ensure_ascii=False), draft["id"]))
         self._seed_proposal(1, 1, "transfer", created)
         self._seed_cash_events()
         self.conn.commit()
@@ -667,6 +685,27 @@ class Store:
             ):
                 row[key] = float(row.get(key) or 0)
         return rows
+
+    def real_inventory_attention_items(self, snapshot_id: str, tenant_id: str = "demo", limit_per_store: int = 5) -> List[Dict[str, Any]]:
+        """每店按库存成本取前几项已计算的候选，供经营总览下钻展示。"""
+        return self.rows(
+            """
+            SELECT id, org_code, sku, product_name, cost_amount,
+                   teacher_priority, teacher_trigger_reason
+            FROM (
+                SELECT rowid AS id, org_code, sku, product_name, cost_amount,
+                       teacher_priority, teacher_trigger_reason,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY org_code ORDER BY COALESCE(cost_amount, 0) DESC, sku
+                       ) AS item_rank
+                FROM real_inventory_lines
+                WHERE snapshot_id=? AND tenant_id=? AND teacher_candidate=1
+            )
+            WHERE item_rank<=?
+            ORDER BY org_code, item_rank
+            """,
+            (snapshot_id, tenant_id, max(1, int(limit_per_store))),
+        )
 
     def real_teacher_baseline_summary(self, snapshot_id: str, tenant_id: str = "demo") -> Dict[str, Any]:
         row = self.one(

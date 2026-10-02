@@ -38,8 +38,14 @@
 GET /api/v1/retail/overview?period=7&store_id=all
 
 - period 只能是 7 或 30；store_id 为 all 或 simulation-options 返回的门店 ID。
-- 返回 account、sales、inventory、trend、stores 和 metadata。
+- 返回 account、sales、inventory、purchase_commitments、pending_approvals、trend、stores 和 metadata。
 - account.balance 是账户可用资金；inventory.cost 是库存成本占用；二者不能互推。
+- 首页四项主指标依次是 account.balance、inventory.cost、inventory.risk_cost、purchase_commitments.amount。purchase_commitments 仅统计快照日后 30 天内到期且已确认的采购付款；演示模式使用独立合成确认计划，真实模式未接入付款计划时为 null，不用历史采购付款或采购预测填充。
+- 接口仍返回 inventory.turnover_days、sales.amount_7d、sales.gross_margin_7d_pct、pending_approvals.amount 与 inventory.stockout_risk_count，以保持接口兼容；经营总览首页不展示这五项次级指标卡片。近 7 天销售和毛利率固定为 7 天口径，不随 period 改变。pending_approvals.amount 是当前待审批方案涉及的商品成本，不是预计回款或确定支出；若任一方案缺少数量或成本则为 null，并提供 known_amount、missing_count。演示缺货风险数按未来 7 天预计需求超过现货与在途的门店商品记录计数；真实模式使用导入快照的缺货／临缺标记，缺少所需字段时为 null。
+- inventory.risk_store_count 是有待关注商品的门店数；inventory.risk_count 是门店商品记录数，不能当成不同 SKU 的数量。
+- inventory.turnover_days 与 stores[].turnover_days 按当前库存成本 ÷ 所选周期日均销售成本估算，单位为天；缺少销售成本时返回 null。stores[].risk_cost 是该门店的风险库存成本。
+- stores 默认按 risk_cost 从高到低排序，缺少风险判定数据的门店排在后面；前端初始沿用这一优先级，并允许按门店名称、库存占用成本、待关注库存成本、库存周转天数切换排序。stores[].risk_count 是该店待关注商品总数，primary_risk 是金额最高的待关注商品的主要风险。risk_types 是该店全部待关注商品涉及的风险类型数组，用于前端多选筛选；多选时匹配任一所选类型，不依赖仅展示前 5 项的 risk_items。
+- stores[].risk_items 只列出该店按库存成本排序的前 5 项，包含 risk_id、sku、product、inventory_cost、risk_label、reason；真实库存候选还可能带 priority。risk_items 的金额不能加总后冒充全店 risk_cost。
 - 真实数据缺少账户／销售时，对应字段为 null，trend 为空数组，metadata.missing 标明缺项。
 
 关键响应结构：
@@ -54,9 +60,18 @@ GET /api/v1/retail/overview?period=7&store_id=all
                   "is_demo": true, "source": "独立模拟账户流水 demo_account_ledger_v1",
                   "status": "available"},
       "sales": {"amount": 126100.00, "gross_profit": 43100.00,
-                "gross_margin_pct": 34.2, "change_pct": 0.0},
+                "gross_margin_pct": 34.2, "amount_7d": 126100.00,
+                "gross_margin_7d_pct": 34.2, "change_pct": 0.0},
       "inventory": {"cost": 155300.00, "risk_cost": 55600.00,
-                    "risk_count": 13, "sku_count": 19, "store_sku_count": 313},
+                    "risk_count": 13, "risk_store_count": 8,
+                    "stockout_risk_count": 5, "turnover_days": 13.1,
+                    "sku_count": 19, "store_sku_count": 313},
+      "purchase_commitments": {"amount": 54600.00, "count": 100,
+                               "horizon_days": 30, "status": "available",
+                               "source": "独立合成的已确认采购付款计划"},
+      "pending_approvals": {"amount": 3200.00, "known_amount": 3200.00,
+                            "count": 1, "missing_count": 0,
+                            "basis": "当前待审批方案涉及的商品成本；不是预计回款或确定支出"},
       "trend": [{"date": "2026-09-27", "sales": 18000.00,
                  "gross_profit": 6100.00, "cash_balance": 838000.00,
                  "cash_in": 18000.00, "purchase_outflow": 12000.00,
@@ -64,7 +79,11 @@ GET /api/v1/retail/overview?period=7&store_id=all
       "stores": [{"store_id": "STORE-005", "store_name": "临平东湖店",
                   "sales": 3512.00, "gross_profit": 1159.00,
                   "gross_margin_pct": 33.0, "inventory_cost": 6474.00,
-                  "risk_count": 1}],
+                  "risk_cost": 3850.00, "turnover_days": 19.3,
+                  "risk_count": 1, "primary_risk": "门店错配", "risk_types": ["门店错配"],
+                  "risk_items": [{"risk_id": 5, "sku": "SKU-79033", "product": "山楂果脯礼盒 1kg",
+                                  "inventory_cost": 3850.00, "risk_label": "门店错配",
+                                  "reason": "门店间销量差异需进一步核查"}]}],
       "metadata": {"is_demo": true, "source": "零食仓 · 合成零售经营样例 v1",
                    "currency": "CNY", "missing": [], "assumptions": []}
     }
@@ -121,6 +140,8 @@ transfer 额外提供 transfer_network；expiry-rescue 额外提供 expiry_queue
 6. POST /proposals/{proposal_id}/execute 只生成待执行任务；实际出库、改价、采购单调整仍需人工或外部系统回执。
 
 状态展示和操作按钮必须以最新响应为准，不可仅靠前端乐观修改。相关列表可由 GET /proposals 和 GET /execution-tasks 刷新。
+
+今日工作台的「待我审批」只展示 pending_approval。审批成功后切换到「审批后跟进」：approved 方案显示「已审批 · 待生成任务」，提供生成待执行任务入口；生成后由 execution-tasks 中的任务继续展示，避免重复显示。received／completed 任务进入「已完成」。审批通过不代表已派给门店，生成任务也不代表已经实际执行；历史 approved 方案同样必须可见。
 
 ## 6. 会话式现金流模拟
 
