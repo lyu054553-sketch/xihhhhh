@@ -1,128 +1,99 @@
-# 库存现金智能体（Inventory Cash Agent）
+# 库存现金智能体 · Inventory Cash Agent
 
-仓库：`xikesong`
+[GitHub 仓库](https://github.com/lyu054553-sketch/xihhhhh) · 开发分支：`zmj` · 本分支负责：朱的前端、合成场景、测试与演示材料。
 
-面向多门店企业的库存资金决策与执行平台：发现库存异常与关注库存成本，组织人工核查，生成可统一测算的调拨、促销、退供和采购调整方案，并在负责人确认后记录执行任务与结果。当前以连锁药房真实库存表作为首个落地数据源，后续可扩展到商超、便利店、母婴、服装、3C、餐饮和汽配等业态。未获证据的原因会显示为“待核查”，不把库存金额冒充现金改善。
+面向多门店企业的库存决策工作台：从库存风险和门店反馈出发，核对证据，调用后端计算调拨、近效期处置和采购调整方案，经过人工审批生成执行草稿，再记录人工回执。库存成本、预计避免报损、模拟净现金改善和实际回款分别展示。
 
-当前根目录中的 `index.html`、`styles.css` 和 `app.js` 是同一个产品入口，已经接入 `backend/` 的 FastAPI + SQLite 最小闭环；不需要再启动第二套 Demo。生产化时可把 SQLite 替换为 PostgreSQL，把静态页面替换为 Next.js，但领域对象和 API 语义保持不变。
+**当前是本地规则计算版本。五个业务入口已有后端接口；真实大模型、生产 ERP 写回和模型运行日志仍待魏接入。** 页面上的工具结果来自后端确定性计算，不能称为真实 AI 推理结果。所有内置示例均为合成演示数据，模拟金额不代表真实客户收益。
 
-## 架构结论
+## 本地启动
 
-- **产品底座：自研 Agent-native 独立平台**，不是 Odoo/ERPNext 二次开发。
-- **参考 Odoo：** 库位、批次、库存移动、调拨、补货规则等库存物流模型。
-- **参考 ERPNext：** 单据状态机、审批流、角色权限、操作时间线和列表/表单式交互。
-- **参考 ERPNext 前端气质：** 清晰、克制、高信息密度，但不复制源码、商标或界面素材。
-- **自研核心：** 风险识别、原因诊断、多方案生成、约束优化、现金释放模拟、人工审批与效果归因。
+需要 Python 3.10+。运行时使用 Python、FastAPI、SQLite 和原生 HTML/CSS/JavaScript；Node.js 用于可选的前端检查。先安装依赖，再启动；启动脚本不会自行联网安装、重置数据库或终止其他进程。
 
-## 当前已实现（V1.2）
+```powershell
+git clone https://github.com/lyu054553-sketch/xihhhhh.git
+cd xihhhhh
+git switch zmj
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\start.ps1
+```
 
-- 真实库存成本、关注库存成本、净现金改善、避免报损四种金额口径分离；未知值持久化为 `null`。
-- SQLite 迁移和可重复合成样例；风险、方案版本、核查反馈、审批、执行任务、现金事件、案例和审计事件可持久化。
-- AC01—AC26 自动验收测试已执行并全部 PASS。
-- 风险详情显示比较事实、证据等级、缺项；核查原文先生成待确认草稿，确认后推进事实版本并使受影响旧方案失效。
-- 审批绑定具体方案版本；执行只生成“待原系统执行”草稿，当前不写入 ERP、不自动改价、不自动停采、不群发消息。
-- 当前样例使用确定性计算，未接入真实 ERP、客户数据或模型凭证；页面明确标注“合成样例回放”。
-- 前端导航已按经营总览、今日工作台、五大 Agent、协同执行、数据与知识重新分组；五个 Agent 入口复用同一风险案件与 API，不复制业务状态。
-- 三个可计算工作台已形成输入→重算→保存方案→提交审批→人工执行回执的闭环：调拨会阻止超出可调量、接收能力和效期的数量；近效期按批次数量守恒比较处置方式；采购将库存、在途、未执行采购和付款压力分列。
-- 滞销诊断页同时展示已知事实、原因假设、证据等级和缺项，复用原有核查反馈与事实版本机制；修改输入会立即将旧测算标为“待重新计算”。
-- 现金流模拟只组合当前已计算的工作台草稿，内部调拨和没有回款依据的近效期动作不冒充现金释放；组合会按草稿 ID 去重并校验共享批次占用。
-- 今日工作台读取统一待办而非截取风险列表；审批、执行、导入记录均从 SQLite 读取。数据中心的 CSV 入口只做字段校验并留存导入记录，不覆写业务快照。
+打开 <http://127.0.0.1:8000>。Windows 也可运行 `start.bat`。端口冲突时使用 `.\start.ps1 -Port 8765`，在运行窗口按 `Ctrl+C` 停止服务。`.\start.ps1 -Check` 仅检查环境并打印配置，不启动服务或创建数据库。
 
-## 本地运行
+默认演示库位于 `%LOCALAPPDATA%\InventoryCashAgent\zmj\demo\inventory.db`，独立于原项目数据库和真实数据，重启会保留演示记录。不要直接双击 `index.html`：页面需要本地 API，文件模式不会生成计算结果或写入成功提示。安装依赖及浏览器后，规则演示本身无需连接外网。
 
-依赖：Python 3.8+、Node.js 20+；Python 依赖见 [`requirements.txt`](./requirements.txt)。
+其他系统可显式指定项目目录外的演示库：
 
 ```bash
-cd inventory-cash-agent
-python3 -m pip install -r requirements.txt
-python3 server.py
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+mkdir -p "$HOME/.local/share/inventory-cash-agent/zmj-demo"
+INVENTORY_AGENT_MODE=demo INVENTORY_AGENT_DB="$HOME/.local/share/inventory-cash-agent/zmj-demo/inventory.db" .venv/bin/python server.py
 ```
 
-浏览器打开 `http://127.0.0.1:8000`。端口冲突时可用 `PORT=8765 python3 server.py`。数据库默认为 `inventory_cash_agent.db`，可通过 `INVENTORY_AGENT_DB` 指定路径；重置隔离样例使用 `POST /api/v1/demo/reset`。
+## 演示与数据
 
-### 真实库存数据模式
+主线是 **门店反馈 → 滞销诊断 → 调拨测算 → 人工确认 → 执行草稿**。另有近效期、采购刹车和现金流模拟入口。输入修改后需重算，失效或错误状态不得提交旧结果；API 失败应展示错误，不能自动替换成样例数据。
 
-真实库存模式读取本地 ERP 库存快照。数据库和原始进销存文件仅保存在本地，不随代码仓库提交；导入行数、门店数及金额以各自数据快照为准。启动真实数据模式：
+- [五分钟演示、故障演示与视频分镜](docs/DEMO_RUNBOOK.md)
+- [可打印演示稿](docs/DEMO_SLIDES.html) · [PowerPoint 演示稿](docs/DEMO_SLIDES.pptx)
+- [自动化流程录像（无旁白）](docs/demo-recording/demo-flow.webm) · [执行草稿截图](docs/demo-recording/demo-flow.png)
+- [合成数据说明](sample-data/README.md) · [前端集成说明与后端待办](docs/FRONTEND_INTEGRATION.md)
 
-```bash
-INVENTORY_AGENT_MODE=real INVENTORY_AGENT_DB=inventory_cash_agent_real.db python3 server.py
+安装下方开发依赖后，可执行 `.\.venv\Scripts\python.exe scripts/build_demo_slides.py` 从同一份内容重新生成 HTML 和可编辑的 PowerPoint（含逐页讲稿）。
+
+`sample-data/` 的生成场景用于确定性测试和导入验证；它与后端内置的 `snapshot-demo-v1` 是两个明确标记的数据来源。生成文件不会自动改写数据库。数据中心导入目前校验字段并保存导入批次，**不会自动把文件变成分析快照**。
+
+另提供 [24 条中文门店反馈评测语料](sample-data/feedback-evaluation.json)和[字段参考标注说明](sample-data/README.md#中文门店反馈评测集)，覆盖日期、数量、缺项、冲突与人工复核。它们是待业务复核的评测参考，真实模型尚未运行，模型指标保持未测；语料检查通过不代表模型评分。
+
+仅在独立演示实例中使用演示重置入口，该操作会清除演示反馈、方案及执行记录。页面须同时确认健康接口 `sample_data=true` 和数据中心 `mode=sample_replay` 后才允许重置，不能单凭数据中心模式判断。当前后端对真实模式的重置保护仍是集成待办，禁止向真实实例调用 `/api/v1/demo/reset`。
+
+## 真实库存快照
+
+真实文件、数据库及凭证保存在项目目录外，不进入版本库。先用现有导入工具生成快照，再显式选择真实模式：
+
+```powershell
+$realDatabase = Join-Path $env:LOCALAPPDATA 'InventoryCashAgent\real\inventory.db'
+New-Item -ItemType Directory -Path (Split-Path -Parent $realDatabase) -Force | Out-Null
+.\.venv\Scripts\python.exe scripts/import_real_inventory.py 'D:\private-data\inventory.xlsx' --database $realDatabase
+.\start.ps1 -Mode real -Database $realDatabase -Port 8765
 ```
 
-也可以重新导入同格式文件：
+启动脚本要求真实库已存在、包含导入快照，且不在项目静态目录或演示库目录内。真实模式提供库存、30/90 天销量、成本、采购状态以及 `teacher-v1` 候选分析；批次效期、采购订单、在途和执行连接器按实际缺项显示。真实数据的完整操作链仍需后端集成，不能用演示工作台补齐。
 
-```bash
-python3 scripts/import_real_inventory.py \
-  "/path/to/your/inventory.xlsx" \
-  --database inventory_cash_agent_real.db
+## 架构与职责
+
+当前采用模块化单体：原生浏览器前端 → FastAPI → `backend/domain.py` 确定性计算 → SQLite 事实、方案版本与审批记录。网页和 API 由同一进程提供，无需第二套后端。生产化遵循[架构基线](docs/ARCHITECTURE.md)；其中 LangGraph、PostgreSQL、ERP Connector 等为规划，不能作为本版本已实现能力介绍。
+
+| 范围 | 负责人 | 本分支边界 |
+| --- | --- | --- |
+| `backend/`、模型适配、数据库、工具计算、正式 API 契约 | 魏 | 朱消费现有 API；缺失能力记入集成说明 |
+| `index.html`、`styles.css`、`app.js`、`assets/` | 朱 | 五个入口、表单、过程、状态、人工确认 |
+| `sample-data/`、`tests/`、README 与演示材料 | 朱 | 合成场景、回归与演示交付 |
+
+`docs/FRONTEND_INTEGRATION.md` 是朱对现有代码的消费说明，不能替代魏负责冻结的 `docs/agent-api-contract.md`。接口变化先更新正式契约，再修改消费者。朱的开发和提交在 `zmj` 完成，之后由双方在集成分支验证。
+
+## 验证
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m playwright install chromium
+.\.venv\Scripts\python.exe sample-data/generate.py --check
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+node --test tests/test_frontend_api.mjs tests/test_data_center.mjs
+node --check app.js
+git diff --check
 ```
 
-当前真实模式可展示库存、30/90 天销量、30 天成本、采购状态、统计标记类及老师口径候选。批次有效期、采购订单、在途、陈列和补货日志尚未接入，因此近效期、调拨路径和实际现金到账不会用演示数据补齐。
+浏览器回归使用隔离临时数据库与随机端口，完整命令见[测试说明](tests/README.md)。通过数量以本次实际输出为准，不能复用历史 PASS 声明。人工演示按 runbook 核对数量约束、输入变更失效、反馈确认、审批与执行草稿、API 失败、空数据及移动端。
 
-当前已接入老师口径（计算版本 `teacher-v1`）基线层：老师口径存销比按库存数量、30/90 天销量重算；降库存存销比按库存金额÷三十天成本计算。目标库存金额、建议压降金额与 P1/P2/P3 候选均由同一快照计算。调拨、促销、退供和采购刹车仍作为后续人工确认动作，审批与执行边界不变。
+本次已执行的结果、录像证据和未覆盖边界见[验收记录](docs/VALIDATION_RESULT.md)。
 
-测试：
+## 仍待集成
 
-```bash
-bash scripts/run_acceptance.sh
-python3 -m unittest discover -s tests -v
-```
+- 真实模型调用、结构化校验、请求编号、超时/限流/重试与证据由魏负责；前端只展示已收到的事实和工具结果。
+- 后端真实模式重置防护、单据版本并发控制、事务、鉴权和受控静态资源服务仍需验收；前端锁定按钮不能替代这些保证。
+- 真实 ERP 执行、外部回执核验与财务归因未接入。生成执行任务或记录人工回执不等于外部系统已经执行。
 
-### 浏览器验收路径
-
-1. 打开“跨门店智能调拨”，将建议数量改为 `100` 并点击“重新计算”，确认出现可调量与接收能力拦截；改回 `40`，重算、保存方案、提交审批。
-2. 打开“方案审批”，确认审批后生成执行任务；在“执行追踪”依次选择状态并在“已收货／已完成”时填写回执号。
-3. 在“近效期现金抢救”修改促销、调拨或退供数量后重算，确认正常销售与处置数量超出批次库存会被拦截，且促销销量提升仍显示为待确认假设。
-4. 在“采购刹车”切换减少采购／延期付款，确认库存、在途、未执行采购与付款压力分列显示。
-5. 在“现金流模拟”先完成任一可计算工作台草稿，再输入目标、周期和约束；勾除动作后确认组合整体重算。无可计算候选时应显示缺项而非样例结果。
-6. 在“数据中心”粘贴缺少 `sku`、`store` 或 `inventory_qty` 的 CSV，确认失败原因被留存；补齐字段后只显示“字段校验通过，未覆写快照”。
-
-## 本地设计文档
-
-1. [系统开发架构](./docs/ARCHITECTURE.md)
-2. [前端产品与设计蓝图](./docs/FRONTEND_BLUEPRINT.md)
-3. [实施路线与验收标准](./docs/IMPLEMENTATION_ROADMAP.md)
-4. [本轮实施结果与 AC 报告](./docs/IMPLEMENTATION_RESULT.md)
-
-## 推荐技术栈
-
-| 层级 | 第一阶段选择 | 用途 |
-|---|---|---|
-| Web | Next.js + TypeScript + Tailwind CSS + shadcn/ui | 工作台、单据、审批和 Agent 运行过程 |
-| API | Python 3.12 + FastAPI + Pydantic | 统一业务 API、权限和数据契约 |
-| Agent | LangGraph | 有状态编排、人工确认、失败恢复 |
-| 计算 | Polars + OR-Tools | 指标计算、调拨与采购约束优化 |
-| 数据 | SQLite（本地 V1.1）/ PostgreSQL（产品化） | 业务真相源、审计与任务状态 |
-| 异步 | Redis + Celery（首期） | 导入、日批分析和长任务 |
-| 对象存储 | S3/MinIO | 导入文件、报表和执行附件 |
-| AI | 模型适配层 | 首期接一个模型，保留替换和私有化能力 |
-
-## 规划中的产品化目录
-
-```text
-inventory-cash-agent/
-├── apps/
-│   ├── web/                  # Next.js 产品前端
-│   └── api/                  # FastAPI 接口与鉴权
-├── services/
-│   ├── agent/                # LangGraph 编排与工具注册
-│   ├── scheduler/            # 每日扫描、重试和通知
-│   └── worker/               # 导入、计算和报表任务
-├── packages/
-│   ├── domain/               # 统一领域模型与状态机
-│   ├── connectors/           # Excel/ERP/API 数据适配器
-│   ├── analytics/            # 周转、效期、现金占用算法
-│   ├── optimization/         # 调拨与采购优化模型
-│   ├── ui/                   # 设计系统和业务组件
-│   └── evaluation/           # Agent 回放与评测集
-├── infra/                    # Docker、数据库迁移和部署配置
-├── sample-data/              # 脱敏演示数据和数据字典
-├── backend/                  # 当前 FastAPI、SQLite 领域逻辑和迁移
-├── tests/                    # AC01—AC26 自动验收测试
-├── scripts/                  # 可重复测试命令
-├── docs/                     # 架构、前端和实施文档
-├── index.html                # 当前黑客松静态 Demo
-├── styles.css
-└── app.js
-```
-
-> 不建议现在一次性创建所有服务。第一阶段只建立 `apps/web`、`apps/api`、`services/agent` 和一个 PostgreSQL；其余模块在需要时从同一代码库中拆出。
+既有资料：[前端蓝图](docs/FRONTEND_BLUEPRINT.md)、[实施路线](docs/IMPLEMENTATION_ROADMAP.md)、[历史实施记录](docs/IMPLEMENTATION_RESULT.md)。历史版本结果不代表本次验证结果。
