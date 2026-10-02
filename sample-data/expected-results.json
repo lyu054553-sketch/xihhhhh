@@ -1,0 +1,12 @@
+[
+  {"scenario_id": "healthy", "expected": {"status": "calculated", "candidate": false, "suggested_reduction_amount": 0}},
+  {"scenario_id": "slow_mover", "expected": {"comparison_count": 8, "comparison_median": 30, "difference_percent": 60, "evidence_level": "sufficient"}},
+  {"scenario_id": "near_expiry", "expected": {"valid": true, "forecast": {"normal_sale_qty": 7, "expected_remaining_qty": 12}, "allocation": {"quantity": 25}, "cash": {"estimated_net_cash_improvement": null, "completeness": "unavailable"}}},
+  {"scenario_id": "over_purchase", "expected": {"valid": true, "inventory_position": {"current_inventory": 56, "in_transit_qty": 20, "unexecuted_purchase_qty": 132, "remaining_purchase_qty": 32, "projected_after_adjustment": 108}, "cash": {"estimated_net_cash_improvement": 1000, "completeness": "complete"}}},
+  {"scenario_id": "store_shortage", "expected": {"valid": true, "before_after": {"source": {"on_hand_after": 90}, "target": {"on_hand_after": 30}}, "cash": {"estimated_net_cash_improvement": null, "known_cash_effect": -20, "completeness": "unavailable"}}},
+  {"scenario_id": "zero_sales", "expected": {"status": "calculated", "candidate": true, "teacher_ratio": 9999, "priority": "P1", "suggested_reduction_amount": 160, "missing_fields": []}},
+  {"scenario_id": "missing_fields", "expected": {"status": "blocked", "candidate": false, "teacher_ratio": null, "suggested_reduction_amount": null, "missing_fields": ["sales_30", "sales_cost_30", "sales_90"]}},
+  {"scenario_id": "inventory_conflict", "expected": {"valid": false, "errors": ["同一批次动作占用数量超过可用量"], "used_by_lot": {"LOT-SYN-CONFLICT": 12}}},
+  {"scenario_id": "cash_simulation", "expected": {"status": "gap", "achieved": 1000, "target": 1200, "gap": 200, "selected": [{"id": "synthetic-purchase-reduction", "cash_effect": "1000"}]}},
+  {"scenario_id": "api_failure", "expected": {"request_status": "error", "fallback_to_sample": false, "retry_available": true}}
+]

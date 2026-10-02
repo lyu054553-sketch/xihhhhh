@@ -1,0 +1,2 @@
+scenario_id,is_sample,sku,store,po_number,open_purchase_qty,in_transit_qty,payment_date,order_status
+over_purchase,True,SYN-667625-04,合成门店-04,PO-SYN-001,132,20,2026-10-05,unexecuted

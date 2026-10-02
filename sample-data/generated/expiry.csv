@@ -1,0 +1,2 @@
+scenario_id,is_sample,sku,store,batch,expiry_date,quantity
+near_expiry,True,SYN-248394-03,合成门店-03,LOT-SYN-EXPIRY,2026-10-12,44

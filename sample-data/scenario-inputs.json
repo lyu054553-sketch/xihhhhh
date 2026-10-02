@@ -1,0 +1,65 @@
+[
+  {
+    "id": "healthy", "title": "正常库存", "type": "domain",
+    "description": "完整字段、库存金额低于三倍销售成本，不应生成降库存候选。",
+    "operation": "teacher_baseline",
+    "inventory": {"inventory_qty": 34, "inventory_amount": 340, "unit_cost": 10, "sales_30": 22, "sales_90": 66, "sales_cost_30": 220, "stat_class": "A", "purchase_status": "正常采购"}
+  },
+  {
+    "id": "slow_mover", "title": "滞销诊断", "type": "domain",
+    "description": "同规格门店销量对照；差异是事实，原因仍需门店反馈确认。",
+    "operation": "compare_sales", "input": {"local_sales": 12, "comparison_sales": [18, 22, 26, 30, 30, 34, 38, 42]},
+    "inventory": {"inventory_qty": 120, "inventory_amount": 1200, "unit_cost": 10, "sales_30": 12, "sales_90": 36, "sales_cost_30": 120, "stat_class": "A", "purchase_status": "正常采购"}
+  },
+  {
+    "id": "near_expiry", "title": "近效期处置", "type": "domain",
+    "description": "12 天可售期；正常销售、调拨、促销和退供共同遵守批次数量守恒。",
+    "operation": "calculate_expiry_rescue",
+    "input": {"lot_id": "LOT-SYN-EXPIRY", "inventory_qty": 44, "sellable_days": 12, "sales_30": 18, "transfer_qty": 10, "promo_qty": 10, "return_qty": 5, "promo_price": 15, "promo_fee": 20, "unit_cost": 10, "transfer_fee": 10, "latest_disposal_date": "2026-10-12"},
+    "inventory": {"inventory_qty": 44, "inventory_amount": 440, "unit_cost": 10, "sales_30": 18, "sales_90": 54, "sales_cost_30": 180, "stat_class": "A", "purchase_status": "正常采购"}
+  },
+  {
+    "id": "over_purchase", "title": "采购过量", "type": "domain",
+    "description": "当前库存、在途和未执行采购分列；减量建议仍需人工审批。",
+    "operation": "calculate_procurement_brake",
+    "input": {"current_inventory": 56, "in_transit_qty": 20, "open_purchase_qty": 132, "adjustment_qty": 100, "safety_stock": 30, "action": "reduce", "unit_cost": 10, "cutoff_date": "2026-10-30", "payment_date": "2026-10-05", "po_number": "PO-SYN-001", "line_number": 1, "order_status": "unexecuted"},
+    "inventory": {"inventory_qty": 56, "inventory_amount": 560, "unit_cost": 10, "sales_30": 18, "sales_90": 54, "sales_cost_30": 180, "stat_class": "A", "purchase_status": "正常采购"}
+  },
+  {
+    "id": "store_shortage", "title": "门店缺货与调拨", "type": "domain",
+    "description": "接收门店零库存且有销量；调拨后补足库存，内部移动不计为现金收益。",
+    "operation": "calculate_transfer",
+    "input": {"lot_id": "LOT-SYN-TRANSFER", "source_store": "合成调出门店", "target_store": "合成门店-05", "source_on_hand": 120, "source_safety": 30, "target_on_hand": 0, "target_safety": 10, "target_capacity": 60, "quantity": 30, "sellable_days": 30, "eta_days": 1, "source_daily_sales": "0.4", "target_daily_sales": "1.2", "transport_fee": 20, "unit_cost": 10},
+    "inventory": {"inventory_qty": 0, "inventory_amount": 0, "unit_cost": 10, "sales_30": 36, "sales_90": 108, "sales_cost_30": 360, "stat_class": "A", "purchase_status": "正常采购"}
+  },
+  {
+    "id": "zero_sales", "title": "零销量", "type": "domain",
+    "description": "明确的零销量与未知销量分开；9999 是后端基线哨兵值，候选不等于已执行。",
+    "operation": "teacher_baseline",
+    "inventory": {"inventory_qty": 16, "inventory_amount": 160, "unit_cost": 10, "sales_30": 0, "sales_90": 0, "sales_cost_30": 0, "stat_class": "A", "purchase_status": "停止采购"}
+  },
+  {
+    "id": "missing_fields", "title": "关键字段缺失", "type": "domain",
+    "description": "未知销量和销售成本保留 null；导入表头校验通过不代表业务数据已完整。",
+    "operation": "teacher_baseline",
+    "inventory": {"inventory_qty": 25, "inventory_amount": 250, "unit_cost": 10, "sales_30": null, "sales_90": null, "sales_cost_30": null, "stat_class": "A", "purchase_status": "正常采购"}
+  },
+  {
+    "id": "inventory_conflict", "title": "共享库存冲突", "type": "domain",
+    "description": "同批次仅剩 10 件，两个处置动作各占 6 件，必须阻止重复占用。",
+    "operation": "validate_action_bundle",
+    "input": {"actions": [{"lot_id": "LOT-SYN-CONFLICT", "quantity": 6, "type": "expiry_rescue"}, {"lot_id": "LOT-SYN-CONFLICT", "quantity": 6, "type": "expiry_rescue"}], "available_by_lot": {"LOT-SYN-CONFLICT": 10}, "allowed_routes": []},
+    "inventory": {"inventory_qty": 10, "inventory_amount": 100, "unit_cost": 10, "sales_30": 14, "sales_90": 42, "sales_cost_30": 140, "stat_class": "A", "purchase_status": "正常采购"}
+  },
+  {
+    "id": "cash_simulation", "title": "现金目标模拟", "type": "domain",
+    "description": "仅组合已知现金影响；模拟不足以达标时保留缺口，不制造收益。",
+    "operation": "solve_cash_goal",
+    "input": {"target": "1200", "horizon_days": 30, "candidates": [{"id": "synthetic-purchase-reduction", "cash_effect": "1000"}, {"id": "synthetic-transport-fee", "cash_effect": "-20"}]}
+  },
+  {
+    "id": "api_failure", "title": "接口不可用", "type": "transport",
+    "description": "由浏览器测试注入 HTTP 503；显示失败并允许重试，不能静默使用合成数据。",
+    "input": {"method": "GET", "path": "/api/v1/overview", "response_status": 503, "response_body": {"detail": "合成故障：数据源暂不可用"}}
+  }
+]
