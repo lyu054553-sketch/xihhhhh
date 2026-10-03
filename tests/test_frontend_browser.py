@@ -167,6 +167,37 @@ class FrontendBrowserTests(unittest.TestCase):
         expect(self.page.locator('#feedback-confirm-form [name="feedback_id"]')).to_have_value(feedback['id'])
         return feedback
 
+    def select_workbench_risk(self, module, risk_id):
+        with self.page.expect_response(lambda response: response.url.endswith(f'/workbenches/{module}?risk_id={risk_id}')) as event:
+            self.page.locator('#workbench-form [name="risk_id"]').select_option(str(risk_id))
+        self.assertEqual(event.value.status, 200)
+        self.assertEqual(event.value.json()['risk']['id'], risk_id)
+        expect(self.page.locator('#workbench-form [name="risk_id"]')).to_have_value(str(risk_id))
+        expect(self.page.locator('#workbench-form [name="risk_id"]')).to_be_enabled()
+
+    def cancel_reload_warning(self):
+        before = self.page.evaluate('performance.timeOrigin')
+        with self.page.expect_event('dialog') as event:
+            self.page.evaluate('() => { setTimeout(() => location.reload(), 0); }')
+        self.assertEqual(event.value.type, 'beforeunload')
+        event.value.dismiss()
+        self.assertEqual(self.page.evaluate('performance.timeOrigin'), before)
+
+    def reload_without_warning(self):
+        dialogs = []
+
+        def accept_unexpected_dialog(dialog):
+            dialogs.append(dialog.type)
+            dialog.accept()
+
+        self.page.on('dialog', accept_unexpected_dialog)
+        try:
+            self.page.reload()
+            expect(self.page.locator('#workbench-form')).to_be_visible()
+            self.assertEqual(dialogs, [], 'persisted input must not prompt as unsaved local edits')
+        finally:
+            self.page.remove_listener('dialog', accept_unexpected_dialog)
+
     def frame(self):
         if self.artifact_dir:
             self.page.wait_for_timeout(700)
@@ -544,6 +575,120 @@ class FrontendBrowserTests(unittest.TestCase):
         expect(self.page.locator('#workbench-form [name="risk_id"]')).to_have_value('1')
         expect(self.page.locator('#workbench-form [name="quantity"]')).to_have_value('41')
         expect(self.page.locator('#workbench-proposal')).to_contain_text('方案草稿')
+
+    def test_local_edits_survive_risk_switches_and_a_failed_read(self):
+        self.open('expiry-rescue')
+        self.page.locator('#workbench-form [name="transfer_qty"]').fill('11')
+        self.select_workbench_risk('expiry-rescue', 6)
+        self.page.locator('#workbench-form [name="transfer_qty"]').fill('2')
+        self.page.route('**/api/v1/workbenches/expiry-rescue?risk_id=3', lambda route: route.abort('connectionfailed'))
+        self.page.locator('#workbench-form [name="risk_id"]').select_option('3')
+        expect(self.page.locator('#page-status')).to_contain_text('请求未完成')
+        self.page.unroute('**/api/v1/workbenches/expiry-rescue?risk_id=3')
+        self.page.locator('#page-status [data-action="reload"]').click()
+        expect(self.page.locator('#workbench-form [name="transfer_qty"]')).to_have_value('11')
+        expect(self.page.locator('#calculation-result')).to_have_count(0)
+        expect(self.page.locator('[data-action="save"]')).to_be_disabled()
+        self.select_workbench_risk('expiry-rescue', 6)
+        expect(self.page.locator('#workbench-form [name="transfer_qty"]')).to_have_value('2')
+        expect(self.page.locator('#calculation-result')).to_have_count(0)
+        self.assertFalse(any(call.method == 'POST' for call in self.api_calls))
+
+    def test_restored_edits_use_new_server_facts_instead_of_old_local_facts(self):
+        self.open('transfer')
+        expect(self.page.locator('#workbench-form')).to_be_visible()
+        choices = self.page.locator('#workbench-form [name="risk_id"] option').evaluate_all('(options) => options.map(option => Number(option.value))')
+        other_risk = next(risk_id for risk_id in choices if risk_id != 1)
+        self.page.locator('#workbench-form [name="quantity"]').fill('41')
+        self.select_workbench_risk('transfer', other_risk)
+        # Another client updates the temporary backend's input facts while this
+        # browser retains only its editable quantity. No response is substituted.
+        status, _ = self.http(self.backend_url + '/api/v1/workbenches/transfer/draft', 'POST',
+                              {'input': {'risk_id': 1, 'source_on_hand': 130}})
+        self.assertEqual(status, 200)
+        self.select_workbench_risk('transfer', 1)
+        expect(self.page.locator('#workbench-form [name="quantity"]')).to_have_value('41')
+        expect(self.page.locator('#calculation-result')).to_have_count(0)
+        with self.page.expect_response(lambda response: response.url.endswith('/transfer/calculate')) as event:
+            self.page.locator('[data-action="calculate"]').click()
+        result = event.value.json()
+        self.assertEqual(result['input']['source_on_hand'], 130)
+        self.assertEqual(result['input']['quantity'], 41)
+        self.assertEqual(result['calculation']['before_after']['source']['on_hand_before'], 130)
+
+    def test_pending_draft_save_warns_before_reload_and_acknowledged_input_survives(self):
+        pending = []
+        self.page.route('**/api/v1/workbenches/transfer/draft', lambda route: pending.append(route))
+        self.addCleanup(lambda: [route.abort() for route in pending])
+        self.open('transfer')
+        self.page.locator('#workbench-form [name="quantity"]').fill('41')
+        self.page.locator('[data-action="save-draft"]').click()
+        expect(self.page.locator('#workbench-form [name="quantity"]')).to_be_disabled()
+        self.assertEqual(len(pending), 1)
+        self.cancel_reload_warning()
+        with self.page.expect_response(lambda response: response.url.endswith('/transfer/draft')) as event:
+            pending.pop().continue_()
+        self.assertEqual(event.value.json()['draft']['input']['quantity'], 41)
+        expect(self.page.locator('#workbench-form [name="quantity"]')).to_be_enabled()
+        expect(self.page.locator('[data-action="discard-edits"]:enabled')).to_have_count(0)
+        self.reload_without_warning()
+        expect(self.page.locator('#workbench-form [name="quantity"]')).to_have_value('41')
+        expect(self.page.locator('[data-action="save"]')).to_be_disabled()
+        self.assertEqual(self.posts_to('/transfer/calculate'), [])
+        self.assertEqual(self.posts_to('/transfer/save'), [])
+
+    def test_saved_input_survives_a_failed_calculation_without_becoming_a_saved_proposal(self):
+        self.open('transfer')
+        self.page.locator('#workbench-form [name="quantity"]').fill('41')
+        self.page.route('**/api/v1/workbenches/transfer/calculate', lambda route: route.abort('connectionfailed'))
+        self.page.locator('[data-action="calculate"]').click()
+        expect(self.page.locator('#page-status')).to_contain_text('请求未完成')
+        self.assertEqual(len(self.posts_to('/transfer/draft')), 1)
+        self.reload_without_warning()
+        expect(self.page.locator('#workbench-form [name="quantity"]')).to_have_value('41')
+        expect(self.page.locator('[data-action="save"]')).to_be_disabled()
+        expect(self.page.locator('[data-action="export-proposal"][data-format="csv"]')).to_be_disabled()
+        self.assertEqual(self.posts_to('/transfer/save'), [])
+
+    def test_failed_save_retains_edits_and_discard_only_removes_the_current_risk(self):
+        self.open('expiry-rescue')
+        self.page.locator('#workbench-form [name="transfer_qty"]').fill('11')
+        self.select_workbench_risk('expiry-rescue', 6)
+        server_value = self.page.locator('#workbench-form [name="transfer_qty"]').input_value()
+        self.page.locator('#workbench-form [name="transfer_qty"]').fill('2')
+        self.page.route('**/api/v1/workbenches/expiry-rescue/draft', lambda route: route.abort('connectionfailed'))
+        self.page.locator('[data-action="save-draft"]').click()
+        expect(self.page.locator('#page-status')).to_contain_text('请求未完成')
+        expect(self.page.locator('#workbench-form [name="transfer_qty"]')).to_have_value('2')
+        self.cancel_reload_warning()
+        with self.page.expect_response(lambda response: response.url.endswith('/expiry-rescue?risk_id=6')):
+            self.page.locator('[data-action="discard-edits"]').click()
+        expect(self.page.locator('#workbench-form [name="transfer_qty"]')).to_have_value(server_value)
+        expect(self.page.locator('[data-action="discard-edits"]:enabled')).to_have_count(0)
+        # Risk 3 remains unsaved even while risk 6 has no local edits.
+        self.cancel_reload_warning()
+        self.select_workbench_risk('expiry-rescue', 3)
+        expect(self.page.locator('#workbench-form [name="transfer_qty"]')).to_have_value('11')
+        expect(self.page.locator('[data-action="discard-edits"]')).to_be_enabled()
+
+    def test_hidden_risk_edits_block_its_older_approval_and_export(self):
+        status, saved = self.http(self.backend_url + '/api/v1/workbenches/transfer/save', 'POST', {'input': {'risk_id': 1}})
+        self.assertEqual(status, 200)
+        proposal_id = saved['proposal']['id']
+        status, _ = self.http(self.backend_url + f'/api/v1/proposals/{proposal_id}/submit', 'POST', {})
+        self.assertEqual(status, 200)
+        self.open('transfer')
+        expect(self.page.locator('#workbench-form')).to_be_visible()
+        choices = self.page.locator('#workbench-form [name="risk_id"] option').evaluate_all('(options) => options.map(option => Number(option.value))')
+        other_risk = next(risk_id for risk_id in choices if risk_id != 1)
+        self.page.locator('#workbench-form [name="quantity"]').fill('41')
+        self.select_workbench_risk('transfer', other_risk)
+        self.page.locator('#app-nav a[href="#today"]').click()
+        expect(self.page.locator(f'[data-proposal-action="approve"][data-id="{proposal_id}"]')).to_be_disabled()
+        expect(self.page.locator(f'[data-action="export-proposal"][data-format="csv"][data-id="{proposal_id}"]')).to_be_disabled()
+        self.cancel_reload_warning()
+        self.assertEqual(self.posts_to('/approve'), [])
+        self.assertFalse(any(call.method == 'POST' for call in self.api_calls))
 
     def test_empty_tenant_overview_keeps_unknown_money_out_of_sample_values(self):
         self.context.set_extra_http_headers({'X-Tenant-Id':'empty-browser-view'})

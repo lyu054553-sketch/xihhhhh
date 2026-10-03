@@ -5,6 +5,7 @@ import { validateManifest, sampleDownloadTarget } from './assets/js/dataset.mjs'
 import { createFeedbackReview, buildFeedbackConfirmation, renderFeedbackReview } from './assets/js/feedback-review.mjs';
 import { buildProposalExport, canExportProposal, EXPORT_NOTICE } from './assets/js/proposal-export.mjs';
 import { calculationSummary, proposalSummary, workItemsMarkup, workflowStatus } from './assets/js/workflow-view.mjs';
+import { createWorkbenchEdits, editableInput, sameEditableInput, resolveWorkbenchInput } from './assets/js/workbench-edits.mjs';
 
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -18,9 +19,10 @@ const RISK_WORKBENCH = {'调拨':'transfer','促销':'expiry-rescue','采购刹�
 const DESCRIPTIONS = {overview:'先看需要关注的门店，再进入具体商品核对证据。',today:'待审批、审批后跟进与已完成分开呈现，状态以最新服务响应为准。',slow_moving:'销售差异是观察事实，原因假设需要门店反馈和人工核对。',transfer:'核对门店库存、运输费用和可售时间；内部调拨不产生现金到账。','expiry-rescue':'核对批次剩余数量与处置分配，促销投放量不代表确定销量。','procurement-brake':'库存、在途、未执行采购和付款压力分开核对。',cashflow_simulation:'当前仅测算减少可调整采购数量；确认范围与比例后再计算。',data:'样例可复现，版本、数据来源和缺项均可核对。'};
 const views = new Map(Object.keys(TITLES).map(route=>[route,{route,data:null,error:null,pending:false,busy:false,sequence:0,notice:'',riskId:null,dirty:false,input:null,preview:null,proposal:null,tab:'pending',filter:{period:'7',store_id:'all'},simulation:{horizon_days:'14',reduction_pct:'20',store_id:'all',category:'',request_text:''}}]));
 const feedbackSessions = new Map();
+const workbenchEdits = createWorkbenchEdits();
 function feedbackSession(riskId) {
   const key=String(riskId);
-  if(!feedbackSessions.has(key)) feedbackSessions.set(key,{text:'',feedback:null,review:null,investigationId:null});
+  if(!feedbackSessions.has(key)) feedbackSessions.set(key,{text:'',feedback:null,review:null,reviewDirty:false,investigationId:null});
   return feedbackSessions.get(key);
 }
 let active='overview';
@@ -29,6 +31,15 @@ let mutation=null;
 function notify(message) { $('#toast').textContent=message; $('#toast').hidden=false; clearTimeout(notify.timer); notify.timer=setTimeout(()=>{$('#toast').hidden=true;},5000); }
 function nav(open) { document.body.classList.toggle('nav-open',open); $('#nav-backdrop').hidden=!open; $('#nav-toggle').setAttribute('aria-expanded',String(open)); }
 function current(view) { return active===view.route; }
+function hasUnsavedEdits() {
+  return workbenchEdits.hasAny() || [...feedbackSessions.values()].some(session=>session.text!==(session.feedback?.raw_text || '') || session.reviewDirty);
+}
+function restoreWorkbench(view, data) {
+  const restored=workbenchEdits.restore(view.route,data);
+  view.data=data;view.riskId=data.risk.id;view.input=restored.input;view.inputIssues=restored.issues;view.editConflicts=restored.conflicts;
+  view.dirty=restored.hasEdits || restored.issues.length>0 || data.draft?.status==='needs_recalculation';
+  view.proposal=data.proposal;
+}
 function errorMarkup(error) {
   return `<p>${e(error.message || '请求失败')}</p>${error.code?`<small>${e(error.code)}</small>`:''}${error.outcomeUnknown?'<p>等待已结束，服务端是否完成未知。请先刷新核对记录，勿反复提交。</p>':''}${error.fieldErrors?.length?list(error.fieldErrors):''}`;
 }
@@ -45,7 +56,7 @@ function render(view=views.get(active)) {
   $('#connection-status').innerHTML=provenance(view);
   $('#page-status').innerHTML=view.error?panel('请求未完成',errorMarkup(view.error)+button('reload','刷新核对当前状态',view.busy),'is-error'):view.pending?panel('正在读取服务数据','<p>保持当前范围，等待实际返回结果。</p>','is-loading'):view.busy?panel('正在提交','<p>等待服务确认；离开页面不会撤销已提交的请求。</p>','is-loading'):view.notice?panel('当前状态',`<p>${e(view.notice)}</p>`):'';
   const content=$('#page-content');
-  if(!view.data) { content.innerHTML=view.pending?'':panel('暂无可用数据',button('reload','重新读取')); return; }
+  if(!view.data) { content.innerHTML=view.pending?'':panel('暂无可用数据',`${WORKBENCHES.has(view.route) && workbenchEdits.has(view.route,view.riskId)?'<p>此商品尚未保存的编辑仍保留在当前页面中，重新读取后可继续。</p>':''}${button('reload','重新读取')}`); return; }
   content.innerHTML=active==='overview'?overviewMarkup(view):active==='today'?todayMarkup(view):active==='slow_moving'?diagnosisMarkup(view):WORKBENCHES.has(active)?workbenchMarkup(view):active==='cashflow_simulation'?simulationMarkup(view):dataMarkup(view);
   if(mutation && mutation!==view) $('#page-status').innerHTML=panel('另一项操作正在提交',`<p>${e(TITLES[mutation.route])}正在等待服务确认。可继续浏览，完成后恢复编辑。</p>`,'is-loading');
   if(mutation || view.pending) $$('fieldset, button',content).forEach(el=>{el.disabled=true;});
@@ -70,7 +81,7 @@ async function loadView(view) {
     if(sequence!==view.sequence) return;
     view.data=data;
     if(view.route==='slow_moving') view.riskId=data.detail?.risk.id || null;
-    if(WORKBENCHES.has(view.route)) {view.input=structuredClone(data.input); view.riskId=data.risk.id; view.dirty=data.draft?.status==='needs_recalculation'; view.proposal=data.proposal;}
+    if(WORKBENCHES.has(view.route)) restoreWorkbench(view,data);
     if(view.route==='cashflow_simulation') { view.preview=null; view.result=null; if(!data.stores.some(s=>s.id===view.simulation.store_id)) view.simulation.store_id='all'; if(!data.categories.includes(view.simulation.category)) view.simulation.category=''; }
   } catch(error) { if(sequence===view.sequence && error.code!=='aborted') {view.error=error; view.data=null;} }
   finally { if(sequence===view.sequence) {view.pending=false; render(view);} }
@@ -120,12 +131,14 @@ function diagnosisMarkup(view) {
 function workbenchMarkup(view) {
   const data=view.data, i=view.input, proposal=view.proposal;
   const unit=data.risk.unit || i.unit || '单位未提供';
+  const hasEdits=workbenchEdits.has(view.route,view.riskId), issues=view.inputIssues || [];
   let fields='';
-  if(view.route==='transfer') fields=select('target_store_id','接收门店',(data.transfer_network || []).map(s=>[s.store_id,`${s.name} · 运费${money(s.transport_fee)}`]),i.target_store_id)+input('quantity',`调拨数量（${unit}）`,i.quantity,{min:1,step:1});
+  if(view.route==='transfer') fields=select('target_store_id','接收门店',[...(issues.length?[[i.target_store_id,'原接收门店已不可用，请重新选择']]:[]),...(data.transfer_network || []).map(s=>[s.store_id,`${s.name} · 运费${money(s.transport_fee)}`])],i.target_store_id)+input('quantity',`调拨数量（${unit}）`,i.quantity,{min:1,step:1});
   else if(view.route==='expiry-rescue') fields=input('transfer_qty',`调拨数量（${unit}）`,i.transfer_qty,{step:1})+input('promo_qty',`促销投放量（${unit}）`,i.promo_qty,{step:1})+input('promo_price','促销价格（元）',i.promo_price,{step:0.01})+input('return_qty',`退供数量（${unit}）`,i.return_qty,{step:1});
   else fields=select('action','调整方式',[['reduce','减少采购量'],['cancel','取消采购量'],['delay_arrival','推迟到货'],['delay_payment','推迟付款']],i.action)+input('adjustment_qty',`调整数量（${unit}）`,i.adjustment_qty,{min:1,step:1})+input('new_payment_date','调整后付款日',i.new_payment_date || '',{type:'date',required:i.action==='delay_payment'});
-  const canSave=!view.dirty && data.calculation?.valid;
-  return `${workflowStatus({dirty:view.dirty,draft:data.draft,proposal})}<form class="workspace-form" id="workbench-form"><fieldset>${select('risk_id','选择门店商品',(data.items || []).map(r=>[r.id,`${r.product} · ${r.store}`]),view.riskId)}<div class="form-grid form-section">${fields}</div><div class="form-actions"><button class="primary-button" data-action="calculate" type="submit">重新计算</button>${button('save-draft','保存编辑输入')}${button('save','保存方案草稿',!canSave)}</div></fieldset></form>
+  const canSave=!view.dirty && !issues.length && data.calculation?.valid;
+  return `${workflowStatus({dirty:view.dirty,draft:data.draft,proposal})}<form class="workspace-form" id="workbench-form"><fieldset>${select('risk_id','选择门店商品',(data.items || []).map(r=>[r.id,`${r.product} · ${r.store}`]),view.riskId)}<div class="form-grid form-section">${fields}</div><div class="form-actions"><button class="primary-button" data-action="calculate" type="submit" ${issues.length?'disabled':''}>重新计算</button>${button('save-draft','保存编辑输入',Boolean(issues.length))}${button('save','保存方案草稿',!canSave)}${button('discard-edits','放弃本地编辑',!hasEdits)}</div><p class="form-hint" id="local-edits-status">${hasEdits?'此商品的编辑尚未保存到服务。切换商品会在当前页面中保留，刷新或关闭前请保存。':'当前没有尚未保存到服务的本地编辑。输入保存不等于方案已保存或审批。'}</p></fieldset></form>
+    ${issues.length?panel('接收门店需要重新选择',list(issues),'is-warning'):''}${view.editConflicts?.length?panel('服务端输入也已变化',`<p>已保留你的本地选择，并读取最新库存事实。请核对以下字段后重新计算：</p>${list(view.editConflicts)}`,'is-warning'):''}
     ${view.dirty?panel('输入已修改','<p>旧测算与本地确认已失效。请保存或重新计算当前输入。</p>','is-warning'):''}
     ${!view.dirty && data.calculation?`<section class="result-card" id="calculation-result"><h2>${data.calculation.valid?'工具计算结果':'约束未通过'}</h2>${data.calculation.errors?.length?panel('需要调整',list(data.calculation.errors),'is-error'):''}${calculationSummary(view.route,data.calculation,i)}<details><summary>完整计算依据与返回字段</summary>${details(data.calculation)}</details></section>`:''}
     <details class="result-card"><summary>当前输入事实与来源</summary>${details(i)}<p>候选门店事实、单位成本与约束均由接口提供。编辑仅改变上方允许调整的字段。</p></details>
@@ -137,7 +150,7 @@ function exportControls(proposal,dirty=false) {
 }
 function proposalButton(proposal,action,label,disabled=false) {return `<button type="button" class="secondary-button" data-proposal-action="${action}" data-id="${e(proposal.id)}" data-version="${proposal.current_version}" ${disabled?'disabled':''}>${label}</button>`;}
 function unsavedWorkbench(view) {return view.dirty || ['needs_recalculation','blocked','calculated'].includes(view.data?.draft?.status);}
-function dirtyRisk(riskId) {return [...views.values()].some(v=>WORKBENCHES.has(v.route) && Number(v.riskId)===Number(riskId) && unsavedWorkbench(v));}
+function dirtyRisk(riskId) {return workbenchEdits.hasRisk(riskId) || [...views.values()].some(v=>WORKBENCHES.has(v.route) && Number(v.riskId)===Number(riskId) && unsavedWorkbench(v));}
 function todayMarkup(view) {
   const data=view.data, tasks=data.tasks;
   const work=data.work.filter(item=>!['approvals','execution'].includes(item.route));
@@ -169,21 +182,38 @@ function dataMarkup(view) {
 }
 
 function editWorkbench(view,form) {
-  const values=new FormData(form), next={...view.input};
-  const fields=view.route==='transfer'?['target_store_id','quantity']:view.route==='expiry-rescue'?['transfer_qty','promo_qty','promo_price','return_qty']:['action','adjustment_qty','new_payment_date'];
-  for(const key of fields) next[key]=['target_store_id','action','new_payment_date'].includes(key)?values.get(key):(values.get(key)===''?null:Number(values.get(key)));
-  if(view.route==='transfer' && next.target_store_id!==view.input.target_store_id) {
-    const target=view.data.transfer_network.find(t=>t.store_id===next.target_store_id);
-    if(!target) throw new Error('接收门店不在本次候选范围');
-    Object.assign(next,{target_store:target.name,target_on_hand:target.on_hand,target_capacity:target.capacity,target_safety:target.safety_stock,target_daily_sales:target.daily_sales,transport_fee:target.transport_fee,eta_days:target.eta_days});
-  }
-  if(JSON.stringify(next)!==JSON.stringify(view.input)) {view.input=next; view.dirty=true; view.notice='输入已变化，旧测算不可用于保存、审批或导出。'; view.error=null; $('#calculation-result')?.remove(); $$('#page-content [data-action="save"],#page-content [data-proposal-action],#page-content [data-action="export-proposal"]').forEach(b=>b.disabled=true); const progress=$('.workflow-status');if(progress)progress.outerHTML=workflowStatus({dirty:true});$('#page-status').innerHTML=panel('需重新计算',`<p>${e(view.notice)}</p>`,'is-warning');}
+  const values=editableInput(view.route,Object.fromEntries(new FormData(form)));
+  const resolved=resolveWorkbenchInput(view.route,view.data,values);
+  if(sameEditableInput(view.route,resolved.input,view.input)) return;
+  view.input=resolved.input;view.inputIssues=resolved.issues;view.dirty=true;view.error=null;
+  workbenchEdits.capture(view.route,view.riskId,view.input,view.data.input);
+  const hasEdits=workbenchEdits.has(view.route,view.riskId);
+  view.notice='输入已变化，旧测算不可用于保存、审批或导出。';
+  $('#calculation-result')?.remove();
+  $$('#page-content [data-action="save"],#page-content [data-proposal-action],#page-content [data-action="export-proposal"]').forEach(b=>b.disabled=true);
+  $('[data-action="discard-edits"]').disabled=!hasEdits;
+  $('[data-action="calculate"]').disabled=resolved.issues.length>0;
+  $('[data-action="save-draft"]').disabled=resolved.issues.length>0;
+  $('#local-edits-status').textContent=hasEdits?'此商品的编辑尚未保存到服务。切换商品会在当前页面中保留，刷新或关闭前请保存。':'当前输入与服务端已保存值一致；旧测算仍需重新核对。';
+  const progress=$('.workflow-status');if(progress)progress.outerHTML=workflowStatus({dirty:true});
+  $('#page-status').innerHTML=panel('需重新计算',`<p>${e(view.notice)}</p>${list(resolved.issues)}`,'is-warning');
+}
+async function persistWorkbenchInput(view, payload) {
+  const {draft}=contract.validateWorkbenchDraft(await post(`/workbenches/${view.route}/draft`,{input:payload}),{moduleType:view.route,riskId:view.riskId});
+  if(!sameEditableInput(view.route,draft.input,payload)) throw new Error('保存回执与当前编辑不一致，本地编辑继续保留，请刷新核对。');
+  workbenchEdits.discard(view.route,view.riskId);
+  view.input=structuredClone(draft.input);
+  Object.assign(view.data,{input:structuredClone(draft.input),draft,calculation:null});
+  view.inputIssues=[];view.editConflicts=[];view.dirty=true;
+  view.notice='编辑输入已保存到服务，仍需重新计算并保存方案版本。';
 }
 async function calculate(view) {
+  if(view.inputIssues?.length) return;
   const payload=structuredClone(view.input);
   await act(view,async()=>{
-    await post(`/workbenches/${view.route}/draft`,{input:payload});
+    await persistWorkbenchInput(view,payload);
     const result=contract.validateWorkbenchCalculation(await post(`/workbenches/${view.route}/calculate`,{input:payload}));
+    if(result.input.risk_id!==view.riskId || !sameEditableInput(view.route,result.input,payload)) throw new Error('计算回执与当前输入不一致，请刷新核对已保存输入。');
     view.input=structuredClone(result.input); Object.assign(view.data,result); view.dirty=false;
     view.notice=result.calculation.valid?'本次输入已由后端计算；可核对后保存草稿。':'约束未通过，请修改输入。';
   });
@@ -193,8 +223,7 @@ async function save(view) {
   await act(view,async()=>{
     const result=contract.validateWorkbenchSave(await post(`/workbenches/${view.route}/save`,{input:structuredClone(view.input)}));
     view.proposal=result.proposal;
-    view.data=contract.validateWorkbench(await api(`/workbenches/${view.route}?risk_id=${view.riskId}`),{moduleType:view.route,riskId:view.riskId});
-    view.input=structuredClone(view.data.input); view.dirty=false;
+    restoreWorkbench(view,contract.validateWorkbench(await api(`/workbenches/${view.route}?risk_id=${view.riskId}`),{moduleType:view.route,riskId:view.riskId}));
     view.notice='草稿已保存，尚未提交审批。'; views.get('today').data=null;
   });
 }
@@ -256,14 +285,14 @@ document.addEventListener('submit',event=>{
       if(!session.investigationId){const investigation=await post(`/risks/${riskId}/investigations`);if(!investigation.id)throw new Error('核查接口未返回编号');session.investigationId=investigation.id;}
       const fb=await post(`/investigations/${session.investigationId}/feedback`,{raw_text:session.text,timezone:'Asia/Shanghai'});
       if(!fb.id || !fb.draft || fb.raw_text!==session.text || fb.investigation_id!==session.investigationId)throw new Error('反馈响应与本次核查不一致');
-      session.feedback=fb;session.review=createFeedbackReview(fb);view.notice='原文已保存。请逐条核查，尚不确定的情况保留为待核实。';
+      session.feedback=fb;session.review=createFeedbackReview(fb);session.reviewDirty=false;view.notice='原文已保存。请逐条核查，尚不确定的情况保留为待核实。';
     });
   }
   if(form.id==='feedback-confirm-form'){
     const riskId=view.riskId, session=feedbackSession(riskId), fb=session.feedback;
     let confirmed;
     try{if(!fb || fb.confirmation_status==='confirmed' || session.text!==fb.raw_text || !form.elements.reviewed.checked)throw new Error('请先保存并核对当前原文，再确认本次核查。');confirmed=buildFeedbackConfirmation(values,fb);}catch(error){notify(error.message);return;}
-    void act(view,async()=>{const result=await post(`/feedback/${fb.id}/confirm`,{confirmed});if(result.id!==fb.id || result.investigation_id!==fb.investigation_id || result.raw_text!==fb.raw_text || result.confirmation_status!=='confirmed')throw new Error('反馈确认没有取得对应回执');session.feedback=result;session.review=createFeedbackReview(result);view.notice='人工反馈版本已确认；请刷新方案检查是否需要重算。';views.get('today').data=null; for(const wb of views.values()) if(WORKBENCHES.has(wb.route) && Number(wb.riskId)===Number(riskId)){wb.dirty=true;wb.data=null;}});
+    void act(view,async()=>{const result=await post(`/feedback/${fb.id}/confirm`,{confirmed});if(result.id!==fb.id || result.investigation_id!==fb.investigation_id || result.raw_text!==fb.raw_text || result.confirmation_status!=='confirmed')throw new Error('反馈确认没有取得对应回执');session.feedback=result;session.review=createFeedbackReview(result);session.reviewDirty=false;view.notice='人工反馈版本已确认；请刷新方案检查是否需要重算。';views.get('today').data=null; for(const wb of views.values()) if(WORKBENCHES.has(wb.route) && Number(wb.riskId)===Number(riskId)){wb.dirty=true;wb.data=null;}});
   }
   if(form.classList.contains('task-form')){
     if(['received','completed'].includes(values.status) && !values.receipt_ref.trim()){notify('已收货或已完成必须填写实际执行回执号');return;}
@@ -282,7 +311,9 @@ document.addEventListener('input',event=>{
   }
   if(form?.id==='feedback-confirm-form') {
     if(event.target.name!=='reviewed') form.elements.reviewed.checked=false;
-    feedbackSession(view.riskId).review={...Object.fromEntries(new FormData(form)),reviewed:form.elements.reviewed.checked};
+    const session=feedbackSession(view.riskId);
+    session.review={...Object.fromEntries(new FormData(form)),reviewed:form.elements.reviewed.checked};
+    if(event.target.name!=='reviewed')session.reviewDirty=true;
   }
 });
 document.addEventListener('change',event=>{
@@ -301,7 +332,10 @@ document.addEventListener('click',event=>{
   if(action==='tab'){view.tab=target.dataset.tab;render(view);}
   if(action==='save')void save(view);
   if(action==='export-proposal')void exportProposal(view,target);
-  if(action==='save-draft')void act(view,async()=>{await post(`/workbenches/${view.route}/draft`,{input:structuredClone(view.input)});view.dirty=true;view.notice='编辑输入已保存，仍需重新计算。';});
+  if(action==='save-draft' && !view.inputIssues?.length){const payload=structuredClone(view.input);void act(view,()=>persistWorkbenchInput(view,payload));}
+  if(action==='discard-edits'){
+    workbenchEdits.discard(view.route,view.riskId);view.notice='已放弃此商品在本页尚未保存的编辑；正在重新读取服务端输入。';void loadView(view);
+  }
   if(action==='open-workbench'){
     const wb=views.get(target.dataset.module);wb.riskId=Number(target.dataset.riskId || view.riskId);wb.data=null;location.hash=wb.route;
   }
@@ -315,4 +349,7 @@ $('#nav-backdrop').addEventListener('click',()=>nav(false));
 $('#app-nav').addEventListener('click',()=>nav(false));
 document.addEventListener('keydown',event=>{if(event.key==='Escape')nav(false);});
 window.addEventListener('hashchange',navigate);
+window.addEventListener('beforeunload',event=>{
+  if(mutation || hasUnsavedEdits()){event.preventDefault();event.returnValue='';}
+});
 navigate();

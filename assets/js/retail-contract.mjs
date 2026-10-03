@@ -197,6 +197,17 @@ export function validateWorkbenchCalculation(payload) {
   draft(payload.draft);
   return payload;
 }
+export function validateWorkbenchDraft(payload, { moduleType, riskId } = {}) {
+  object(payload, 'workbench_draft');
+  draft(payload.draft);
+  const value = payload.draft;
+  text(value.id, 'draft.id');
+  if (value.module_type !== moduleType || value.risk_id !== riskId) fail('draft', '与当前工作台或商品不一致');
+  object(value.input, 'draft.input');
+  if (value.input.risk_id !== riskId) fail('draft.input.risk_id', '与保存商品不一致');
+  if (value.status !== 'needs_recalculation') fail('draft.status', '应为输入已保存、待重新计算');
+  return payload;
+}
 export function validateWorkbenchSave(payload) {
   object(payload, "workbench_save");
   validateProposal(payload.proposal);
