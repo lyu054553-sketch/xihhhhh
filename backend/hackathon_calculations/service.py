@@ -14,11 +14,12 @@ from ..domain import money, parse_date
 from ..hackathon_shared import CONTRACT_VERSION, FactQueryResult, ProposalComparison
 from ..serialization import json_value
 from .calculations import compare_options, simulate_cash
+from .inputs import action_inputs
 
 
-CALCULATION_VERSION = "retail-comparison-v2.1"
+CALCULATION_VERSION = "retail-comparison-v2.2"
 ACTION_TYPES = {"retain": "keep", "transfer": "transfer", "promotion": "promotion", "return": "return", "purchase": "procurement"}
-REQUEST_FIELDS = {"context", "risk_keys", "objective", "horizon_start", "horizon_end", "assumption_ids", "inputs"}
+REQUEST_FIELDS = {"context", "risk_keys", "objective", "horizon_start", "horizon_end", "assumption_ids", "inputs", "business_inputs"}
 INPUT_FIELDS = {"store_id", "sku_id", "lot_id", "quantity", "target_store_id", "transport_fee", "eta_days",
                 "sales_settlement_days", "promotion_id", "stage_prices", "settlement_mode", "return_terms",
                 "purchase_intent", "recommended_quantity", "new_payment_date", "combination"}
@@ -107,7 +108,7 @@ def _canonical(facts):
 
 def _inputs(request, context, canonical):
     if set(request) - REQUEST_FIELDS:
-        raise ValueError("未知比较请求字段；可变业务条件统一放在 inputs 中")
+        raise ValueError("未知比较请求字段；可变条件放在 business_inputs 或兼容 inputs 中")
     inputs = deepcopy(_object(request.get("inputs", {}), "inputs"))
     if set(inputs) - INPUT_FIELDS:
         raise ValueError("inputs 包含未声明的计算字段")
@@ -148,6 +149,8 @@ def _inputs(request, context, canonical):
                 raise ValueError("组合动作必须使用正式 transfer/promotion/return/procurement 枚举")
             if spec["type"] == "procurement":
                 spec["type"] = "purchase"
+    if "business_inputs" in request:
+        inputs["action_inputs"] = action_inputs(request["business_inputs"], inputs, canonical, target)
     return inputs, target, start, end
 
 
@@ -206,6 +209,7 @@ class CalculationService:
                 group_id = _content_id("GROUP-", {"comparison_id": comparison_id, "calculation": raw, "members": members})
                 groups.append({"group_id": group_id, "member_candidate_ids": members, "feasible": raw["feasibility"] == "feasible",
                                "exclusion_reasons": raw["blocking_reasons"], "missing_fields": raw["missing_fields"],
+                               "inventory_changes": self._inventory_changes(raw, canonical),
                                "calculation": {"calculation_version": CALCULATION_VERSION, "execution_plan": deepcopy(raw),
                                                "planned_qty": None, "expected_sold_qty": None, "ending_qty": None,
                                                "base_unit": None, "execution_cost_cny": raw["execution_cost"],
@@ -234,6 +238,40 @@ class CalculationService:
         units = {row["sku_id"]: row.get("base_unit") for row in canonical["tables"].get("products", [])}
         units.update({row["sku_id"]: row["base_unit"] for row in canonical["tables"]["inventory"] if row.get("base_unit")})
         return [{**deepcopy(line), "base_unit": units.get(line["sku_id"])} for line in raw["allocations"]]
+
+    @staticmethod
+    def _inventory_changes(raw, canonical):
+        """Immediate physical movement, never demand-horizon ending inventory.
+
+        Destination stock is looked up by the original lot, not by SKU totals.
+        Sparse stores and unknown quantities retain null; a zero absent lot can
+        only be inferred within a store whose inventory facts are supplied.
+        """
+        units = {row["sku_id"]: row.get("base_unit") for row in canonical["tables"].get("products", [])}
+        changes = {}
+        for action in raw["actions"]:
+            if action["type"] not in {"transfer", "return"}:
+                continue
+            movements = [(action["store_id"], -Decimal(str(action["quantity"])))]
+            if action["type"] == "transfer":
+                movements.append((action["target_store_id"], Decimal(str(action["quantity"]))))
+            for store, delta in movements:
+                key = (store, action["sku_id"], action["lot_id"])
+                changes[key] = changes.get(key, Decimal(0)) + delta
+        output = []
+        inventory = canonical["tables"]["inventory"]
+        for (store, sku, lot), delta in changes.items():
+            rows = [row for row in inventory if row["store_id"] == store and row["sku_id"] == sku
+                    and row["lot_id"] == lot and row["stock_state"] == "on_hand"]
+            complete = bool(rows) or any(row["store_id"] == store and row["sku_id"] == sku for row in inventory)
+            before = sum((Decimal(str(row["quantity"])) for row in rows), Decimal(0)) if complete and all(row.get("quantity") is not None for row in rows) else None
+            refs = [row.get("source_ref") or row.get("inventory_id") for row in rows]
+            source = refs[0] if len(refs) == 1 else {"source": "inventory_snapshot", "record_id": canonical["snapshot_id"],
+                       "inventory_refs": refs, "known_at": canonical["clock_at"], "is_demo": canonical["is_demo"]}
+            output.append({"store_id": store, "sku_id": sku, "lot_id": lot,
+                           "quantity_before": before, "quantity_after": before + delta if before is not None else None,
+                           "quantity_delta": delta, "base_unit": units.get(sku), "source_ref": deepcopy(source)})
+        return output
 
     @staticmethod
     def _unavailable(missing):
@@ -312,6 +350,7 @@ class CalculationService:
                      "target_store_id": action.get("target_store_id", raw["details"].get("target_store_id")),
                      "sku_id": scope["sku_id"], "lot_id": None if kind == "purchase" else scope["lot_id"],
                      "quantity": planned, "base_unit": unit, "calculation": calculation,
+                     "inventory_changes": self._inventory_changes(raw, canonical),
                      "assumptions": deepcopy(raw["assumptions"]), "missing_fields": deepcopy(raw["missing_fields"])}
         candidate["candidate_id"] = _content_id("CAND-", {"comparison_id": comparison_id, "candidate": candidate})
         return candidate
