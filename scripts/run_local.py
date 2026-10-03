@@ -14,7 +14,10 @@ import tempfile
 import threading
 import time
 
-from serve_frontend import ROOT, serve, validate_api_base
+if __package__:
+    from .serve_frontend import ROOT, serve, validate_api_base
+else:
+    from serve_frontend import ROOT, serve, validate_api_base
 
 
 def default_database() -> Path:
@@ -31,7 +34,15 @@ def configuration(args):
     if not args.host or any(char.isspace() for char in args.host):
         raise ValueError("Listen host must be a hostname or IP address")
     api_base = validate_api_base(args.api_base)
-    database = Path(args.database).expanduser().resolve()
+    if args.demo_session and api_base:
+        raise ValueError("--demo-session cannot use --api-base or AGENT_API_BASE; it owns a local synthetic database")
+    if args.demo_session and args.database is not None:
+        raise ValueError("--demo-session cannot use --database; omit it to keep the daily database untouched")
+    if args.database is not None and not args.database.strip():
+        raise ValueError("--database must name a file")
+    database = None if args.demo_session else Path(
+        args.database or os.environ.get("INVENTORY_AGENT_DB") or default_database()
+    ).expanduser().resolve()
     if not api_base:
         missing = [name for name in ("fastapi", "uvicorn", "pydantic", "openpyxl")
                    if importlib.util.find_spec(name) is None]
@@ -40,9 +51,9 @@ def configuration(args):
                              + ". Install them with: python -m pip install -r requirements.txt")
         if not (ROOT / "backend" / "api.py").is_file():
             raise ValueError("The local v1.2 backend is missing")
-        if database.is_relative_to(ROOT):
+        if database is not None and database.is_relative_to(ROOT):
             raise ValueError("Keep the database outside the repository; use --database with an external path")
-        if database.exists() and not database.is_file():
+        if database is not None and database.exists() and not database.is_file():
             raise ValueError("The database path must name a file")
     if not (ROOT / "index.html").is_file():
         raise ValueError("The frontend index.html is missing")
@@ -129,10 +140,15 @@ def run(args, api_base, database):
         with tempfile.TemporaryFile(mode="w+b") as backend_log:
             try:
                 if not api_base:
+                    if args.demo_session:
+                        database = Path(temporary) / "demo-session.db"
                     database.parent.mkdir(parents=True, exist_ok=True)
                     environment = os.environ.copy()
                     environment["INVENTORY_AGENT_DB"] = str(database)
-                    environment.setdefault("INVENTORY_AGENT_MODE", "demo")
+                    if args.demo_session:
+                        environment["INVENTORY_AGENT_MODE"] = "demo"
+                    else:
+                        environment.setdefault("INVENTORY_AGENT_MODE", "demo")
                     environment["PYTHONUNBUFFERED"] = "1"
                     ready_file = Path(temporary) / "backend-port.txt"
                     process = subprocess.Popen(
@@ -144,6 +160,9 @@ def run(args, api_base, database):
                     api_base = wait_for_backend(process, ready_file)
                     print(f"Local v1.2 backend: {api_base}", flush=True)
                     print(f"Database: {database}", flush=True)
+                    if args.demo_session:
+                        print("Demo session: synthetic data only; this temporary database is removed on exit. "
+                              "Restart with --demo-session for a fresh starting point.", flush=True)
                 else:
                     print(f"External v1.2 API: {api_base}", flush=True)
 
@@ -193,7 +212,9 @@ def main():
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--api-base", default=os.environ.get("AGENT_API_BASE"),
                         help="Use an external /api/v1 URL instead of starting the local backend")
-    parser.add_argument("--database", default=os.environ.get("INVENTORY_AGENT_DB") or str(default_database()))
+    parser.add_argument("--database", help="Persistent local database; otherwise use INVENTORY_AGENT_DB or the user data directory")
+    parser.add_argument("--demo-session", action="store_true",
+                        help="Use a fresh temporary synthetic database, ignoring INVENTORY_AGENT_DB and MODE; remove it on exit")
     parser.add_argument("--check", action="store_true", help="Check configuration without creating a DB or starting services")
     parser.add_argument("--backend-child", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--ready-file", type=Path, help=argparse.SUPPRESS)
@@ -211,7 +232,8 @@ def main():
         print(f"Configuration OK: http://{args.host}:{args.port}")
         print(f"API: {api_base or 'local v1.2 backend on a private dynamic port'}")
         if not api_base:
-            print(f"Database: {database}")
+            print("Database: new temporary synthetic demo session (removed on exit)" if args.demo_session
+                  else f"Database: {database}")
         print("No database was created and no service was started.")
         return 0
     return run(args, api_base, database)

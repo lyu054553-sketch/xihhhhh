@@ -4,7 +4,8 @@ param(
     [ValidateRange(1, 65535)]
     [int]$Port = 8000,
     [string]$ListenHost = '127.0.0.1',
-    [string]$Database = $env:INVENTORY_AGENT_DB,
+    [string]$Database,
+    [switch]$DemoSession,
     [switch]$Check
 )
 
@@ -28,7 +29,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Python 3.10 or newer is required.' }
 
 $applicationArguments = @((Join-Path $PSScriptRoot 'scripts\run_local.py'), '--host', $ListenHost, '--port', [string]$Port)
 if ($ApiBase) { $applicationArguments += @('--api-base', $ApiBase) }
-if ($Database) { $applicationArguments += @('--database', $Database) }
+if ($PSBoundParameters.ContainsKey('Database')) { $applicationArguments += @('--database', $Database) }
+if ($DemoSession) { $applicationArguments += '--demo-session' }
 if ($Check) { $applicationArguments += '--check' }
 
 & $pythonExecutable @pythonPrefix @applicationArguments
