@@ -1,7 +1,0 @@
-{
-  "request_id": "00000000-0000-4000-8000-000000000007", "run_id": "fixture-empty-001", "agent_type": "near_expiry", "status": "no_data",
-  "summary": "所选草莓牛奶没有库存和批次记录。", "session_id": null, "assistant_message": "测试响应：此范围未提供批次数据，不能编造效期或将缺失当成零库存。",
-  "scenario_preview": null, "steps": [{"step_id": "lots-1", "name": "query_inventory_lots", "label": "读取批次", "status": "succeeded", "message": "所选范围无记录"}], "items": [],
-  "missing_fields": ["inventory_lots"], "follow_up_questions": [], "warnings": [{"code": "MISSING_REQUIRED_DATA", "message": "无可分析的有效批次。"}], "error": null,
-  "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1", "created_at": "2026-10-03T00:00:00+08:00", "completed_at": "2026-10-03T00:00:01+08:00"
-}

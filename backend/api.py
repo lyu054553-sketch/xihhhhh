@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Header, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from .domain import (
     TEACHER_BASELINE_VERSION,
@@ -33,6 +33,7 @@ from .domain import (
     validate_action_bundle,
 )
 from .store import Store
+from .retail import demo_dataset, demo_overview, simulate_purchase, simulation_options
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,7 +43,7 @@ store = Store(DB_PATH)
 if os.environ.get("INVENTORY_AGENT_MODE", "demo") != "real":
     store.seed_demo()
 
-app = FastAPI(title="资金活水 Agent API", version="1.2.0")
+app = FastAPI(title="货不压钱｜连锁零售库存资金 Agent API", version="1.2.0")
 
 
 class InvestigationInput(BaseModel):
@@ -75,6 +76,15 @@ class SimulationInput(BaseModel):
     horizon_days: int = Field(default=30, ge=1, le=365)
     constraints: Dict[str, Any] = Field(default_factory=dict)
     excluded_action_ids: List[str] = Field(default_factory=list)
+
+
+class RetailSimulationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    horizon_days: int = Field(default=14, ge=1, le=90, strict=True)
+    reduction_pct: Decimal = Field(default=Decimal("20"), ge=0, le=100)
+    store_id: Optional[str] = Field(default="all", max_length=100)
+    category: Optional[str] = Field(default=None, max_length=100)
+    request_text: str = Field(default="", max_length=2000)
 
 
 class WorkbenchInput(BaseModel):
@@ -549,7 +559,7 @@ def _approval_summary(proposal: Dict[str, Any], risk: Optional[Dict[str, Any]], 
         return {"title": "审批跨店调拨：%s %s 件" % (product, quantity), "detail": "确认从%s调往%s的数量、安全库存与运输安排。" % (source, target), "boundary": "审批后仅生成待出库任务，不会自动向 ERP 发单或视为已完成调拨。"}
     if proposal_type == "expiry-rescue":
         forecast = calculation.get("forecast") or {}
-        return {"title": "审批近效期处置：%s" % product, "detail": "确认调拨%s件、促销%s件、退供%s件的组合处置。" % (forecast.get("transfer_qty", "待确认"), forecast.get("promo_qty", "待确认"), forecast.get("return_qty", "待确认")), "boundary": "药品促销与沟通文案仍需人工审核，不会自动发送或改价。"}
+        return {"title": "审批近效期处置：%s" % product, "detail": "确认调拨%s件、促销%s件、退供%s件的组合处置。" % (forecast.get("transfer_qty", "待确认"), forecast.get("promo_qty", "待确认"), forecast.get("return_qty", "待确认")), "boundary": "商品促销与沟通文案仍需人工审核，不会自动发送或改价。"}
     if proposal_type == "procurement-brake":
         order = calculation.get("order") or {}
         return {"title": "审批采购调整：%s" % product, "detail": "确认采购单%s的减量、取消或延期安排及其付款影响。" % (order.get("po_number") or input_data.get("po_number") or "待确认"), "boundary": "审批后只生成待执行方案，不会直接修改供应商订单。"}
@@ -1038,6 +1048,166 @@ def list_cases(risk_type: Optional[str] = Query(default=None), x_tenant_id: Opti
 def reset_demo() -> Dict[str, Any]:
     store.reset_demo()
     return {"ok": True, "snapshot_id": "snapshot-demo-v1", "source_label": "合成样例回放"}
+
+
+def _retail_demo(tenant: str) -> Optional[Dict[str, Any]]:
+    # 真实快照优先于启动时的默认 demo 模式，不能给导入数据补上模拟账户。
+    if store.real_inventory_snapshot(tenant) or os.environ.get("INVENTORY_AGENT_MODE", "demo") == "real" or tenant != "demo":
+        return None
+    sample = store.one("SELECT id FROM snapshots WHERE id='snapshot-demo-v1' AND tenant_id=? AND is_sample=1 AND source='sample-data/ac01'", (tenant,))
+    return demo_dataset(store.risks(tenant), TRANSFER_NETWORK_STORES) if sample else None
+
+
+def _retail_pending_approvals(tenant: str, snapshot_id: Optional[str], store_id: Optional[str]) -> Dict[str, Any]:
+    """按待审批方案当前版本涉及的商品成本汇总，不把它解释为现金收益。"""
+    total = Decimal(0)
+    count = missing_count = 0
+    proposal_rows = store.rows(
+        "SELECT id FROM proposals WHERE tenant_id=? AND status='pending_approval' AND snapshot_id=?",
+        (tenant, snapshot_id),
+    ) if snapshot_id else []
+    for row in proposal_rows:
+        proposal = store.proposal(row["id"], tenant)
+        risk = store.risk(proposal["risk_id"], tenant) if proposal else None
+        if not proposal or (store_id and store_id != "all" and (not risk or risk.get("store_id") != store_id)):
+            continue
+        count += 1
+        payload = ((proposal.get("version") or {}).get("payload") or {})
+        input_data = payload.get("input") or {}
+        calculation = payload.get("calculation") or {}
+        action = (payload.get("actions") or [{}])[0]
+        kind = payload.get("proposal_type")
+        if kind == "expiry-rescue":
+            forecast = calculation.get("forecast") or {}
+            quantities = [forecast.get(f"{key}_qty", input_data.get(f"{key}_qty")) for key in ("transfer", "promo", "return")]
+            quantity = sum(Decimal(str(value or 0)) for value in quantities) if all(value is not None for value in quantities) else None
+        elif kind == "procurement-brake":
+            quantity = input_data.get("adjustment_qty")
+        else:
+            quantity = action.get("quantity") or (calculation.get("allocation") or {}).get("quantity") or input_data.get("quantity")
+        unit_cost = action.get("unit_cost") or input_data.get("unit_cost") or (risk or {}).get("unit_cost")
+        try:
+            if quantity is None or unit_cost is None:
+                raise ValueError("方案数量或成本缺失")
+            total += Decimal(str(quantity)) * Decimal(str(unit_cost))
+        except (ValueError, TypeError, ArithmeticError):
+            missing_count += 1
+    return {"amount": round(float(total), 2) if missing_count == 0 else None,
+            "known_amount": round(float(total), 2), "count": count, "missing_count": missing_count,
+            "basis": "当前待审批方案涉及的商品成本；不是预计回款或确定支出"}
+
+
+def _retail_real_overview(tenant: str, period: int, store_id: Optional[str]) -> Dict[str, Any]:
+    snapshot = store.real_inventory_snapshot(tenant)
+    all_rows = store.real_inventory_store_summary(snapshot["id"], tenant) if snapshot else []
+    if store_id and store_id != "all" and store_id not in {row["org_code"] for row in all_rows}:
+        raise HTTPException(status_code=422, detail="门店不存在或不在当前数据范围内")
+    rows = [row for row in all_rows if not store_id or store_id == "all" or row["org_code"] == store_id]
+    source = snapshot["source"] if snapshot else "未接入经营数据"
+    metadata = (snapshot or {}).get("metadata") or {}
+    baseline_ready = bool(snapshot) and not metadata.get("teacher_baseline_missing_fields")
+    # 当源字段缺失时保持 null，不把真实库存快照当作销售或账户流水。
+    missing = ["bank_account_ledger", "sales_revenue", "sales_returns", "period_sales_cost", "inventory_history"]
+    if not baseline_ready:
+        missing.append("complete_risk_inputs")
+    attention_by_store: Dict[str, List[Dict[str, Any]]] = {}
+    if baseline_ready:
+        for line in store.real_inventory_attention_items(snapshot["id"], tenant):
+            attention_by_store.setdefault(line["org_code"], []).append({
+                "risk_id": line["id"], "sku": line["sku"], "product": line["product_name"],
+                "inventory_cost": round(float(line.get("cost_amount") or 0), 2),
+                "risk_label": "滞销待核查", "priority": line.get("teacher_priority"),
+                "reason": line.get("teacher_trigger_reason") or "需核查库存与销量差异",
+            })
+    performance = [{"store_id": row["org_code"], "store_name": row["org_name"], "sales": None, "gross_profit": None,
+                    "gross_margin_pct": None, "inventory_cost": row["inventory_value"],
+                    "risk_cost": row["candidate_inventory_value"] if baseline_ready else None,
+                    "turnover_days": None, "risk_count": row["slow_moving_skus"] if baseline_ready else None,
+                    "primary_risk": "滞销待核查" if attention_by_store.get(row["org_code"]) else "暂无重点风险" if baseline_ready else None,
+                    "risk_types": ["滞销"] if attention_by_store.get(row["org_code"]) else [],
+                    "risk_items": attention_by_store.get(row["org_code"], [])} for row in rows]
+    performance.sort(key=lambda row: (row["risk_cost"] is not None, row["risk_cost"] or 0, row["inventory_cost"] or 0), reverse=True)
+    stockout_filter = " AND org_code=?" if store_id and store_id != "all" else ""
+    snapshot_id = snapshot["id"] if snapshot else None
+    stockout_params = (snapshot_id, tenant, store_id) if stockout_filter else (snapshot_id, tenant)
+    stockout_risk_count = store.one(
+        "SELECT COUNT(*) AS n FROM real_inventory_lines WHERE snapshot_id=? AND tenant_id=?"
+        + stockout_filter + " AND (COALESCE(teacher_stockout,0)=1 OR COALESCE(teacher_near_stockout,0)=1)",
+        stockout_params,
+    )["n"] if baseline_ready else None
+    return {
+        "is_demo": False, "source": source, "as_of_date": (snapshot or {}).get("as_of_date"),
+        "scope": {"store_id": store_id or "all", "store_count": len(rows), "period": period},
+        "account": {"balance": None, "opening_balance": None, "cash_in": None, "cash_out": None,
+                    "is_demo": False, "source": "未接入账户流水", "status": "unavailable"},
+        "sales": {"amount": None, "gross_profit": None, "gross_margin_pct": None,
+                  "amount_7d": None, "gross_margin_7d_pct": None, "change_pct": None},
+        "inventory": {"cost": round(sum(row["inventory_value"] for row in rows), 2) if snapshot else None,
+                      "risk_cost": round(sum(row["candidate_inventory_value"] for row in rows), 2) if baseline_ready else None,
+                      "risk_count": sum(row["slow_moving_skus"] for row in rows) if baseline_ready else None,
+                      "risk_store_count": sum(1 for row in rows if row["slow_moving_skus"] > 0) if baseline_ready else None,
+                      "stockout_risk_count": stockout_risk_count,
+                      "turnover_days": None,
+                      "sku_count": (store.one("SELECT COUNT(DISTINCT sku) AS n FROM real_inventory_lines WHERE snapshot_id=? AND tenant_id=?" + (" AND org_code=?" if store_id and store_id != "all" else ""), (snapshot["id"], tenant, store_id) if store_id and store_id != "all" else (snapshot["id"], tenant))["n"] if snapshot else 0),
+                      "store_sku_count": sum(row["categories"] for row in rows)},
+        "purchase_commitments": {"amount": None, "count": None, "horizon_days": 30,
+                                 "status": "unavailable", "source": "未接入已确认采购付款计划"},
+        "pending_approvals": _retail_pending_approvals(tenant, snapshot["id"] if snapshot else None, store_id),
+        "trend": [],
+        "stores": performance,
+        "metadata": {"is_demo": False, "source": source, "currency": "CNY", "missing": missing + ["confirmed_purchase_payment_schedule"],
+                     "assumptions": ["库存只展示最新已导入快照；所选天数不改变库存时点。", "源文件未提供的销售收入、账户资金和趋势保持不可用。"]},
+    }
+
+
+@app.get("/api/v1/retail/overview")
+def retail_overview(period: int = Query(default=30), store_id: Optional[str] = Query(default="all"),
+                    x_tenant_id: Optional[str] = Header(default=None)) -> Dict[str, Any]:
+    if period not in (7, 30):
+        raise HTTPException(status_code=422, detail="period 仅支持 7 或 30 天")
+    tenant = tenant_from_header(x_tenant_id)
+    dataset = _retail_demo(tenant)
+    if not dataset:
+        return _retail_real_overview(tenant, period, store_id)
+    try:
+        result = demo_overview(dataset, period, store_id)
+        result["pending_approvals"] = _retail_pending_approvals(tenant, "snapshot-demo-v1", store_id)
+        return result
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error))
+
+
+@app.get("/api/v1/retail/simulation-options")
+def retail_simulation_options(x_tenant_id: Optional[str] = Header(default=None)) -> Dict[str, Any]:
+    tenant = tenant_from_header(x_tenant_id)
+    dataset = _retail_demo(tenant)
+    if dataset:
+        return simulation_options(dataset)
+    snapshot = store.real_inventory_snapshot(tenant)
+    rows = store.real_inventory_store_summary(snapshot["id"], tenant) if snapshot else []
+    return {"stores": [{"id": row["org_code"], "name": row["org_name"]} for row in rows], "categories": [],
+            "is_demo": False, "source": (snapshot or {}).get("source", "未接入经营数据"),
+            "as_of_date": (snapshot or {}).get("as_of_date")}
+
+
+@app.post("/api/v1/retail/simulate")
+def retail_simulate(payload: RetailSimulationInput, x_tenant_id: Optional[str] = Header(default=None)) -> Dict[str, Any]:
+    tenant = tenant_from_header(x_tenant_id)
+    dataset = _retail_demo(tenant)
+    if not dataset:
+        options = retail_simulation_options(x_tenant_id)
+        if payload.store_id and payload.store_id != "all" and payload.store_id not in {row["id"] for row in options["stores"]}:
+            raise HTTPException(status_code=422, detail="门店不存在或不在当前数据范围内")
+        return {"status": "unavailable", "is_demo": False, "source": options["source"], "scenario": payload.model_dump(mode="json"),
+                "metrics": None, "weekly": [], "risks": [], "lines": [],
+                "metadata": {"is_demo": False, "source": options["source"], "units": {"money": "CNY", "risk_count": "store_sku"},
+                             "missing": ["adjustable_purchase_orders", "confirmed_in_transit", "forecast_demand", "supplier_payment_schedule"],
+                             "assumptions": ["真实库存快照不足以推算未来采购支出和缺货风险，需要补齐采购、在途、需求与付款计划。"]}}
+    try:
+        return simulate_purchase(dataset, payload.horizon_days, payload.reduction_pct, payload.store_id,
+                                 payload.category, payload.request_text)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error))
 
 
 # 保持现有静态 Demo 作为同一个产品入口；生产化时可替换为 Next.js build。

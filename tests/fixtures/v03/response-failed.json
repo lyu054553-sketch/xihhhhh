@@ -1,7 +1,0 @@
-{
-  "request_id": "00000000-0000-4000-8000-000000000009", "run_id": "fixture-timeout-001", "agent_type": "slow_moving", "status": "failed",
-  "summary": "模型调用超时。", "session_id": null, "assistant_message": "测试故障响应：未取得模型结果，请重试或人工处理。",
-  "scenario_preview": null, "steps": [{"step_id": "model-1", "name": "call_model", "label": "模型解释", "status": "failed", "message": "AI_TIMEOUT"}], "items": [],
-  "missing_fields": [], "follow_up_questions": [], "warnings": [], "error": {"code": "AI_TIMEOUT", "message": "模型调用超时，未生成结果。", "retryable": true, "field_errors": []},
-  "data_version": "snack-demo-v1", "policy_version": "snack-policy-v1", "created_at": "2026-10-03T00:00:00+08:00", "completed_at": "2026-10-03T00:00:15+08:00"
-}

@@ -1,191 +1,55 @@
 {
-  "contract_version": "v0.3",
-  "data_version": "snack-demo-v1",
-  "policy_version": "snack-policy-v1",
-  "as_of": "2026-10-02",
+  "contract_version": "v1.2",
+  "snapshot_id": "snapshot-demo-v1",
+  "as_of_date": "2026-10-03",
+  "is_demo": true,
   "synthetic": true,
-  "seed": 20261002,
+  "source": "零食仓 · 合成零售经营样例 v1",
   "timezone": "Asia/Shanghai",
-  "source_label": "虚构零食连锁合成演示数据",
-  "disclaimer": "仅用于接口联调与测试；不是客户数据，参考结果不代表模型输出或真实收益。",
-  "scenario_count": 5,
+  "generation": "deterministic_backend_seed",
+  "units": {
+    "money": "CNY",
+    "percentage": "0..100",
+    "quantity": "商品单位"
+  },
+  "input_origin": "backend.store.Store.seed_demo + backend.retail.demo_dataset",
+  "disclaimer": "合成输入导出，不是客户数据、API响应、模型输出或真实收益；下载不会导入或重置服务。",
   "record_counts": {
-    "stores": 3,
-    "skus": 4,
-    "inventory_snapshots": 5,
-    "sales_daily": 76,
-    "purchase_orders": 1,
-    "inventory_lots": 1,
-    "policies": 3
+    "stores": 50,
+    "inventory_inputs": 313,
+    "confirmed_payments": 100,
+    "risk_inputs": 13,
+    "workbench_inputs": 11
   },
-  "scope_options": {
-    "stores": [
-      {
-        "store_id": "STORE-HZ-001",
-        "store_name": "滨江店",
-        "region_id": "HZ-BJ",
-        "status": "active"
-      },
-      {
-        "store_id": "STORE-HZ-002",
-        "store_name": "文二路店",
-        "region_id": "HZ-XH",
-        "status": "active"
-      },
-      {
-        "store_id": "STORE-HZ-003",
-        "store_name": "城西店",
-        "region_id": "HZ-XH",
-        "status": "active"
-      }
-    ],
-    "skus": [
-      {
-        "sku_id": "SNK-001",
-        "sku_name": "椒盐海苔脆片",
-        "category_id": "SNACK-CHIPS",
-        "brand_name": null,
-        "barcode": null,
-        "specification": "45g/袋",
-        "unit": "bag",
-        "unit_cost_fen": 350,
-        "sale_price_fen": 600,
-        "shelf_life_days": 180,
-        "min_order_qty": 24,
-        "case_pack_qty": 24
-      },
-      {
-        "sku_id": "SNK-002",
-        "sku_name": "每日坚果组合",
-        "category_id": "SNACK-NUTS",
-        "brand_name": null,
-        "barcode": null,
-        "specification": "120g/袋",
-        "unit": "bag",
-        "unit_cost_fen": 880,
-        "sale_price_fen": 1290,
-        "shelf_life_days": 120,
-        "min_order_qty": 6,
-        "case_pack_qty": 6
-      },
-      {
-        "sku_id": "SNK-003",
-        "sku_name": "草莓牛奶",
-        "category_id": "SNACK-DRINK",
-        "brand_name": null,
-        "barcode": null,
-        "specification": "200ml/瓶",
-        "unit": "bottle",
-        "unit_cost_fen": 230,
-        "sale_price_fen": 350,
-        "shelf_life_days": 180,
-        "min_order_qty": 24,
-        "case_pack_qty": 24
-      },
-      {
-        "sku_id": "SNK-004",
-        "sku_name": "香辣豆干",
-        "category_id": "SNACK-BEAN",
-        "brand_name": null,
-        "barcode": null,
-        "specification": "90g/袋",
-        "unit": "bag",
-        "unit_cost_fen": 270,
-        "sale_price_fen": 450,
-        "shelf_life_days": 90,
-        "min_order_qty": 12,
-        "case_pack_qty": 12
-      }
-    ],
-    "categories": [
-      {
-        "category_id": "SNACK-CHIPS",
-        "category_name": "脆片"
-      },
-      {
-        "category_id": "SNACK-NUTS",
-        "category_name": "坚果"
-      },
-      {
-        "category_id": "SNACK-DRINK",
-        "category_name": "饮品"
-      },
-      {
-        "category_id": "SNACK-BEAN",
-        "category_name": "豆制品"
-      }
-    ]
-  },
-  "scenarios": [
-    {
-      "id": "slow-moving-zero-sales",
-      "title": "滨江店坚果零销量",
-      "agent_type": "slow_moving"
-    },
-    {
-      "id": "transfer-chips",
-      "title": "脆片跨店调拨",
-      "agent_type": "store_transfer"
-    },
-    {
-      "id": "near-expiry-bean",
-      "title": "香辣豆干临期风险",
-      "agent_type": "near_expiry"
-    },
-    {
-      "id": "procurement-nuts",
-      "title": "城西店坚果采购刹车",
-      "agent_type": "procurement_brake"
-    },
-    {
-      "id": "cashflow-reduce-six",
-      "title": "减少6袋采购承诺的模拟",
-      "agent_type": "cashflow_simulation"
-    }
-  ],
+  "scenario_count": 8,
   "files": {
     "dataset": {
       "path": "generated/dataset.json",
-      "sha256": "f8a7da7a6b1ffce44d43ca944aace249a905864aace174637e72b01e1c117bce"
+      "sha256": "a46ec640d296ae194d0607c009e729d2b03b42369262e75ace207dcc16a5d68f"
     },
     "stores": {
       "path": "generated/stores.csv",
-      "sha256": "6c1d81b8f547fb16ef4f88d551a8eb7fffd67a60f606e152f3911b4ec133d7a0",
-      "model": "stores"
+      "sha256": "b9c37a7d0ae3c7256fc7b580585a4fff558971b8fd8332841581b24e2155dafc"
     },
-    "skus": {
-      "path": "generated/skus.csv",
-      "sha256": "eff1abb159bd9b5be100cd4aa2e3753e368247413026b320c3e10a50fd966af6",
-      "model": "skus"
+    "inventory_inputs": {
+      "path": "generated/inventory_inputs.csv",
+      "sha256": "4bff7133d3f43f533da90726c2c310b62312d8169535aa3c9fec68b347c64744"
     },
-    "inventory_snapshots": {
-      "path": "generated/inventory_snapshots.csv",
-      "sha256": "b96d8c593cf9af3c99cf7e53f059571be80b2e09eea49c6156aeb5bc37b8195a",
-      "model": "inventory_snapshots"
+    "confirmed_payments": {
+      "path": "generated/confirmed_payments.csv",
+      "sha256": "3aeab3781a1f94158e7531b28f4a4ab11ddd48f3e04dde8ff2789d6efeff3498"
     },
-    "sales_daily": {
-      "path": "generated/sales_daily.csv",
-      "sha256": "6e82b416ad48762662e749322307d7fbd203fd433feed05feccd6c0fa46f02bf",
-      "model": "sales_daily"
+    "risk_inputs": {
+      "path": "generated/risk_inputs.csv",
+      "sha256": "664508283f7a926df1d67adb3858c36fdad4cf19a1762811ffe45ca837303308"
     },
-    "purchase_orders": {
-      "path": "generated/purchase_orders.csv",
-      "sha256": "c9e46ac72b17cec13067efb26d11e94cc5c9771ae3f272f566ea5ae6c530ff27",
-      "model": "purchase_orders"
-    },
-    "inventory_lots": {
-      "path": "generated/inventory_lots.csv",
-      "sha256": "617223269699555774f8bae36234bde6c6b632deb0d5c6ad6ee52e9e9e63bbb2",
-      "model": "inventory_lots"
-    },
-    "policies": {
-      "path": "generated/policies.csv",
-      "sha256": "ec759c262f142ceaeecaecda515ba2fd3796885ac473571df9cebc76242f153d",
-      "model": "policies"
+    "workbench_inputs": {
+      "path": "generated/workbench_inputs.json",
+      "sha256": "e409f6ad84b1bfd86135683aba5f7d052676853a1fdc6b9a2701b03cc8336a22"
     },
     "scenario_requests": {
       "path": "generated/scenario_requests.json",
-      "sha256": "efe2665551621c3fe09b2391193c24bc1bfd5751fcf4a79517ae2efa594780e8"
+      "sha256": "a422dd4930db90212884d560af9a99b1dd2ad6bb7fd35b4694737aa9645578f8"
     }
   }
 }

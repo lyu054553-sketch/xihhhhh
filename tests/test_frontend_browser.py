@@ -1,36 +1,114 @@
-"""Browser acceptance with v0.3 fixtures, never a live Agent/model or legacy DB."""
+"""Browser and HTTP acceptance against the merged v1.2 backend on a temporary DB.
+
+No API responses are replaced by browser fixtures. The model/ERP are not called:
+this suite verifies Wei's actual deterministic rules and persisted workflow.
+"""
 from __future__ import annotations
 
 import json
 import os
 from pathlib import Path
-import re
+import subprocess
+import sys
+import tempfile
 import threading
+import time
 import unittest
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 from playwright.sync_api import expect, sync_playwright
 from scripts.serve_frontend import serve
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURES = ROOT / "tests" / "fixtures" / "v03"
-AGENTS = ["slow_moving", "store_transfer", "near_expiry", "procurement_brake", "cashflow_simulation"]
-FIXTURE_BY_AGENT = dict(zip(AGENTS, ["succeeded", "store_transfer", "near_expiry", "procurement_brake", "awaiting_confirmation"]))
+BACKEND_RUNNER = r"""
+import json, os, pathlib, sys, threading
+import uvicorn
+from backend import api
+config = uvicorn.Config(api.app, host='127.0.0.1', port=0, log_level='error', lifespan='off')
+server = uvicorn.Server(config)
+sock = config.bind_socket()
+def stop_on_input():
+    sys.stdin.readline()
+    server.should_exit = True
+threading.Thread(target=stop_on_input, daemon=True).start()
+pathlib.Path(os.environ['TEST_READY_FILE']).write_text(json.dumps({'port':sock.getsockname()[1]}))
+try:
+    server.run(sockets=[sock])
+finally:
+    api.store.close()
+    sock.close()
+"""
 
 
 class FrontendBrowserTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = serve(ROOT, port=0)
+        cls.temporary = tempfile.TemporaryDirectory(prefix='inventory-v12-browser-')
+        cls.addClassCleanup(cls.temporary.cleanup)
+        temporary = Path(cls.temporary.name)
+        cls.ready_file = temporary / 'ready.json'
+        cls.backend_log = (temporary / 'backend.log').open('w', encoding='utf-8')
+        cls.addClassCleanup(cls.backend_log.close)
+        environment = dict(os.environ, INVENTORY_AGENT_DB=str(temporary / 'browser.db'),
+                           INVENTORY_AGENT_MODE='demo', TEST_READY_FILE=str(cls.ready_file),
+                           PYTHONIOENCODING='utf-8')
+        cls.backend = subprocess.Popen([sys.executable, '-c', BACKEND_RUNNER], cwd=ROOT, env=environment,
+                                       stdin=subprocess.PIPE, stdout=cls.backend_log, stderr=subprocess.STDOUT,
+                                       text=True, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        cls.addClassCleanup(cls._stop_backend)
+        deadline = time.monotonic() + 15
+        while not cls.ready_file.exists():
+            if cls.backend.poll() is not None or time.monotonic() > deadline:
+                raise RuntimeError('Isolated v1.2 backend did not start; inspect its temporary log')
+            time.sleep(.05)
+        cls.backend_url = 'http://127.0.0.1:' + str(json.loads(cls.ready_file.read_text())['port'])
+        while True:
+            try:
+                cls.http(cls.backend_url + '/openapi.json')
+                break
+            except OSError:
+                if time.monotonic() > deadline:
+                    raise
+                time.sleep(.05)
+        cls.server = serve(ROOT, api_base=cls.backend_url + '/api/v1', port=0)
         cls.server.RequestHandlerClass.log_message = lambda handler, *args: None
         cls.server_thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.server_thread.start()
         cls.addClassCleanup(cls._stop_server)
-        cls.base_url = f"http://127.0.0.1:{cls.server.server_address[1]}"
+        cls.base_url = f'http://127.0.0.1:{cls.server.server_port}'
         cls.playwright = sync_playwright().start()
         cls.addClassCleanup(cls.playwright.stop)
         cls.browser = cls.playwright.chromium.launch(headless=True)
         cls.addClassCleanup(cls.browser.close)
+
+    @staticmethod
+    def http(url, method='GET', body=None, headers=None):
+        headers = dict(headers or {})
+        payload = None
+        if body is not None:
+            payload = json.dumps(body).encode('utf-8')
+            headers['Content-Type'] = 'application/json'
+        request = Request(url, data=payload, headers=headers, method=method)
+        try:
+            response = urlopen(request, timeout=10)
+        except HTTPError as error:
+            response = error
+        with response:
+            return response.status, json.loads(response.read())
+
+    @classmethod
+    def _stop_backend(cls):
+        if cls.backend.poll() is None:
+            try:
+                cls.backend.stdin.write('stop\n')
+                cls.backend.stdin.flush()
+                cls.backend.wait(timeout=5)
+            except (OSError, subprocess.TimeoutExpired):
+                cls.backend.terminate()
+                cls.backend.wait(timeout=5)
+        cls.backend.stdin.close()
 
     @classmethod
     def _stop_server(cls):
@@ -39,412 +117,367 @@ class FrontendBrowserTests(unittest.TestCase):
         cls.server_thread.join(timeout=5)
 
     def setUp(self):
-        self.calls, self.pending, self.page_errors, self.requests_seen = [], [], [], []
-        self.transport = None
-        self.run_response = self.response_for
-        self.decision_response = self.decision_for
-        artifacts = os.environ.get("FRONTEND_TEST_ARTIFACTS")
-        self.artifact_dir = Path(artifacts).resolve() if artifacts and self._testMethodName == "test_contract_preview_and_simulation_decision_flow" else None
-        options = {"viewport": {"width": 1440, "height": 1000}}
+        status, _ = self.http(self.backend_url + '/api/v1/demo/reset', 'POST', {})
+        self.assertEqual(status, 200)
+        self.api_calls, self.page_errors = [], []
+        self.workflow_completed = False
+        artifacts = os.environ.get('FRONTEND_TEST_ARTIFACTS')
+        self.artifact_dir = Path(artifacts).resolve() if artifacts and self._testMethodName == 'test_live_transfer_workflow' else None
+        options = {'viewport': {'width': 1440, 'height': 1000}}
         if self.artifact_dir:
             self.artifact_dir.mkdir(parents=True, exist_ok=True)
-            options.update(record_video_dir=str(self.artifact_dir), record_video_size={"width": 1440, "height": 1000})
+            options.update(record_video_dir=str(self.artifact_dir), record_video_size=options['viewport'])
         self.context = self.browser.new_context(**options)
-        self.context.add_init_script("""document.addEventListener('DOMContentLoaded', () => {
-          const banner = document.createElement('div');
-          banner.dataset.testFixtureBanner = '';
-          banner.textContent = '契约夹具演示 · 非真实后端 / 非模型调用';
-          banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;padding:6px 12px;background:#152b25;color:white;font:12px sans-serif;text-align:center;z-index:9999;pointer-events:none';
-          document.body.append(banner);
-        });""")
         self.page = self.context.new_page()
-        self.page.set_default_timeout(5000)
-        self.page.on("pageerror", lambda error: self.page_errors.append(str(error)))
-        self.page.on("request", lambda request: self.requests_seen.append(request.url))
-        self.page.route("**/api/v1/**", self.route_api)
+        self.page.set_default_timeout(6000)
+        self.page.on('pageerror', lambda error: self.page_errors.append(str(error)))
+        self.page.on('request', lambda request: self.api_calls.append(request) if '/api/v1/' in request.url else None)
         self.addCleanup(self.close_context)
 
     def close_context(self):
         video = self.page.video
-        try:
-            for route, _call in self.pending:
-                route.abort()
-            self.pending.clear()
-            if self.artifact_dir and not self.page.is_closed():
-                self.page.evaluate("document.activeElement?.blur(); window.scrollTo(0, 0)")
-                self.page.screenshot(path=str(self.artifact_dir / "contract-flow.png"), full_page=True)
-        finally:
-            self.context.close()
+        artifact_name = 'live-flow' if self.workflow_completed else 'failed-live-flow'
+        if self.artifact_dir and not self.page.is_closed():
+            self.page.screenshot(path=str(self.artifact_dir / f'{artifact_name}.png'), full_page=True)
+        self.context.close()
         if self.artifact_dir and video:
             original = Path(video.path())
-            video.save_as(str(self.artifact_dir / "contract-flow.webm"))
+            video.save_as(str(self.artifact_dir / f'{artifact_name}.webm'))
             original.unlink(missing_ok=True)
 
     def tearDown(self):
-        self.assertEqual(self.page_errors, [], "unhandled browser errors")
-        for call in self.calls:
-            self.assertEqual(call["method"], "POST")
-            self.assertRegex(call["path"], r"^/api/v1/agent-runs(?:/[^/]+/decisions)?$")
-        self.assertFalse(any(re.search(r"/(?:reference|fixtures)/|expected[_-]results", url) for url in self.requests_seen))
+        self.assertEqual(self.page_errors, [], 'unhandled browser errors')
+        self.assertFalse(any('/agent-runs' in call.url for call in self.api_calls))
 
-    def fixture(self, name):
-        return json.loads((FIXTURES / f"response-{name}.json").read_text(encoding="utf-8"))
+    def open(self, route='overview'):
+        self.page.goto(f'{self.base_url}/#{route}')
+        expect(self.page.locator('#page-content')).to_be_visible()
 
-    def response_for(self, request, name=None):
-        if name is None:
-            name = "partial" if request["agent_type"] == "cashflow_simulation" and request["params"].get("operation") == "simulate" else FIXTURE_BY_AGENT[request["agent_type"]]
-        response = self.fixture(name)
-        response.update(request_id=request["request_id"], agent_type=request["agent_type"], session_id=request.get("session_id"),
-                        data_version=request["data_version"], policy_version=request.get("policy_version", "snack-policy-v1"),
-                        run_id=f"run-{request['agent_type']}-{len(self.calls)}")
-        return response
-
-    @staticmethod
-    def decision_for(call):
-        return {**call["body"], "run_id": call["path"].split("/")[-2], "decision_status": "recorded", "execution_mode": "simulation"}
-
-    def route_api(self, route):
-        request = route.request
-        call = {"method": request.method, "path": urlparse(request.url).path, "body": request.post_data_json}
-        self.calls.append(call)
-        if self.transport:
-            self.transport(route, call)
-            return
-        if call["path"] == "/api/v1/agent-runs":
-            response = self.run_response(call["body"])
-        elif re.fullmatch(r"/api/v1/agent-runs/[^/]+/decisions", call["path"]):
-            response = self.decision_response(call)
-        else:
-            route.fulfill(status=404, json={"detail": "unexpected endpoint"})
-            return
-        if response is None:
-            self.pending.append((route, call))
-        else:
-            route.fulfill(json=response)
-
-    def release(self, index=0):
-        route, call = self.pending.pop(index)
-        response = self.response_for(call["body"]) if call["path"].endswith("agent-runs") else self.decision_for(call)
-        route.fulfill(json=response)
-
-    def open(self, agent="slow_moving"):
-        self.page.goto(f"{self.base_url}/#{agent}")
-        expect(self.page.locator("#agent-form button[type=submit]")).to_be_visible()
-
-    def navigate(self, agent):
-        self.page.evaluate("route => { location.hash = route; }", agent)
-        expect(self.page.locator(f'#app-nav [data-agent="{agent}"]')).to_have_attribute("aria-current", "page")
-
-    def submit(self):
-        user_input = self.page.locator('#agent-form [name="user_input"]')
-        if user_input.get_attribute("required") is not None and not user_input.input_value():
-            self.page.locator('[data-action="example"]').click()
-        self.page.locator("#agent-form button[type=submit]").click()
+    def posts_to(self, suffix):
+        return [request for request in self.api_calls if request.method == 'POST' and urlparse(request.url).path.endswith(suffix)]
 
     def frame(self):
         if self.artifact_dir:
-            self.page.wait_for_timeout(800)
+            self.page.wait_for_timeout(700)
 
-    def test_five_agents_use_one_contract_and_integer_fen(self):
-        self.open()
-        for agent in AGENTS:
-            with self.subTest(agent=agent):
-                self.navigate(agent)
-                self.submit()
-                if agent == "cashflow_simulation":
-                    expect(self.page.locator(".scenario-card")).to_be_visible()
-                    expect(self.page.locator(".metric")).to_have_count(0)
-                else:
-                    expect(self.page.locator(".result-card")).to_have_count(1)
-                request = self.calls[-1]["body"]
-                self.assertEqual(request["agent_type"], agent)
-                self.assertRegex(request["request_id"], r"^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$")
-                self.assertEqual(request["scope"]["as_of"], "2026-10-02")
-                if agent == "procurement_brake":
-                    self.assertEqual(request["params"]["horizon_days"], 14)
-        self.navigate("slow_moving")
-        expect(self.page.locator(".metric-grid")).to_contain_text("¥220.00")
-        self.assertEqual(len(self.calls), 5)
-
-    def test_six_business_states_render_without_invented_success(self):
-        states = {"succeeded": "分析完成", "partial": "部分结果", "no_data": "当前范围没有数据",
-                  "needs_input": "需要补充或确认", "failed": "本次运行失败", "awaiting_confirmation": "情景待确认"}
-        for status, label in states.items():
-            with self.subTest(status=status):
-                self.run_response = lambda request, name=status: self.response_for(request, name)
-                self.open("cashflow_simulation" if status == "awaiting_confirmation" else "slow_moving")
-                self.submit()
-                expect(self.page.locator("#run-status")).to_contain_text(label)
-                if status in {"no_data", "needs_input", "failed", "awaiting_confirmation"}:
-                    expect(self.page.locator(".metric")).to_have_count(0)
-                if status == "needs_input":
-                    expect(self.page.locator("#run-output")).to_contain_text("请补充或确认")
-                if status == "failed":
-                    expect(self.page.locator("#run-status")).to_contain_text("AI_TIMEOUT")
-
-    def test_unconfigured_preview_server_reports_service_unavailable(self):
-        self.page.unroute("**/api/v1/**", self.route_api)
-        self.open()
-        self.submit()
-        expect(self.page.locator("#run-status")).to_contain_text("请求未取得可用结果")
-        expect(self.page.locator(".result-card")).to_have_count(0)
-        self.assertEqual(len([url for url in self.requests_seen if "/api/v1/" in url]), 1)
-
-    def test_missing_endpoint_does_not_fall_back_to_legacy_or_sample_results(self):
-        self.transport = lambda route, call: route.fulfill(status=404, json={"detail": "Not Found"})
-        self.open()
-        self.submit()
-        expect(self.page.locator("#run-status")).to_contain_text("Not Found")
-        expect(self.page.locator(".metric")).to_have_count(0)
-        self.assertEqual(len(self.calls), 1)
-
-    def test_network_failure_does_not_generate_analysis(self):
-        self.transport = lambda route, call: route.abort("internetdisconnected")
-        self.open()
-        self.submit()
-        expect(self.page.locator("#run-status")).to_contain_text("无法连接服务")
-        expect(self.page.locator("#run-status")).to_contain_text("服务端可能仍在处理")
-        expect(self.page.locator(".metric")).to_have_count(0)
-        self.assertEqual(len(self.calls), 1)
-
-    def test_ai_http_errors_and_invalid_json_are_visible(self):
-        for transport, expected in [
-            (lambda route, call: route.fulfill(status=503, json={"error": {"code": "AI_UNAVAILABLE", "message": "模型服务暂不可用", "retryable": True, "field_errors": []}}), "AI_UNAVAILABLE"),
-            (lambda route, call: route.fulfill(status=200, body="<html>gateway</html>", content_type="text/html"), "invalid_json"),
-        ]:
-            with self.subTest(expected=expected):
-                self.transport = transport
-                self.open()
-                self.submit()
-                expect(self.page.locator("#run-status")).to_contain_text(expected)
-                expect(self.page.locator(".metric")).to_have_count(0)
-
-    def test_invalid_money_and_foreign_response_are_rejected(self):
-        for field in ["money", "identity"]:
-            with self.subTest(field=field):
-                def response(request):
-                    value = self.response_for(request)
-                    if field == "money": value["items"][0]["metrics"][0]["value"] = 22000.5
-                    else: value["request_id"] = "foreign-request"
-                    return value
-                self.run_response = response
-                self.open()
-                self.submit()
-                expect(self.page.locator("#run-status")).to_contain_text("CONTRACT_INVALID")
-                expect(self.page.locator(".metric")).to_have_count(0)
-
-    def test_contract_preview_and_simulation_decision_flow(self):
-        self.open("cashflow_simulation")
-        self.submit()
-        expect(self.page.locator(".scenario-card")).to_be_visible()
-        expect(self.page.locator(".metric")).to_have_count(0)
-        expect(self.page.locator("[data-decision]")).to_have_count(0)
-        first = self.calls[0]["body"]
-        preview = self.fixture("awaiting_confirmation")["scenario_preview"]
-        self.assertEqual(first["params"]["operation"], "preview")
-        self.assertNotIn("confirmed", first["params"])
+    def test_live_transfer_workflow(self):
+        self.open('transfer')
+        expect(self.page.locator('#calculation-result')).to_be_visible()
         self.frame()
-        self.page.locator('[data-action="simulate"]').click()
-        expect(self.page.locator(".result-card")).to_have_count(1)
-        expect(self.page.locator("#run-output")).to_contain_text("¥52.80")
-        self.assertEqual(len(self.calls), 2, "simulation does not record a decision")
-        simulation = self.calls[1]["body"]
-        self.assertEqual(simulation["session_id"], first["session_id"])
-        self.assertEqual(simulation["params"]["scenario_id"], preview["scenario_id"])
-        self.assertEqual(simulation["params"]["adjustments"], preview["adjustments"])
-        self.assertIs(simulation["params"]["confirmed"], True)
+        self.page.locator('#workbench-form [name="quantity"]').fill('41')
+        expect(self.page.locator('[data-action="save"]')).to_be_disabled()
+        with self.page.expect_response(lambda response: '/workbenches/transfer/calculate' in response.url) as event:
+            self.page.locator('[data-action="calculate"]').click()
+        self.assertTrue(event.value.json()['calculation']['valid'])
+        expect(self.page.locator('#calculation-result')).to_contain_text('3,280.00')
         self.frame()
-        self.page.locator("[data-decision-note]").fill("契约夹具演示：核对后模拟确认")
-        self.page.locator('[data-decision="approve"]').click()
-        expect(self.page.locator(".decision-status")).to_contain_text("已记录：模拟确认")
-        expect(self.page.locator(".decision-status")).to_contain_text("未修改库存")
-        self.assertEqual(len(self.calls), 3)
-        self.assertTrue(self.calls[2]["path"].endswith("/decisions"))
+        with self.page.expect_response(lambda response: '/workbenches/transfer/save' in response.url) as event:
+            self.page.locator('[data-action="save"]').click()
+        proposal = event.value.json()['proposal']
+        proposal_id = proposal['id']
+        self.assertEqual(proposal['status'], 'draft')
         self.frame()
+        with self.page.expect_response(lambda response: response.url.endswith('/submit')) as event:
+            self.page.locator('[data-proposal-action="submit"]').click()
+        self.assertEqual(event.value.json()['status'], 'pending_approval')
+        self.page.locator('#app-nav a[href="#today"]').click()
+        approve = self.page.locator(f'[data-proposal-action="approve"][data-id="{proposal_id}"]')
+        expect(approve).to_be_visible()
+        self.frame()
+        with self.page.expect_response(lambda response: response.url.endswith('/approve')) as event:
+            approve.click()
+        self.assertEqual(event.value.json()['status'], 'approved')
+        self.frame()
+        with self.page.expect_response(lambda response: response.url.endswith('/execute')) as event:
+            self.page.locator(f'[data-proposal-action="execute"][data-id="{proposal_id}"]').click()
+        task = event.value.json()
+        self.assertEqual(task['status'], 'draft_pending_external_execution')
+        self.frame()
+        task_form = self.page.locator(f'form[data-task-id="{task["id"]}"]')
+        task_form.locator('[name="status"]').select_option('completed')
+        task_form.locator('[name="receipt_ref"]').fill('SYNTHETIC-MANUAL-RECEIPT-001')
+        with self.page.expect_response(lambda response: response.url.endswith('/status')) as event:
+            task_form.locator('button').click()
+        self.assertEqual(event.value.json()['status'], 'completed')
+        expect(self.page.locator(f'article[data-task-id="{task["id"]}"]')).to_contain_text('人工记录已完成')
+        expect(self.page.locator('#page-content')).to_contain_text('未向外部 ERP 写入')
+        self.frame()
+        for action in ('approve', 'execute'):
+            requests = self.posts_to('/' + action)
+            self.assertEqual(len(requests), 1)
+            self.assertTrue(requests[0].header_value('Idempotency-Key'))
+        self.workflow_completed = True
 
-    def test_preview_changes_invalidate_confirmation_and_version_changes_reset_session(self):
-        self.open("cashflow_simulation")
-        self.submit()
-        expect(self.page.locator(".scenario-card")).to_be_visible()
-        first_session = self.calls[-1]["body"]["session_id"]
-        self.page.locator('[name="user_input"]').fill("改为减少 7 袋，请重新整理")
-        expect(self.page.locator('[data-action="simulate"]')).to_have_count(0)
-        expect(self.page.locator("#run-status")).to_contain_text("输入已改变")
-        self.page.locator('[name="as_of"]').fill("2026-10-03")
-        self.submit()
-        expect(self.page.locator(".scenario-card")).to_be_visible()
-        self.assertNotEqual(self.calls[-1]["body"]["session_id"], first_session)
-        self.assertTrue(all(call["body"]["params"]["operation"] == "preview" for call in self.calls))
+    def test_expiry_and_procurement_workbenches_use_live_calculations(self):
+        for route in ('expiry-rescue', 'procurement-brake'):
+            with self.subTest(route=route):
+                self.open(route)
+                expect(self.page.locator('#workbench-form')).to_be_visible()
+                with self.page.expect_response(lambda response: response.url.endswith(f'/{route}/calculate')) as event:
+                    self.page.locator('[data-action="calculate"]').click()
+                self.assertTrue(event.value.json()['calculation']['valid'])
+                expect(self.page.locator('#calculation-result')).to_contain_text('工具计算结果')
 
-    def test_revise_scenario_returns_to_input_without_computing(self):
-        self.open("cashflow_simulation")
-        self.submit()
-        expect(self.page.locator(".scenario-card")).to_be_visible()
-        self.page.locator('[data-action="revise"]').click()
-        expect(self.page.locator(".scenario-card")).to_have_count(0)
-        expect(self.page.locator('[name="user_input"]')).to_be_focused()
-        self.assertEqual(len(self.calls), 1)
+    def test_selecting_risks_opens_the_matching_workbench_and_selected_product(self):
+        self.open('slow_moving')
+        with self.page.expect_response(lambda response: response.url.endswith('/risks/3')):
+            self.page.locator('#risk-form [name="risk_id"]').select_option('3')
+        expect(self.page.locator('#page-content')).to_contain_text('纯牛奶整箱')
+        entry = self.page.locator('[data-action="open-workbench"]')
+        expect(entry).to_have_count(1)
+        expect(entry).to_have_attribute('data-module', 'expiry-rescue')
+        entry.click()
+        expect(self.page.locator('#workbench-form [name="risk_id"]')).to_have_value('3')
+        with self.page.expect_response(lambda response: '/workbenches/expiry-rescue?risk_id=6' in response.url):
+            self.page.locator('#workbench-form [name="risk_id"]').select_option('6')
+        expect(self.page.locator('#workbench-form [name="risk_id"]')).to_have_value('6')
+        expect(self.page.locator('#page-content')).to_contain_text('海盐薯片分享装')
+        with self.page.expect_response(lambda response: response.url.endswith('/expiry-rescue/calculate')) as event:
+            self.page.locator('[data-action="calculate"]').click()
+        self.assertEqual(event.value.json()['input']['risk_id'], 6)
+        self.assertTrue(event.value.json()['calculation']['valid'])
 
-    def test_approve_and_reject_are_recorded_once_even_on_double_click(self):
-        self.decision_response = lambda call: None
-        for decision in ["approve", "reject"]:
-            with self.subTest(decision=decision):
-                self.open()
-                self.submit()
-                expect(self.page.locator(".result-card")).to_have_count(1)
-                before = len(self.calls)
-                self.page.evaluate("decision => { const button = document.querySelector(`[data-decision=${decision}]`); button.click(); button.click(); }", decision)
-                expect(self.page.locator(".decision-status")).to_contain_text("正在记录")
-                expect(self.page.locator('[data-decision="approve"]')).to_be_disabled()
-                expect(self.page.locator('[data-decision="reject"]')).to_be_disabled()
-                self.assertEqual(len(self.calls), before + 1)
-                self.release()
-                expect(self.page.locator(".decision-status")).to_contain_text("已记录")
-                expect(self.page.locator('[data-decision="approve"]')).to_be_disabled()
+    def test_feedback_requires_explicit_human_review_before_confirmation(self):
+        self.open('slow_moving')
+        form = self.page.locator('#feedback-form')
+        form.locator('[name="raw_text"]').fill('合成核查：此前未上架，今日已补货上架；因果关系仍未知。')
+        with self.page.expect_response(lambda response: response.url.endswith('/feedback')) as event:
+            form.locator('button').click()
+        self.assertEqual(event.value.json()['confirmation_status'], 'pending_confirmation')
+        confirmation = self.page.locator('#feedback-confirm-form')
+        expect(confirmation).to_be_visible()
+        confirmation.locator('[name="confirmed_json"]').fill(json.dumps({
+            'factors': [{'label':'人工确认此前未上架', 'causal_status':'unknown'}],
+            'remediation_status':'done'}, ensure_ascii=False))
+        confirmation.locator('button').click()
+        self.assertEqual(self.posts_to('/confirm'), [])
+        confirmation.locator('[name="reviewed"]').check()
+        with self.page.expect_response(lambda response: response.url.endswith('/confirm')) as event:
+            confirmation.locator('button').click()
+        self.assertEqual(event.value.json()['confirmation_status'], 'confirmed')
+        with self.page.expect_response(lambda response: response.url.endswith('/replan')) as event:
+            self.page.locator('[data-action="replan"]').click()
+        self.assertEqual(event.value.json()['status'], 'pending_approval')
 
-    def test_decision_with_real_execution_mode_is_never_presented_as_confirmed(self):
-        self.decision_response = lambda call: {**self.decision_for(call), "execution_mode": "real"}
+    def test_overview_displays_live_data_and_can_change_period(self):
         self.open()
-        self.submit()
-        expect(self.page.locator(".result-card")).to_have_count(1)
-        self.page.locator('[data-decision="approve"]').click()
-        expect(self.page.locator(".decision-status")).to_contain_text("CONTRACT_INVALID")
-        expect(self.page.locator(".decision-status")).not_to_contain_text("已记录")
+        expect(self.page.locator('#page-content')).to_contain_text('合成')
+        expect(self.page.locator('#page-content')).to_contain_text('155,283.70')
+        self.assertTrue(any('/retail/overview' in call.url for call in self.api_calls))
+        self.page.locator('#overview-form [name="period"]').select_option('30')
+        with self.page.expect_response(lambda response: '/retail/overview?period=30' in response.url) as event:
+            self.page.locator('#overview-form button.primary-button').click()
+        self.assertEqual(event.value.json()['scope']['period'], 30)
+        expect(self.page.locator('#page-content')).to_contain_text('155,283.70')
 
-    def test_unknown_decision_outcome_requires_acknowledgement_before_resubmission(self):
-        def uncertain_transport(route, call):
-            if call["path"].endswith("/decisions"):
-                route.abort("internetdisconnected")
-                self.transport = None
-            else:
-                route.fulfill(json=self.response_for(call["body"]))
-        self.transport = uncertain_transport
-        self.open()
-        self.submit()
-        expect(self.page.locator(".result-card")).to_have_count(1)
-        self.page.locator('[data-decision="approve"]').click()
-        expect(self.page.locator(".decision-status")).to_contain_text("服务端可能仍在处理")
-        count = len(self.calls)
-        self.page.once("dialog", lambda dialog: dialog.dismiss())
-        self.page.locator('[data-decision="approve"]').click()
-        self.assertEqual(len(self.calls), count)
-        self.page.once("dialog", lambda dialog: dialog.accept())
-        self.page.locator('[data-decision="approve"]').click()
-        expect(self.page.locator(".decision-status")).to_contain_text("已记录：模拟确认")
-        self.assertEqual(len(self.calls), count + 1)
+    def test_cash_simulation_requires_preview_confirmation_and_uses_live_result(self):
+        self.open('cashflow_simulation')
+        form = self.page.locator('#simulation-form')
+        expect(form).to_be_visible()
+        form.locator('[name="horizon_days"]').fill('14')
+        form.locator('[name="reduction_pct"]').fill('20')
+        form.locator('[name="request_text"]').fill('核对未来14天减少20%采购的缺货风险')
+        form.locator('button.primary-button').click()
+        expect(self.page.locator('#scenario-preview')).to_be_visible()
+        self.assertEqual(self.posts_to('/retail/simulate'), [])
+        with self.page.expect_response(lambda response: '/retail/simulate' in response.url) as event:
+            self.page.locator('[data-action="confirm-simulation"]').click()
+        result = event.value.json()
+        self.assertEqual(event.value.status, 200)
+        self.assertEqual(result['metrics']['purchase_outflow']['baseline'], 132712.3)
+        expect(self.page.locator('#page-content')).to_contain_text('132,712.30')
+        expect(self.page.locator('#page-content')).to_contain_text('105,690.80')
+        request = self.posts_to('/retail/simulate')[0].post_data_json
+        self.assertEqual((request['horizon_days'], request['reduction_pct']), (14, 20))
 
-    def test_late_response_stays_with_its_agent_after_navigation(self):
-        self.run_response = lambda request: None if request["agent_type"] == "slow_moving" else self.response_for(request)
-        self.open()
-        self.submit()
-        expect(self.page.locator("#run-status")).to_contain_text("请求处理中")
-        expect(self.page.locator('[name="as_of"]')).to_be_disabled()
-        self.navigate("near_expiry")
-        self.submit()
-        expect(self.page.locator(".result-card")).to_have_count(1)
-        before = self.page.locator("#run-output").inner_text()
-        self.release()
-        expect(self.page.locator("#page-title")).to_have_text("近效期分析")
-        expect(self.page.locator("#run-output")).to_have_text(before, use_inner_text=True)
-        self.navigate("slow_moving")
-        expect(self.page.locator(".metric-grid")).to_contain_text("¥220.00")
+    def test_editing_simulation_invalidates_the_unsubmitted_preview(self):
+        self.open('cashflow_simulation')
+        form = self.page.locator('#simulation-form')
+        form.locator('button.primary-button').click()
+        expect(self.page.locator('[data-action="confirm-simulation"]')).to_be_visible()
+        form.locator('[name="reduction_pct"]').fill('25')
+        expect(self.page.locator('[data-action="confirm-simulation"]')).to_have_count(0)
+        self.assertEqual(self.posts_to('/retail/simulate'), [])
 
-    def test_late_decision_response_cannot_replace_another_agent_output(self):
-        self.decision_response = lambda call: None
-        self.open()
-        self.submit()
-        expect(self.page.locator(".result-card")).to_have_count(1)
-        self.page.locator('[data-decision="approve"]').click()
-        expect(self.page.locator(".decision-status")).to_contain_text("正在记录")
-        self.navigate("near_expiry")
-        self.submit()
-        expect(self.page.locator(".result-card")).to_have_count(1)
-        before = self.page.locator("#run-output").inner_text()
-        self.release()
-        expect(self.page.locator("#run-output")).to_have_text(before, use_inner_text=True)
-        self.navigate("slow_moving")
-        expect(self.page.locator(".decision-status")).to_contain_text("已记录：模拟确认")
+    def test_workbench_calculation_displays_backend_constraints(self):
+        self.open('transfer')
+        form = self.page.locator('#workbench-form')
+        expect(form).to_be_visible()
+        form.locator('[name="quantity"]').fill('100')
+        with self.page.expect_response(lambda response: '/workbenches/transfer/calculate' in response.url) as event:
+            self.page.locator('[data-action="calculate"]').click()
+        result = event.value.json()
+        self.assertFalse(result['calculation']['valid'])
+        expect(self.page.locator('#page-content')).to_contain_text('超出调出门店可调数量')
+        self.assertEqual(self.posts_to('/workbenches/transfer/save'), [])
 
-    def test_cancel_waiting_reports_unknown_outcome_without_retry(self):
-        self.run_response = lambda request: None
-        self.open()
-        self.submit()
-        expect(self.page.locator('[data-action="cancel"]')).to_be_visible()
-        self.page.locator('[data-action="cancel"]').click()
-        expect(self.page.locator("#run-status")).to_contain_text("请求已取消")
-        expect(self.page.locator("#run-status")).to_contain_text("服务端可能仍在处理")
-        expect(self.page.locator("#agent-form button[type=submit]")).to_be_enabled()
-        expect(self.page.locator(".metric")).to_have_count(0)
-        self.assertEqual(len(self.calls), 1)
+    def test_calculated_but_unsaved_input_cannot_approve_the_older_proposal(self):
+        self.open('transfer')
+        self.page.locator('#workbench-form [name="quantity"]').fill('41')
+        with self.page.expect_response(lambda response: '/workbenches/transfer/calculate' in response.url):
+            self.page.locator('[data-action="calculate"]').click()
+        expect(self.page.locator('#calculation-result')).to_be_visible()
+        self.page.locator('#app-nav a[href="#today"]').click()
+        approve = self.page.locator('[data-proposal-action="approve"][data-id="PROP-AC10-001"]')
+        expect(approve).to_be_disabled()
+        self.assertEqual(self.posts_to('/approve'), [])
+        # Reloading must still inspect the persisted draft; local state is not the authority.
+        self.page.reload()
+        approve = self.page.locator('[data-proposal-action="approve"][data-id="PROP-AC10-001"]')
+        expect(approve).to_be_visible()
+        if approve.is_enabled():
+            approve.click()
+            expect(self.page.locator('#page-status')).to_contain_text('请求未完成')
+        self.assertEqual(self.posts_to('/approve'), [])
 
-    def test_timeout_reports_unknown_outcome_without_automatic_retry(self):
-        self.run_response = lambda request: None
+    def test_read_failure_shows_error_and_can_reload_the_actual_backend(self):
+        self.page.route('**/api/v1/retail/overview*', lambda route: route.abort('connectionfailed'))
         self.open()
-        self.page.clock.install()
-        self.submit()
-        expect(self.page.locator("#run-status")).to_contain_text("请求处理中")
-        self.page.clock.fast_forward(60001)
-        expect(self.page.locator("#run-status")).to_contain_text("请求超时")
-        expect(self.page.locator("#run-status")).to_contain_text("服务端可能仍在处理")
-        self.assertEqual(len(self.calls), 1)
+        expect(self.page.locator('#page-status')).to_contain_text('请求未完成')
+        expect(self.page.locator('#page-content')).not_to_contain_text('155,283.70')
+        self.page.unroute('**/api/v1/retail/overview*')
+        self.page.locator('#page-status [data-action="reload"]').click()
+        expect(self.page.locator('#page-content')).to_contain_text('155,283.70')
 
-    def test_mobile_navigation_long_evidence_and_series_do_not_overflow(self):
-        def long_response(request):
-            value = self.response_for(request)
-            value["warnings"].append({"code": "FIXTURE_ONLY", "message": "长文本验证：" + "LONG_RECORD_ID_" * 30})
-            for item in value["items"]:
-                item["entity"]["sku_name"] = "很长的合成商品标识" * 20
-                old_id = item["evidence"][0]["record_id"]
-                new_id = "RECORD_" * 45
-                item["evidence"][0]["record_id"] = new_id
-                for recommendation in item["recommendations"]:
-                    recommendation["evidence_ids"] = [new_id if record == old_id else record for record in recommendation["evidence_ids"]]
-                item["details"]["inventory_capital_series"] = [{"date": "2026-10-02", "baseline_capital_fen": 22000, "scenario_capital_fen": 22000}]
-            return value
-        self.run_response = long_response
-        self.page.set_viewport_size({"width": 390, "height": 844})
+    def test_changing_overview_scope_and_failing_read_removes_old_metrics(self):
         self.open()
-        for agent in AGENTS:
-            with self.subTest(agent=agent):
-                self.page.locator("#nav-toggle").click()
-                self.page.locator(f'#app-nav [data-agent="{agent}"]').click()
-                expect(self.page.locator(f'#app-nav [data-agent="{agent}"]')).to_have_attribute("aria-current", "page")
-                self.submit()
-                if agent == "cashflow_simulation": expect(self.page.locator(".scenario-card")).to_be_visible()
-                else: expect(self.page.locator(".result-card")).to_have_count(1)
-                for details in self.page.locator("#run-output details").all():
-                    details.evaluate("node => { node.open = true; }")
-                widths = self.page.evaluate("({viewport:innerWidth,document:document.documentElement.scrollWidth})")
-                self.assertLessEqual(widths["document"], widths["viewport"], f"{agent}: {widths}")
-        self.page.locator("#nav-toggle").click()
-        self.page.locator('#app-nav [data-page="data"]').click()
-        expect(self.page.locator("#data-page")).to_be_visible()
-        self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 390)
+        expect(self.page.locator('#page-content')).to_contain_text('155,283.70')
+        self.page.route('**/api/v1/retail/overview*store_id=STORE-001', lambda route: route.abort('connectionfailed'))
+        self.page.locator('#overview-form [name="store_id"]').select_option('STORE-001')
+        self.page.locator('#overview-form button.primary-button').click()
+        expect(self.page.locator('#page-status')).to_contain_text('请求未完成')
+        expect(self.page.locator('#page-content')).not_to_contain_text('155,283.70')
+        expect(self.page.locator('#page-content .metric')).to_have_count(0)
 
-    def test_data_download_is_input_file_without_import_or_reset(self):
-        self.open()
-        self.page.locator('#app-nav [data-page="data"]').click()
-        expect(self.page.locator("#data-content")).to_contain_text("snack-demo-v1")
-        with self.page.expect_download() as download:
-            self.page.locator('a[download][href$="stores.csv"]').click()
-        contents = Path(download.value.path()).read_text(encoding="utf-8-sig")
-        self.assertIn("store_id,store_name,region_id,status", contents)
-        self.assertIn("STORE-HZ-001", contents)
-        self.assertEqual(self.calls, [])
+    def test_pending_save_locks_other_business_forms_and_keeps_original_risk(self):
+        pending = []
+        self.page.route('**/api/v1/workbenches/transfer/save', lambda route: pending.append(route))
+        self.addCleanup(lambda: [route.abort() for route in pending])
+        self.open('transfer')
+        self.page.locator('#workbench-form [name="quantity"]').fill('41')
+        with self.page.expect_response(lambda response: response.url.endswith('/transfer/calculate')):
+            self.page.locator('[data-action="calculate"]').click()
+        self.page.locator('[data-action="save"]').click()
+        expect(self.page.locator('#workbench-form [name="quantity"]')).to_be_disabled()
+        self.assertEqual(len(pending), 1)
+        self.page.locator('#app-nav a[href="#slow_moving"]').click()
+        expect(self.page.locator('#feedback-form [name="raw_text"]')).to_be_disabled()
+        expect(self.page.locator('#risk-form [name="risk_id"]')).to_be_disabled()
+        expect(self.page.locator('[data-action="open-workbench"]')).to_be_disabled()
+        with self.page.expect_response(lambda response: response.url.endswith('/transfer/save')) as event:
+            pending.pop().continue_()
+        self.assertEqual(event.value.json()['proposal']['risk_id'], 1)
+        expect(self.page.locator('#feedback-form [name="raw_text"]')).to_be_enabled()
+        expect(self.page.locator('#page-title')).to_have_text('滞销诊断')
+        self.page.locator('#app-nav a[href="#transfer"]').click()
+        expect(self.page.locator('#workbench-form [name="risk_id"]')).to_have_value('1')
+        expect(self.page.locator('#workbench-form [name="quantity"]')).to_have_value('41')
+        expect(self.page.locator('#workbench-proposal')).to_contain_text('方案草稿')
 
-    def test_mobile_navigation_closes_on_backdrop_escape_and_current_page(self):
-        self.page.set_viewport_size({"width": 390, "height": 844})
+    def test_empty_tenant_overview_keeps_unknown_money_out_of_sample_values(self):
+        self.context.set_extra_http_headers({'X-Tenant-Id':'empty-browser-view'})
         self.open()
-        self.page.locator("#nav-toggle").click()
-        expect(self.page.locator("#nav-backdrop")).to_be_visible()
-        self.page.locator("#nav-backdrop").click(position={"x": 380, "y": 30})
-        expect(self.page.locator("#nav-backdrop")).to_be_hidden()
-        self.page.locator("#nav-toggle").click()
-        self.page.keyboard.press("Escape")
-        expect(self.page.locator("#nav-backdrop")).to_be_hidden()
-        self.page.locator("#nav-toggle").click()
-        self.page.locator('#app-nav [data-agent="slow_moving"]').click()
-        expect(self.page.locator("#nav-backdrop")).to_be_hidden()
-        expect(self.page.locator("#nav-toggle")).to_have_attribute("aria-expanded", "false")
-        self.submit()
-        expect(self.page.locator(".result-card")).to_have_count(1)
+        expect(self.page.locator('#page-content')).to_contain_text('未接入')
+        expect(self.page.locator('#page-content')).not_to_contain_text('155,283.70')
+        self.assertFalse(any(request.method == 'POST' for request in self.api_calls))
+
+    def test_data_page_loads_the_current_manifest_and_downloads_public_inputs(self):
+        self.open('data')
+        links = self.page.locator('#page-content a[href^="/sample-data/"]')
+        expect(links.first).to_be_visible()
+        expect(self.page.locator('#page-content')).to_contain_text('合成')
+        self.assertTrue(any('/data-center' in request.url for request in self.api_calls))
+        for href in links.evaluate_all('(links) => links.map(link => link.getAttribute("href"))'):
+            with self.subTest(href=href), urlopen(self.base_url + href, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+                self.assertTrue(response.read())
+
+    def test_mobile_layout_and_navigation(self):
+        self.page.set_viewport_size({'width':390, 'height':844})
+        self.open()
+        expect(self.page.locator('#page-content')).to_contain_text('合成')
+        self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), 390)
+        toggle = self.page.locator('#nav-toggle')
+        toggle.click()
+        expect(toggle).to_have_attribute('aria-expanded', 'true')
+        self.page.locator('#app-nav a[href="#cashflow_simulation"]').click()
+        expect(self.page.locator('#simulation-form')).to_be_visible()
+        expect(toggle).to_have_attribute('aria-expanded', 'false')
+
+    def test_live_backend_version_and_public_api_boundary(self):
+        status, schema = self.http(self.backend_url + '/openapi.json')
+        self.assertEqual(status, 200)
+        self.assertEqual(schema['info']['version'], '1.2.0')
+        self.assertNotIn('/api/v1/agent-runs', schema['paths'])
+        status, _ = self.http(self.base_url + '/api/v1/agent-runs', 'POST', {})
+        self.assertEqual(status, 404)
+
+    def test_proxy_uses_actual_backend_and_preserves_validation_errors(self):
+        for payload in ({'reduction_pct':101}, {'horizon_days':1.2}, {'store_id':'not-a-store'}):
+            with self.subTest(payload=payload):
+                expected = self.http(self.backend_url + '/api/v1/retail/simulate', 'POST', payload)
+                observed = self.http(self.base_url + '/api/v1/retail/simulate', 'POST', payload)
+                self.assertEqual(observed, expected)
+                self.assertEqual(observed[0], 422)
+
+    def test_proxy_preserves_tenant_isolation_and_real_unavailable_state(self):
+        headers = {'X-Tenant-Id':'browser-empty-tenant'}
+        _, overview = self.http(self.base_url + '/api/v1/retail/overview', headers=headers)
+        _, options = self.http(self.base_url + '/api/v1/retail/simulation-options', headers=headers)
+        _, simulation = self.http(self.base_url + '/api/v1/retail/simulate', 'POST', {}, headers)
+        self.assertFalse(overview['is_demo'])
+        self.assertIsNone(overview['inventory']['cost'])
+        self.assertIsNone(overview['account']['balance'])
+        self.assertEqual(options['stores'], [])
+        self.assertEqual(simulation['status'], 'unavailable')
+        self.assertIsNone(simulation['metrics'])
+
+    def test_real_saved_proposal_creates_one_external_execution_draft(self):
+        for module, risk_id in [('transfer', 1), ('expiry-rescue', 3), ('procurement-brake', 4)]:
+            with self.subTest(module=module):
+                status, result = self.http(self.base_url + f'/api/v1/workbenches/{module}/calculate',
+                                           'POST', {'input': {'risk_id': risk_id}})
+                self.assertEqual(status, 200)
+                self.assertTrue(result['calculation']['valid'])
+        status, saved = self.http(self.base_url + '/api/v1/workbenches/transfer/save',
+                                 'POST', {'input': {'risk_id': 1}})
+        self.assertEqual(status, 200)
+        proposal_id = saved['proposal']['id']
+        self.assertEqual(saved['proposal']['status'], 'draft')
+        status, submitted = self.http(self.base_url + f'/api/v1/proposals/{proposal_id}/submit', 'POST', {})
+        self.assertEqual((status, submitted['status']), (200, 'pending_approval'))
+        for action in ('approve', 'execute'):
+            url = self.base_url + f'/api/v1/proposals/{proposal_id}/{action}'
+            headers = {'Idempotency-Key': f'browser-{action}-{proposal_id}'}
+            status, first = self.http(url, 'POST', {}, headers)
+            repeated_status, repeated = self.http(url, 'POST', {}, headers)
+            self.assertEqual((status, repeated_status), (200, 200))
+            self.assertEqual(first['id'], repeated['id'])
+        self.assertEqual(first['status'], 'draft_pending_external_execution')
+        _, tasks = self.http(self.base_url + '/api/v1/execution-tasks')
+        self.assertEqual(len([task for task in tasks['items'] if task['proposal_id'] == proposal_id]), 1)
+
+    def test_real_confirmed_feedback_invalidates_the_previous_proposal(self):
+        _, investigation = self.http(self.base_url + '/api/v1/risks/1/investigations', 'POST', {})
+        status, feedback = self.http(self.base_url + f"/api/v1/investigations/{investigation['id']}/feedback",
+                                     'POST', {'raw_text': '今天已核查此前未上架，现已补上',
+                                              'submitted_at': '2026-10-03T10:00:00+08:00'})
+        self.assertEqual(status, 200)
+        self.assertEqual(feedback['confirmation_status'], 'pending_confirmation')
+        _, before = self.http(self.base_url + '/api/v1/proposals')
+        previous = next(item for item in before['items'] if item['id'] == 'PROP-AC10-001')
+        self.assertEqual(previous['status'], 'pending_approval')
+        status, _ = self.http(self.base_url + f"/api/v1/feedback/{feedback['id']}/confirm", 'POST',
+                              {'confirmed': {'factors': [{'label': '此前未上架', 'causal_status': 'unknown'}],
+                                             'remediation_status': 'done'}})
+        self.assertEqual(status, 200)
+        _, after = self.http(self.base_url + '/api/v1/proposals')
+        invalidated = next(item for item in after['items'] if item['id'] == previous['id'])
+        self.assertEqual(invalidated['status'], 'needs_replan')
+        status, updated = self.http(self.base_url + '/api/v1/risks/1/replan', 'POST', {})
+        self.assertEqual((status, updated['current_version']), (200, previous['current_version'] + 1))
+        self.assertEqual(updated['status'], 'pending_approval')
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,59 +1,47 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="api-base" content="/api/v1" />
-    <meta name="description" content="货不压钱：从库存事实出发，核对五类业务建议、工具结果与人工确认。合成零食演示，金额为场景测算。" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="api-base" content="/api/v1">
+    <meta name="description" content="货不压钱：核对库存证据、测算处置方案、记录审批与人工执行。">
     <title>货不压钱 · 库存决策工作台</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="preload" href="assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="preload" href="assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="styles.css">
     <script type="module" src="app.js"></script>
   </head>
   <body>
     <a class="skip-link" href="#workspace">跳到主要内容</a>
-    <noscript><p class="noscript-notice">请启用 JavaScript，并通过项目服务打开工作台。页面需要从接口读取数据与计算结果。</p></noscript>
+    <noscript><p>请启用 JavaScript，并通过 start.bat 或 start.ps1 打开工作台。</p></noscript>
     <div class="app-shell">
-      <aside id="app-sidebar" class="sidebar" aria-label="业务导航">
-        <div class="brand">
-          <span class="brand-mark material-symbols-rounded" aria-hidden="true">inventory_2</span>
-          <span><strong>货不压钱</strong><small>库存决策工作台</small></span>
-        </div>
+      <aside class="sidebar" id="app-sidebar" aria-label="业务导航">
+        <div class="brand"><span class="brand-mark material-symbols-rounded" aria-hidden="true">inventory_2</span><span><strong>货不压钱</strong><small>库存决策工作台</small></span></div>
         <nav id="app-nav" class="app-nav" aria-label="主导航">
-          <p class="nav-label">五个业务 Agent</p>
-          <button type="button" data-agent="slow_moving"><span class="material-symbols-rounded" aria-hidden="true">troubleshoot</span><span>滞销诊断</span></button>
-          <button type="button" data-agent="store_transfer"><span class="material-symbols-rounded" aria-hidden="true">swap_horiz</span><span>跨门店调拨</span></button>
-          <button type="button" data-agent="near_expiry"><span class="material-symbols-rounded" aria-hidden="true">timer</span><span>近效期处置</span></button>
-          <button type="button" data-agent="procurement_brake"><span class="material-symbols-rounded" aria-hidden="true">front_hand</span><span>采购刹车</span></button>
-          <button type="button" data-agent="cashflow_simulation"><span class="material-symbols-rounded" aria-hidden="true">finance_mode</span><span>资金周转模拟</span></button>
-          <p class="nav-label nav-label-secondary">数据基础</p>
-          <button type="button" data-page="data"><span class="material-symbols-rounded" aria-hidden="true">database</span><span>数据与版本说明</span></button>
+          <a href="#overview"><span class="material-symbols-rounded" aria-hidden="true">monitoring</span>经营总览</a>
+          <a href="#today"><span class="material-symbols-rounded" aria-hidden="true">task_alt</span>今日待办</a>
+          <p class="nav-label nav-label-secondary">分析与测算</p>
+          <a href="#slow_moving"><span class="material-symbols-rounded" aria-hidden="true">troubleshoot</span>滞销诊断</a>
+          <a href="#transfer"><span class="material-symbols-rounded" aria-hidden="true">swap_horiz</span>跨店调拨</a>
+          <a href="#expiry-rescue"><span class="material-symbols-rounded" aria-hidden="true">timer</span>近效期处置</a>
+          <a href="#procurement-brake"><span class="material-symbols-rounded" aria-hidden="true">front_hand</span>采购刹车</a>
+          <a href="#cashflow_simulation"><span class="material-symbols-rounded" aria-hidden="true">finance_mode</span>采购情景模拟</a>
+          <a href="#data"><span class="material-symbols-rounded" aria-hidden="true">database</span>数据与接口</a>
         </nav>
-        <div class="sidebar-note"><span class="badge">合成零食演示</span><p>基于接口事实与工具计算。<br />场景测算不代表真实客户收益。</p></div>
+        <div class="sidebar-note"><span class="badge">规则计算 · 人工确认</span><p>当前模型适配层尚未接入。<br>测算、审批和执行回执分别记录。</p></div>
       </aside>
       <button id="nav-backdrop" class="nav-backdrop" type="button" aria-label="关闭导航" tabindex="-1" hidden></button>
       <div class="app-main">
-        <header class="topbar">
-          <div class="topbar-start">
-            <button id="nav-toggle" class="icon-button" type="button" aria-label="打开导航" aria-controls="app-sidebar" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button>
-            <span class="topbar-title">业务决策工作台</span>
-          </div>
-          <span class="demo-label"><span class="material-symbols-rounded" aria-hidden="true">science</span>合成零食演示</span>
-        </header>
+        <header class="topbar"><div class="topbar-start"><button type="button" id="nav-toggle" class="icon-button" aria-label="打开导航" aria-controls="app-sidebar" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><span class="topbar-title">业务决策工作台</span></div><span class="demo-label">v1.2 · 规则与证据</span></header>
         <main id="workspace" class="workspace" tabindex="-1">
-          <header class="page-header"><p class="eyebrow">从事实到建议</p><h1 id="page-title">库存决策工作台</h1><p id="page-description">正在读取接口契约与可用业务能力。</p></header>
-          <div id="connection-status" class="status-panel is-loading" role="status" aria-live="polite" aria-atomic="true">正在加载接口契约，请稍候。</div>
-          <section id="agent-page" aria-labelledby="page-title">
-            <form id="agent-form" aria-label="Agent 运行参数"></form>
-            <div id="run-status" aria-live="polite" aria-atomic="true"></div>
-            <div id="run-output"></div>
-          </section>
-          <section id="data-page" aria-labelledby="page-title" hidden><div id="data-content"></div></section>
-          <footer class="workspace-footer">建议需结合证据与约束核对，人工确认记录以接口返回为准。</footer>
+          <header class="page-header"><p class="eyebrow">从事实到行动</p><h1 id="page-title">经营总览</h1><p id="page-description"></p></header>
+          <div id="connection-status" class="status-panel" role="status"></div>
+          <div id="page-status" aria-live="polite" aria-atomic="true"></div>
+          <section id="page-content" aria-labelledby="page-title"></section>
+          <footer class="workspace-footer">金额按人民币元展示；库存占用、少采购和现金到账分别核对。当前仅记录本地任务与人工回执。</footer>
         </main>
       </div>
     </div>
-    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+    <div id="toast" class="toast" role="status" hidden></div>
   </body>
 </html>

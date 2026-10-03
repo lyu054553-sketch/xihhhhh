@@ -17,8 +17,9 @@ from scripts.serve_frontend import MAX_BODY_BYTES, serve, validate_api_base
 
 class UpstreamHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-        body = self.rfile.read(int(self.headers["Content-Length"]))
+        body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
         self.server.requests.append((self.path, body, dict(self.headers)))
+        self.server.methods.append(self.command)
         if self.server.status is None:
             self.close_connection = True
             return
@@ -34,6 +35,8 @@ class UpstreamHandler(BaseHTTPRequestHandler):
         except ConnectionError:
             pass
 
+    do_GET = do_POST
+
     def log_message(self, *args):
         pass
 
@@ -45,11 +48,11 @@ class FrontendServerTests(unittest.TestCase):
         self.root = Path(temporary.name)
         files = {
             "index.html": b"<!doctype html><title>frontend</title>",
-            "app.js": b"export const contract = 'v0.3';",
+            "app.js": b"export const contract = 'v1.2';",
             "styles.css": b"[hidden]{display:none}",
             "assets/js/client.mjs": b"export {};",
             "assets/fonts/icons.woff2": b"font-fixture",
-            "docs/API_CONTRACT.md": b"# v0.3",
+            "API_CONTRACT.md": b"# v1.2",
             "docs/DEMO_SLIDES.pptx": b"deck-fixture",
             "sample-data/generated/dataset.json": b'{"synthetic":true}',
             "backend/api.py": b"private backend",
@@ -83,6 +86,7 @@ class FrontendServerTests(unittest.TestCase):
     def upstream(self, status=200, payload=b'{"fixture":true}', delay=0):
         server = ThreadingHTTPServer(("127.0.0.1", 0), UpstreamHandler)
         server.requests = []
+        server.methods = []
         server.status, server.payload, server.delay = status, payload, delay
         return self.start(server)
 
@@ -102,7 +106,7 @@ class FrontendServerTests(unittest.TestCase):
     def test_public_files_and_head(self):
         frontend = self.frontend()
         for path in ("/", "/app.js", "/styles.css", "/assets/js/client.mjs", "/assets/fonts/icons.woff2",
-                     "/docs/API_CONTRACT.md", "/docs/DEMO_SLIDES.pptx", "/sample-data/generated/dataset.json"):
+                     "/API_CONTRACT.md", "/docs/DEMO_SLIDES.pptx", "/sample-data/generated/dataset.json"):
             with self.subTest(path=path):
                 status, body, headers = self.request(frontend, path)
                 self.assertEqual(status, 200)
@@ -132,27 +136,44 @@ class FrontendServerTests(unittest.TestCase):
                 self.assertEqual(status, 400)
 
     def test_no_backend_returns_explicit_503_without_business_payload(self):
-        status, body, _ = self.request(self.frontend(), "/api/v1/agent-runs", "POST", b"{}")
+        status, body, _ = self.request(self.frontend(), "/api/v1/retail/simulate", "POST", b"{}")
         self.assertEqual(status, 503)
         payload = json.loads(body)
         self.assertEqual(payload["error"]["code"], "API_NOT_CONFIGURED")
         self.assertNotIn("items", payload)
         self.assertNotIn("status", payload)
 
-    def test_proxy_preserves_body_path_and_selected_headers_for_both_routes(self):
+    def test_proxy_preserves_write_body_path_and_tenant_and_idempotency_headers(self):
         upstream = self.upstream(payload=b' { "status" : "fixture" }\n')
         frontend = self.frontend(upstream)
         body = b' { "request_id" : "fixture", "raw": "\\u4e2d" }\n'
-        for suffix in ("/agent-runs", "/agent-runs/run-001/decisions"):
+        for suffix in ("/retail/simulate", "/workbenches/transfer/save", "/proposals/proposal-001/execute"):
             status, payload, _ = self.request(frontend, "/api/v1" + suffix, "POST", body,
-                                               {"Content-Type": "application/json", "X-Request-ID": "fixture-request"})
+                                               {"Content-Type": "application/json", "X-Request-ID": "fixture-request",
+                                                "X-Tenant-Id": "tenant-example", "Idempotency-Key": "action-key"})
             self.assertEqual(status, 200)
             self.assertEqual(payload, upstream.payload)
             path, received, headers = upstream.requests[-1]
             self.assertEqual(path, "/gateway/api/v1" + suffix)
             self.assertEqual(received, body)
             self.assertEqual(headers["X-Request-ID"], "fixture-request")
-        self.assertEqual(len(upstream.requests), 2)
+            self.assertEqual(headers["X-Tenant-Id"], "tenant-example")
+            self.assertEqual(headers["Idempotency-Key"], "action-key")
+        self.assertEqual(upstream.methods, ["POST"] * 3)
+
+    def test_read_routes_preserve_query_and_tenant_without_mutating_requests(self):
+        upstream = self.upstream()
+        frontend = self.frontend(upstream)
+        for suffix in ("/retail/overview?period=7&store_id=STORE-001", "/retail/simulation-options", "/risks/1",
+                       "/risks", "/workbenches/transfer?risk_id=1", "/proposals", "/proposals/p-1/versions",
+                       "/execution-tasks", "/data-center", "/work-items", "/cases"):
+            status, _, _ = self.request(frontend, "/api/v1" + suffix, headers={"X-Tenant-Id": "isolated"})
+            self.assertEqual(status, 200)
+            path, body, headers = upstream.requests[-1]
+            self.assertEqual(path, "/gateway/api/v1" + suffix)
+            self.assertEqual(body, b"")
+            self.assertEqual(headers["X-Tenant-Id"], "isolated")
+        self.assertEqual(upstream.methods, ["GET"] * 11)
 
     def test_upstream_errors_and_redirects_are_preserved_without_retry(self):
         upstream = self.upstream()
@@ -160,24 +181,29 @@ class FrontendServerTests(unittest.TestCase):
         for code in (302, 422, 429, 503, 504):
             upstream.status = code
             upstream.payload = f'{{"fixture_status":{code}}}'.encode()
-            status, body, headers = self.request(frontend, "/api/v1/agent-runs", "POST", b"{}")
+            status, body, headers = self.request(frontend, "/api/v1/retail/simulate", "POST", b"{}")
             self.assertEqual((status, body), (code, upstream.payload))
             self.assertEqual(headers["Retry-After"], "5")
         self.assertEqual(len(upstream.requests), 5)
 
-    def test_only_v03_post_routes_are_forwarded(self):
+    def test_only_explicit_v12_routes_and_methods_are_forwarded(self):
         upstream = self.upstream()
         frontend = self.frontend(upstream)
-        for path in ("/api/v1/demo/reset", "/api/v1/workbenches/transfer/save", "/api/v1/agent-runs/run-001",
-                     "/api/v1/agent-runs/run-001/decisions/extra", "/app.js"):
+        for path in ("/api/v1/demo/reset", "/api/v1/data-center/imports", "/api/v1/agent-runs",
+                     "/api/v1/agent-runs/run-001/decisions", "/api/v1/retail/simulate/extra",
+                     "/api/v1/workbenches/unknown/save", "/app.js"):
             self.assertEqual(self.request(frontend, path, "POST", b"{}")[0], 404)
-        self.assertEqual(self.request(frontend, "/api/v1/agent-runs")[0], 404)
+        for path in ("/api/v1/health", "/api/v1/dashboard", "/api/v1/retail/simulate", "/api/v1/anything"):
+            self.assertEqual(self.request(frontend, path)[0], 404)
+        for method in ("PUT", "PATCH", "DELETE"):
+            self.assertEqual(self.request(frontend, "/api/v1/retail/simulate", method, b"{}")[0], 501)
+        self.assertEqual(self.request(frontend, "/api/v1/retail/overview", "HEAD")[0], 405)
         self.assertEqual(upstream.requests, [])
 
     def test_request_limit_is_enforced_before_forwarding(self):
         upstream = self.upstream()
         frontend = self.frontend(upstream)
-        status, body, _ = self.request(frontend, "/api/v1/agent-runs", "POST", b"{}",
+        status, body, _ = self.request(frontend, "/api/v1/retail/simulate", "POST", b"{}",
                                        {"Content-Length": str(MAX_BODY_BYTES + 1)})
         self.assertEqual(status, 413)
         self.assertEqual(json.loads(body)["error"]["code"], "BODY_TOO_LARGE")
@@ -190,7 +216,7 @@ class FrontendServerTests(unittest.TestCase):
                                   ({"Transfer-Encoding": "chunked"}, 400)):
             connection = http.client.HTTPConnection("127.0.0.1", frontend.server_port, timeout=2)
             try:
-                connection.putrequest("POST", "/api/v1/agent-runs")
+                connection.putrequest("POST", "/api/v1/retail/simulate")
                 for key, value in headers.items():
                     connection.putheader(key, value)
                 connection.endheaders()
@@ -203,7 +229,7 @@ class FrontendServerTests(unittest.TestCase):
     def test_network_failure_is_502(self):
         upstream = self.upstream(status=None)
         frontend = self.frontend(upstream)
-        status, body, _ = self.request(frontend, "/api/v1/agent-runs", "POST", b"{}")
+        status, body, _ = self.request(frontend, "/api/v1/retail/simulate", "POST", b"{}")
         self.assertEqual(status, 502)
         self.assertEqual(json.loads(body)["error"]["code"], "UPSTREAM_UNAVAILABLE")
         self.assertEqual(len(upstream.requests), 1)
@@ -211,7 +237,7 @@ class FrontendServerTests(unittest.TestCase):
     def test_upstream_timeout_is_504_without_retry(self):
         upstream = self.upstream(delay=.2)
         frontend = self.frontend(upstream, timeout=.03)
-        status, body, _ = self.request(frontend, "/api/v1/agent-runs", "POST", b"{}")
+        status, body, _ = self.request(frontend, "/api/v1/retail/simulate", "POST", b"{}")
         self.assertEqual(status, 504)
         self.assertEqual(json.loads(body)["error"]["code"], "UPSTREAM_TIMEOUT")
         self.assertEqual(len(upstream.requests), 1)

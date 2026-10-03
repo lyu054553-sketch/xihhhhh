@@ -1,5 +1,0 @@
-sku_id,sku_name,category_id,brand_name,barcode,specification,unit,unit_cost_fen,sale_price_fen,shelf_life_days,min_order_qty,case_pack_qty
-SNK-001,椒盐海苔脆片,SNACK-CHIPS,,,45g/袋,bag,350,600,180,24,24
-SNK-002,每日坚果组合,SNACK-NUTS,,,120g/袋,bag,880,1290,120,6,6
-SNK-003,草莓牛奶,SNACK-DRINK,,,200ml/瓶,bottle,230,350,180,24,24
-SNK-004,香辣豆干,SNACK-BEAN,,,90g/袋,bag,270,450,90,12,12

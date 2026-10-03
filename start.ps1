@@ -4,6 +4,7 @@ param(
     [ValidateRange(1, 65535)]
     [int]$Port = 8000,
     [string]$ListenHost = '127.0.0.1',
+    [string]$Database = $env:INVENTORY_AGENT_DB,
     [switch]$Check
 )
 
@@ -16,7 +17,7 @@ if (-not (Test-Path -LiteralPath $pythonExecutable -PathType Leaf)) {
         $pythonExecutable = $pythonCommand.Source
     } else {
         $pythonCommand = Get-Command py -ErrorAction SilentlyContinue
-        if (-not $pythonCommand) { throw 'Install Python 3.10 or newer to start the frontend.' }
+        if (-not $pythonCommand) { throw 'Install Python 3.10 or newer to start the application.' }
         $pythonExecutable = $pythonCommand.Source
         $pythonPrefix = @('-3')
     }
@@ -25,9 +26,10 @@ if (-not (Test-Path -LiteralPath $pythonExecutable -PathType Leaf)) {
 & $pythonExecutable @pythonPrefix -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)'
 if ($LASTEXITCODE -ne 0) { throw 'Python 3.10 or newer is required.' }
 
-$frontendArguments = @((Join-Path $PSScriptRoot 'scripts\serve_frontend.py'), '--host', $ListenHost, '--port', [string]$Port)
-if ($ApiBase) { $frontendArguments += @('--api-base', $ApiBase) }
-if ($Check) { $frontendArguments += '--check' }
+$applicationArguments = @((Join-Path $PSScriptRoot 'scripts\run_local.py'), '--host', $ListenHost, '--port', [string]$Port)
+if ($ApiBase) { $applicationArguments += @('--api-base', $ApiBase) }
+if ($Database) { $applicationArguments += @('--database', $Database) }
+if ($Check) { $applicationArguments += '--check' }
 
-& $pythonExecutable @pythonPrefix @frontendArguments
-if ($LASTEXITCODE -ne 0) { throw ('Frontend command exited with code {0}.' -f $LASTEXITCODE) }
+& $pythonExecutable @pythonPrefix @applicationArguments
+if ($LASTEXITCODE -ne 0) { throw ('Application command exited with code {0}.' -f $LASTEXITCODE) }

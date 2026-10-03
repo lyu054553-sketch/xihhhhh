@@ -1,390 +1,274 @@
-import { createApiClient } from "./assets/js/api-client.mjs";
-import { createRequestState } from "./assets/js/request-state.mjs";
-import { AGENT_TYPES, buildRunRequest, validateRunResponse, validateDecisionResponse, formatFen, formatMetric } from "./assets/js/agent-contract.mjs";
-import { AGENT_CONFIG, initialValues, paramsFromValues } from "./assets/js/agent-config.mjs";
-import { validateManifest, sampleDownloadTarget } from "./assets/js/dataset.mjs";
+import { createApiClient } from './assets/js/api-client.mjs';
+import * as contract from './assets/js/retail-contract.mjs';
+import { escapeHtml as e, details, panel, list, metric, source, select, input, button, STATUS_LABELS } from './assets/js/retail-view.mjs';
+import { validateManifest, sampleDownloadTarget } from './assets/js/dataset.mjs';
 
-const $ = (selector, root = document) => root.querySelector(selector);
-const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
-const apiBase = location.protocol === "file:" ? null : $('meta[name="api-base"]').content;
-const api = createApiClient({ baseUrl: apiBase, timeoutMs: 60000 });
-const requests = createRequestState();
-const state = { manifest: null, manifestError: null, agents: new Map(), active: "slow_moving", page: "agent", connected: false };
-const STATUS = {
-  succeeded: ["分析完成", "is-success"], partial: ["部分结果 · 请核对告警", "is-warning"],
-  no_data: ["当前范围没有数据", ""], needs_input: ["需要补充或确认输入", "is-warning"],
-  awaiting_confirmation: ["情景待确认 · 尚未计算", "is-warning"], failed: ["本次运行失败", "is-error"],
-};
-const ACTIONS = { pause_replenishment: "暂停补货", reduce_open_purchase_order: "减少未收货采购", transfer_stock: "门店调拨", markdown: "促销调价", prioritize_sale: "优先销售", review_data: "复核数据", no_action: "保持观察" };
-const LABELS = {
-  avg_daily_sales_qty: "日均净销量", days_since_last_sale: "距最近销售天数", days_of_supply: "库存覆盖天数",
-  target_stock_qty: "目标库存", excess_qty: "超额库存", excess_value_at_cost_fen: "超额库存成本",
-  source_available_qty: "调出店可用库存", target_available_qty: "接收店可用库存", recommended_transfer_qty: "建议调拨量",
-  source_after_qty: "调出后库存", target_after_qty: "调入后库存", lot_id: "批次", expiry_date: "到期日期",
-  days_to_expiry: "距到期天数", qty: "数量", unit: "计量单位", expected_sales_before_expiry_qty: "到期前预计销量",
-  risk_qty: "风险数量", risk_value_at_cost_fen: "成本风险敞口", open_qty: "未收货采购量",
-  projected_stock_qty: "预计库存", recommended_order_qty: "建议采购量", suggested_reduction_qty: "建议减少量",
-  stockout_risk: "缺货风险", case_pack_adjusted_qty: "整箱调整量",
-  baseline_inventory_capital_fen: "基线库存资金占用", scenario_inventory_capital_fen: "方案库存资金占用",
-  baseline_purchase_commitment_fen: "基线采购承诺", scenario_purchase_commitment_fen: "方案采购承诺",
-  estimated_avoided_purchase_commitment_fen: "预计减少采购承诺", stockout_risks: "各门店缺货风险",
-  inventory_capital_series: "库存资金占用趋势", baseline_capital_fen: "基线库存资金", scenario_capital_fen: "方案库存资金",
-  date: "日期", store_id: "门店编号", sku_id: "商品编号", source_store_id: "调出店编号", target_store_id: "接收店编号",
-  po_id: "采购单", reduction_qty: "减少数量", transfer_qty: "调拨数量", price_fen: "价格", sale_price_fen: "销售价格",
-  markdown_price_fen: "促销价格", unit_cost_fen: "单位成本", on_hand_qty: "实物库存", reserved_qty: "已预留库存",
-  net_sold_qty: "净销量", min_display_qty: "最低陈列量", risk_level: "风险等级", coverage_days: "覆盖天数",
-  as_of: "分析基准日", policy_version: "规则版本", data_version: "数据版本",
-};
-const labelFor = (key) => LABELS[key] || key;
+const $ = (s, root=document) => root.querySelector(s);
+const $$ = (s, root=document) => [...root.querySelectorAll(s)];
+const api = createApiClient({baseUrl:location.protocol==='file:'?null:$('meta[name="api-base"]').content,timeoutMs:60000});
+const post = (path,body={},headers={}) => api(path,{method:'POST',body:JSON.stringify(body),headers});
+const money = contract.formatYuan;
+const number = contract.formatNumber;
+const TITLES = {overview:'经营总览',today:'今日待办',slow_moving:'滞销诊断',transfer:'跨店调拨','expiry-rescue':'近效期处置','procurement-brake':'采购刹车',cashflow_simulation:'采购情景模拟',data:'数据与接口'};
+const WORKBENCHES = new Set(['transfer','expiry-rescue','procurement-brake']);
+const RISK_WORKBENCH = {'调拨':'transfer','促销':'expiry-rescue','采购刹车':'procurement-brake'};
+const DESCRIPTIONS = {overview:'先看需要关注的门店，再进入具体商品核对证据。',today:'待审批、审批后跟进与已完成分开呈现，状态以最新服务响应为准。',slow_moving:'销售差异是观察事实，原因假设需要门店反馈和人工核对。',transfer:'核对门店库存、运输费用和可售时间；内部调拨不产生现金到账。','expiry-rescue':'核对批次剩余数量与处置分配，促销投放量不代表确定销量。','procurement-brake':'库存、在途、未执行采购和付款压力分开核对。',cashflow_simulation:'当前仅测算减少可调整采购数量；确认范围与比例后再计算。',data:'样例可复现，版本、数据来源和缺项均可核对。'};
+const views = new Map(Object.keys(TITLES).map(route=>[route,{route,data:null,error:null,pending:false,busy:false,sequence:0,notice:'',riskId:null,dirty:false,input:null,preview:null,proposal:null,feedback:null,tab:'pending',filter:{period:'7',store_id:'all'},simulation:{horizon_days:'14',reduction_pct:'20',store_id:'all',category:'',request_text:''}}]));
+let active='overview';
+let mutation=null;
 
-function toast(message) {
-  const target = $("#toast");
-  clearTimeout(toast.timer);
-  target.textContent = message;
-  target.hidden = false;
-  toast.timer = setTimeout(() => { target.hidden = true; }, 4200);
-}
-
-function createAgent(type) {
-  return {
-    values: initialValues(state.manifest, type), revision: 0, pending: false, controller: null,
-    sessionId: type === "cashflow_simulation" ? crypto.randomUUID() : null,
-    run: null, request: null, error: null, edited: false, decisions: new Map(),
-  };
-}
-
-function renderNavigation() {
-  $$("#app-nav [data-agent]").forEach((button) => {
-    const selected = state.page === "agent" && button.dataset.agent === state.active;
-    if (selected) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
-    button.classList.toggle("is-running", Boolean(state.agents.get(button.dataset.agent)?.pending));
-  });
-  const data = $('#app-nav [data-page="data"]');
-  if (state.page === "data") data.setAttribute("aria-current", "page"); else data.removeAttribute("aria-current");
-}
-
-function renderConnection() {
-  const target = $("#connection-status");
-  if (state.manifestError) {
-    target.className = "status-panel is-error";
-    target.innerHTML = `<strong>合成数据包读取失败</strong><p>${escapeHtml(state.manifestError.message)}</p><button type="button" class="secondary-button" data-action="reload-manifest">重新读取</button>`;
-    return;
-  }
-  target.className = "status-panel";
-  target.innerHTML = state.manifest
-    ? `<strong>合成零食演示 · ${escapeHtml(state.manifest.data_version)}</strong><p>${state.connected ? "已收到接口响应；模型使用情况以本次返回步骤为准。" : "输入包已就绪，等待 v0.3 服务运行。"} 所有金额均为模拟口径，不代表银行余额或真实收益。</p>`
-    : "<strong>正在读取合成数据包…</strong>";
-}
-
-function selection(name, label, options, selected = []) {
-  return `<label class="field"><span>${escapeHtml(label)}</span><select name="${name}" multiple size="3">${options.map(([value, text]) => `<option value="${escapeHtml(value)}" ${selected.includes(value) ? "selected" : ""}>${escapeHtml(text)}</option>`).join("")}</select><small>可多选；全部取消表示不按此项筛选。</small></label>`;
-}
-
-function renderForm(type) {
-  const agent = state.agents.get(type), config = AGENT_CONFIG[type], values = agent.values;
-  const scopes = state.manifest.scope_options;
-  const stores = scopes.stores.map((store) => [store.store_id, `${store.store_name} · ${store.store_id}`]);
-  const skus = scopes.skus.map((sku) => [sku.sku_id, `${sku.sku_name} · ${sku.unit}`]);
-  const categories = scopes.categories.map((category) => [category.category_id, category.category_name]);
-  const fields = config.fields.map((field) => {
-    if (field.type === "stores") return selection(field.key, field.label, stores, values[field.key]);
-    if (field.type === "checkbox") return `<label class="field checkbox-field"><input type="checkbox" name="${field.key}" ${values[field.key] ? "checked" : ""}><span>${escapeHtml(field.label)}</span></label>`;
-    return `<label class="field"><span>${escapeHtml(field.label)}</span><input name="${field.key}" type="number" required min="${field.min}" step="${field.step || 1}" value="${escapeHtml(values[field.key])}"></label>`;
-  }).join("");
-  $("#agent-form").innerHTML = `<fieldset class="form-section" ${agent.pending ? "disabled" : ""}>
-    <legend>分析范围</legend><div class="form-grid">
-      <label class="field"><span>分析基准日期</span><input name="as_of" type="date" required value="${escapeHtml(values.as_of)}"></label>
-      <label class="field"><span>数据版本</span><input name="data_version" required value="${escapeHtml(values.data_version)}" autocomplete="off"></label>
-      <label class="field"><span>规则版本</span><input name="policy_version" required value="${escapeHtml(values.policy_version)}" autocomplete="off"></label>
-      ${selection("store_ids", "门店", stores, values.store_ids)}${selection("sku_ids", "商品", skus, values.sku_ids)}${selection("category_ids", "品类", categories, values.category_ids)}
-    </div></fieldset>
-    <fieldset class="form-section" ${agent.pending ? "disabled" : ""}><legend>${type === "cashflow_simulation" ? "整理模拟情景" : "分析条件"}</legend><div class="form-grid">${fields}
-      <label class="field field-wide"><span>${type === "cashflow_simulation" ? "想调整什么？" : "补充说明（可选）"}</span><textarea name="user_input" rows="3" ${type === "cashflow_simulation" ? "required" : ""} placeholder="${escapeHtml(config.example)}">${escapeHtml(values.user_input)}</textarea></label>
-    </div><button type="button" class="secondary-button" data-action="example">填入合成示例问题</button><p class="form-hint">结构化条件优先；缺项、冲突及可行性由后端校验。修改输入后，旧结果和情景确认立即失效。</p></fieldset>
-    <div class="form-actions"><button type="submit" class="primary-button" ${agent.pending ? "disabled" : ""}>${type === "cashflow_simulation" ? "整理情景，待确认后计算" : "运行分析"}</button>${agent.pending ? '<button type="button" class="secondary-button" data-action="cancel">取消等待</button>' : ""}</div>`;
-}
-
-function readValues(form) {
-  const values = {};
-  for (const input of [...form.elements]) {
-    if (!input.name) continue;
-    values[input.name] = input.type === "checkbox" ? input.checked : input.multiple ? [...input.selectedOptions].map((option) => option.value) : input.value;
-  }
-  return values;
-}
-
-function editInput() {
-  const type = state.active, agent = state.agents.get(type);
-  if (!agent || agent.pending) return;
-  const values = readValues($("#agent-form"));
-  if (JSON.stringify(values) === JSON.stringify(agent.values)) return;
-  const resetSession = ["data_version", "policy_version", "as_of"].some((key) => values[key] !== agent.values[key]);
-  agent.values = values;
-  agent.revision++;
-  agent.run = null; agent.error = null; agent.request = null; agent.edited = true;
-  agent.decisions.clear();
-  if (resetSession && type === "cashflow_simulation") agent.sessionId = crypto.randomUUID();
-  requests.invalidate(type);
-  renderOutput(type);
-}
-
+function notify(message) { $('#toast').textContent=message; $('#toast').hidden=false; clearTimeout(notify.timer); notify.timer=setTimeout(()=>{$('#toast').hidden=true;},5000); }
+function nav(open) { document.body.classList.toggle('nav-open',open); $('#nav-backdrop').hidden=!open; $('#nav-toggle').setAttribute('aria-expanded',String(open)); }
+function current(view) { return active===view.route; }
 function errorMarkup(error) {
-  const message = error?.message || "请求未完成";
-  const fields = error?.fieldErrors || error?.field_errors || [];
-  const fieldMessages = fields.map((field) => {
-    if (!field || typeof field !== "object") return String(field);
-    const path = field.field || field.path || (Array.isArray(field.loc) ? field.loc.join(".") : "输入");
-    return `${path}：${field.message || field.msg || JSON.stringify(field)}`;
-  });
-  return `<p>${escapeHtml(message)}</p>${error?.code ? `<p class="error-code">错误编号：${escapeHtml(error.code)}</p>` : ""}${fieldMessages.length ? `<ul class="warning-list">${fieldMessages.map((message) => `<li>${escapeHtml(message)}</li>`).join("")}</ul>` : ""}${error?.outcomeUnknown ? "<p>等待已结束，但服务端可能仍在处理。请保留请求编号，与后端核对后再重新提交。</p>" : ""}`;
+  return `<p>${e(error.message || '请求失败')}</p>${error.code?`<small>${e(error.code)}</small>`:''}${error.outcomeUnknown?'<p>等待已结束，服务端是否完成未知。请先刷新核对记录，勿反复提交。</p>':''}${error.fieldErrors?.length?list(error.fieldErrors):''}`;
 }
-
-function runMeta(agent) {
-  const run = agent.run, request = agent.request;
-  if (!request) return "";
-  return `<details class="request-details"><summary>请求、版本与复现信息</summary><dl class="details-grid"><div><dt>请求编号</dt><dd>${escapeHtml(request.request_id)}</dd></div>${run ? `<div><dt>运行编号</dt><dd>${escapeHtml(run.run_id)}</dd></div>` : ""}<div><dt>数据版本</dt><dd>${escapeHtml(run?.data_version || request.data_version)}</dd></div><div><dt>规则版本</dt><dd>${escapeHtml(run?.policy_version || request.policy_version)}</dd></div><div><dt>分析基准</dt><dd>${escapeHtml(request.scope.as_of)}</dd></div></dl><details><summary>结构化请求</summary><pre>${escapeHtml(JSON.stringify(request, null, 2))}</pre></details></details>`;
+function provenance(view) {
+  if(view.route==='data') return '输入包只用于复现，不代表已导入当前服务。';
+  if(view.data?.metadata || Object.hasOwn(view.data || {},'is_demo')) return source(view.data);
+  if(WORKBENCHES.has(view.route) && view.data) return `<p>${view.data.mode==='sample_replay'?'合成样例回放':'服务端数据'} · ${e(view.data.snapshot_id || '快照未提供')} · ${e(STATUS_LABELS[view.data.draft?.status] || view.data.draft?.status || '')}</p>`;
+  return '当前使用 v1.2 规则工具，尚未接入真实大模型。数据缺项由服务明确返回。';
 }
-
-function detailValue(value, key = "") {
-  if (value === null || value === undefined) return "未知";
-  if (key.endsWith("_fen")) return escapeHtml(formatFen(value));
-  if (Array.isArray(value)) {
-    if (!value.length) return '<span class="muted">未提供条目</span>';
-    return `<ul class="detail-list">${value.map((item) => `<li>${detailValue(item)}</li>`).join("")}</ul>`;
-  }
-  if (typeof value === "object") return detailsMarkup(value);
-  if (typeof value === "boolean") return value ? "是" : "否";
-  return escapeHtml(value);
+function render(view=views.get(active)) {
+  if(!current(view)) return;
+  $('#page-title').textContent=TITLES[active]; $('#page-description').textContent=DESCRIPTIONS[active];
+  $$('#app-nav a').forEach(a=>{if(a.hash===`#${active}`) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current');});
+  $('#connection-status').innerHTML=provenance(view);
+  $('#page-status').innerHTML=view.error?panel('请求未完成',errorMarkup(view.error)+button('reload','刷新核对当前状态',view.busy),'is-error'):view.pending?panel('正在读取服务数据','<p>保持当前范围，等待实际返回结果。</p>','is-loading'):view.busy?panel('正在提交','<p>等待服务确认；离开页面不会撤销已提交的请求。</p>','is-loading'):view.notice?panel('当前状态',`<p>${e(view.notice)}</p>`):'';
+  const content=$('#page-content');
+  if(!view.data) { content.innerHTML=view.pending?'':panel('暂无可用数据',button('reload','重新读取')); return; }
+  content.innerHTML=active==='overview'?overviewMarkup(view):active==='today'?todayMarkup(view):active==='slow_moving'?diagnosisMarkup(view):WORKBENCHES.has(active)?workbenchMarkup(view):active==='cashflow_simulation'?simulationMarkup(view):dataMarkup(view);
+  if(mutation && mutation!==view) $('#page-status').innerHTML=panel('另一项操作正在提交',`<p>${e(TITLES[mutation.route])}正在等待服务确认。可继续浏览，完成后恢复编辑。</p>`,'is-loading');
+  if(mutation || view.pending) $$('fieldset, button',content).forEach(el=>{el.disabled=true;});
 }
-
-function detailsMarkup(details) {
-  return `<dl class="details-grid">${Object.entries(details || {}).map(([key, value]) => `<div><dt>${escapeHtml(labelFor(key))}</dt><dd>${detailValue(value, key)}</dd></div>`).join("")}</dl>`;
-}
-
-function renderSteps(steps) {
-  return `<section class="run-steps"><h2>本次运行过程</h2>${steps.length ? `<ol class="step-list">${steps.map((step) => `<li class="step-${step.status}"><span class="badge">${{succeeded: "完成", skipped: "跳过", failed: "失败"}[step.status]}</span><div><strong>${escapeHtml(step.label)}</strong><p>${escapeHtml(step.message)}</p></div></li>`).join("")}</ol>` : '<p class="muted">本次响应未提供步骤记录。</p>'}<p class="form-hint">这是服务返回的已发生步骤；等待期间不展示推测进度。</p></section>`;
-}
-
-function renderWarnings(run) {
-  const entries = [
-    ...(run.warnings || []).map((warning) => typeof warning.message === "string" ? `${warning.code ? `[${warning.code}] ` : ""}${warning.message}` : JSON.stringify(warning)),
-    ...(run.missing_fields || []).map((field) => `缺少：${labelFor(field)}`),
-  ];
-  return entries.length ? `<section class="status-panel is-warning"><h2>数据与口径提醒</h2><ul class="warning-list">${entries.map((value) => `<li>${escapeHtml(value)}</li>`).join("")}</ul></section>` : "";
-}
-
-function decisionKey(runId, itemId, recommendationId) {
-  return JSON.stringify([runId, itemId, recommendationId]);
-}
-
-function recommendationMarkup(run, item, recommendation, agent) {
-  const key = decisionKey(run.run_id, item.item_id, recommendation.recommendation_id);
-  const record = agent.decisions.get(key);
-  const impact = recommendation.impact_estimate;
-  const disabled = Boolean(record?.pending || record?.response);
-  return `<section class="recommendation" data-recommendation-id="${escapeHtml(recommendation.recommendation_id)}"><h3>${escapeHtml(ACTIONS[recommendation.action_type] || recommendation.action_type)}</h3><p>${escapeHtml(recommendation.rationale)}</p>
-    ${impact ? `<div class="impact-estimate"><strong>${impact.amount_fen == null ? "影响金额待补充" : `估算金额：${escapeHtml(formatFen(impact.amount_fen))}`}</strong><span>周期 ${escapeHtml(impact.period_days ?? "未知")} 天</span><p>${escapeHtml(({ avoid_future_purchase: "预计减少未来采购支出，不代表银行余额增加", inventory_reallocation: "库存配置改善，不代表现金到账" })[impact.kind] || "估算含义以本次假设和口径为准")}</p><ul class="assumptions">${(impact.assumptions || []).map((text) => `<li>${escapeHtml(text)}</li>`).join("")}</ul></div>` : ""}
-    <details><summary>动作参数与引用证据</summary>${detailsMarkup(recommendation.action_params)}<p>证据记录：${escapeHtml((recommendation.evidence_ids || []).join("、") || "未提供")}</p></details>
-    <label class="field decision-note"><span>模拟确认说明（可选）</span><input data-decision-note="${escapeHtml(key)}" value="${escapeHtml(record?.note || "")}" ${disabled ? "disabled" : ""}></label>
-    <div class="decision-actions"><button class="primary-button" type="button" data-decision="approve" data-item-id="${escapeHtml(item.item_id)}" data-recommendation="${escapeHtml(recommendation.recommendation_id)}" ${disabled ? "disabled" : ""}>模拟确认</button><button class="secondary-button" type="button" data-decision="reject" data-item-id="${escapeHtml(item.item_id)}" data-recommendation="${escapeHtml(recommendation.recommendation_id)}" ${disabled ? "disabled" : ""}>模拟拒绝</button></div>
-    <div class="decision-status" role="status">${record?.pending ? "正在记录模拟决策…" : record?.response ? `已记录：${record.response.decision === "approve" ? "模拟确认" : "模拟拒绝"}。未修改库存、采购或收银数据。` : record?.error ? errorMarkup(record.error) : "仅记录演示决策，不执行真实业务动作。"}</div></section>`;
-}
-
-function itemMarkup(run, item, agent) {
-  const entity = item.entity;
-  const title = [entity.store_name, entity.sku_name].filter(Boolean).join(" · ") || entity.id || "分析结果";
-  return `<article class="result-card" data-item-id="${escapeHtml(item.item_id)}"><header class="result-header"><h2>${escapeHtml(title)}</h2><span class="badge">${{high:"高",medium:"中",low:"低"}[item.priority]}优先级</span></header>
-    <div class="metric-grid">${item.metrics.map((metric) => `<div class="metric"><span>${escapeHtml(metric.label)}</span><strong class="value">${escapeHtml(formatMetric(metric))}</strong></div>`).join("")}</div>
-    <details class="result-details"><summary>结果明细</summary>${detailsMarkup(item.details)}</details>
-    <details open class="evidence-details"><summary>支撑证据（${item.evidence.length}）</summary><ul class="evidence-list">${item.evidence.map((evidence) => `<li><strong>${escapeHtml(labelFor(evidence.field))}</strong><span>${detailValue(evidence.value, evidence.field)}</span><small>${escapeHtml(evidence.source)} · ${escapeHtml(evidence.record_id)} · ${escapeHtml(evidence.as_of)}</small></li>`).join("")}</ul></details>
-    ${item.recommendations.map((recommendation) => recommendationMarkup(run, item, recommendation, agent)).join("")}
-    </article>`;
-}
-
-function scenarioMarkup(preview) {
-  return `<section class="scenario-card"><span class="badge">待确认情景 · 尚未计算</span><h2>${escapeHtml(preview.title)}</h2><p>模拟 ${preview.horizon_days} 天；门店：${escapeHtml(preview.store_ids.join("、"))}</p><ul class="scenario-adjustments">${preview.adjustments.map((adjustment) => `<li><h3>${escapeHtml(ACTIONS[adjustment.action_type] || adjustment.action_type)}</h3>${detailsMarkup(adjustment.action_params)}</li>`).join("")}</ul><h3>本次假设</h3><ul class="assumptions">${preview.assumptions.map((assumption) => `<li>${escapeHtml(assumption)}</li>`).join("")}</ul><p>确认仅启动模拟计算，不批准或执行采购、调拨及促销。</p><div class="scenario-actions"><button type="button" class="primary-button" data-action="simulate">确认并开始模拟</button><button type="button" class="secondary-button" data-action="revise">修改情景</button></div></section>`;
-}
-
-function renderOutput(type) {
-  if (state.page !== "agent" || state.active !== type) return;
-  const agent = state.agents.get(type), status = $("#run-status"), output = $("#run-output");
-  if (agent.pending) {
-    status.className = "status-panel is-loading";
-    status.innerHTML = "<strong>请求处理中…</strong><p>完成后展示服务返回的查询、计算和模型步骤。取消等待不会撤销服务端运行。</p>";
-    output.innerHTML = runMeta(agent); return;
-  }
-  if (agent.error) {
-    status.className = "status-panel is-error";
-    status.innerHTML = `<strong>请求未取得可用结果</strong>${errorMarkup(agent.error)}${agent.error.retryable !== false ? '<button type="button" class="secondary-button" data-action="retry">重新提交请求</button>' : ""}`;
-    output.innerHTML = runMeta(agent); return;
-  }
-  if (!agent.run) {
-    status.className = "status-panel";
-    status.innerHTML = `<strong>${agent.edited ? "输入已改变，请重新运行" : "准备就绪"}</strong><p>${type === "cashflow_simulation" ? "先整理情景并人工确认；确认前不展示模拟结果。" : "结果由后端实际计算并返回，当前未生成分析结论。"}</p>`;
-    output.innerHTML = ""; return;
-  }
-  const run = agent.run, [label, tone] = STATUS[run.status];
-  status.className = `status-panel ${tone}`;
-  status.innerHTML = `<strong>${label}</strong><p>${escapeHtml(run.summary)}</p>${run.status === "failed" ? errorMarkup(run.error) + (run.error?.retryable ? '<button type="button" class="secondary-button" data-action="retry">重新提交请求</button>' : "") : ""}`;
-  output.innerHTML = `${run.assistant_message ? `<section class="assistant-message"><h2>Agent 回复</h2><p>${escapeHtml(run.assistant_message)}</p></section>` : ""}
-    ${renderWarnings(run)}
-    ${run.status === "needs_input" ? `<section class="status-panel is-warning"><h2>请补充或确认</h2><ul class="warning-list">${run.follow_up_questions.map((question) => `<li>${escapeHtml(question)}</li>`).join("")}</ul><button type="button" class="secondary-button" data-action="edit">返回输入</button></section>` : ""}
-    ${run.status === "no_data" ? '<div class="empty-state">当前数据范围没有结果。请检查门店、商品、日期及数据版本。</div>' : ""}
-    ${run.status === "awaiting_confirmation" ? scenarioMarkup(run.scenario_preview) : ["succeeded", "partial"].includes(run.status) ? run.items.map((item) => itemMarkup(run, item, agent)).join("") || '<div class="empty-state">本次运行未返回结果项。</div>' : ""}
-    ${renderSteps(run.steps)}${runMeta(agent)}`;
-}
-
-function renderPage() {
-  const isData = state.page === "data";
-  $("#agent-page").hidden = isData;
-  $("#data-page").hidden = !isData;
-  $("#page-title").textContent = isData ? "数据与版本" : AGENT_CONFIG[state.active].title;
-  $("#page-description").textContent = isData ? "下载可复现的合成输入包，核对数据、规则和契约版本。" : AGENT_CONFIG[state.active].description;
-  renderNavigation();
-  if (!state.manifest) {
-    for (const selector of ["#agent-form", "#run-status", "#run-output", "#data-content"]) $(selector).replaceChildren();
-    return;
-  }
-  if (isData) renderData(); else { renderForm(state.active); renderOutput(state.active); }
-}
-
-function setNavigationOpen(open) {
-  document.body.classList.toggle("nav-open", open);
-  $("#nav-toggle").setAttribute("aria-expanded", String(open));
-  $("#nav-backdrop").hidden = !open;
-}
-
-function navigate() {
-  const route = location.hash.slice(1);
-  state.page = route === "data" ? "data" : "agent";
-  state.active = AGENT_TYPES.includes(route) ? route : "slow_moving";
-  setNavigationOpen(false);
-  renderPage();
-}
-
-async function runAgent(operation = "preview") {
-  const type = state.active, agent = state.agents.get(type);
-  if (!agent || agent.pending) return;
-  const form = $("#agent-form");
-  if (operation !== "simulate" && !form.reportValidity()) return;
-  let request;
+async function loadView(view) {
+  if(view.busy) return;
+  view.controller?.abort(); const controller=new AbortController(); view.controller=controller;
+  const sequence=++view.sequence; view.pending=true; view.error=null; render(view);
+  const get=path=>api(path,{signal:controller.signal});
   try {
-    let params, scope, sourceValues = agent.values;
-    if (type === "cashflow_simulation" && operation === "simulate") {
-      if (agent.run?.status !== "awaiting_confirmation" || !agent.request || agent.error) return;
-      const preview = agent.run.scenario_preview;
-      params = { operation: "simulate", scenario_id: preview.scenario_id, confirmed: true, horizon_days: preview.horizon_days, adjustments: structuredClone(preview.adjustments), assumptions: [...preview.assumptions] };
-      scope = { ...agent.request.scope, store_ids: [...preview.store_ids] };
-    } else {
-      editInput();
-      sourceValues = agent.values;
-      params = paramsFromValues(type, sourceValues);
-      scope = { as_of: sourceValues.as_of, store_ids: [...sourceValues.store_ids], sku_ids: [...sourceValues.sku_ids], category_ids: [...sourceValues.category_ids] };
-    }
-    request = buildRunRequest({ agentType: type, userInput: sourceValues.user_input.trim(), scope, params, dataVersion: sourceValues.data_version.trim(), policyVersion: sourceValues.policy_version.trim(), ...(agent.sessionId ? { sessionId: agent.sessionId } : {}) });
-  } catch (error) { toast(error.message); return; }
-  const revision = agent.revision, token = requests.start(type, "运行 Agent");
-  agent.pending = true; agent.controller = new AbortController(); agent.request = request; agent.run = null; agent.error = null; agent.decisions.clear();
-  renderForm(type); renderOutput(type); renderNavigation();
-  try {
-    const response = await api("/agent-runs", { method: "POST", body: JSON.stringify(request), signal: agent.controller.signal });
-    if (agent.revision !== revision || requests.get(type).token !== token) return;
-    agent.run = validateRunResponse(response, request);
-    state.connected = true;
-    agent.edited = false;
-    requests.finish(type, token, "ready");
-  } catch (error) {
-    if (agent.revision === revision && requests.finish(type, token, "error", error)) agent.error = error;
-  } finally {
-    agent.pending = false; agent.controller = null;
-    if (state.page === "agent" && state.active === type) { renderForm(type); renderOutput(type); }
-    renderNavigation(); renderConnection();
-  }
+    let data;
+    if(view.route==='overview') data=contract.validateOverview(await get(`/retail/overview?period=${view.filter.period}&store_id=${encodeURIComponent(view.filter.store_id)}`),{storeId:view.filter.store_id,period:Number(view.filter.period)});
+    else if(view.route==='today') { const [proposals,tasks,work]=await Promise.all([get('/proposals'),get('/execution-tasks'),get('/work-items')]); data={proposals:contract.validateProposalList(proposals).items,tasks:contract.validateTaskList(tasks).items,work:work.items || []}; }
+    else if(view.route==='slow_moving') {
+      const risks=contract.validateRisks(await get('/risks'));
+      const risk=risks.items.find(item=>String(item.id)===String(view.riskId)) || risks.items[0];
+      const detail=risk?contract.validateRiskDetail(await get(`/risks/${risk.id}`),{riskId:risk.id}):null;
+      data={...risks,detail};
+    } else if(WORKBENCHES.has(view.route)) data=contract.validateWorkbench(await get(`/workbenches/${view.route}${view.riskId?`?risk_id=${encodeURIComponent(view.riskId)}`:''}`),{moduleType:view.route,riskId:view.riskId || undefined});
+    else if(view.route==='cashflow_simulation') data=contract.validateSimulationOptions(await get('/retail/simulation-options'));
+    else { const [manifest,center]=await Promise.all([fetch('/sample-data/manifest.json').then(r=>{if(!r.ok) throw new Error('合成输入包读取失败'); return r.json();}),get('/data-center')]); data={manifest:validateManifest(manifest),center}; }
+    if(sequence!==view.sequence) return;
+    view.data=data;
+    if(view.route==='slow_moving') {view.riskId=data.detail?.risk.id || null; view.feedback=null;}
+    if(WORKBENCHES.has(view.route)) {view.input=structuredClone(data.input); view.riskId=data.risk.id; view.dirty=data.draft?.status==='needs_recalculation'; view.proposal=data.proposal;}
+    if(view.route==='cashflow_simulation') { view.preview=null; view.result=null; if(!data.stores.some(s=>s.id===view.simulation.store_id)) view.simulation.store_id='all'; if(!data.categories.includes(view.simulation.category)) view.simulation.category=''; }
+  } catch(error) { if(sequence===view.sequence && error.code!=='aborted') {view.error=error; view.data=null;} }
+  finally { if(sequence===view.sequence) {view.pending=false; render(view);} }
 }
-
-async function recordDecision(button) {
-  const type = state.active, agent = state.agents.get(type), run = agent?.run;
-  if (!run || !["succeeded", "partial"].includes(run.status)) return;
-  const item = run.items.find((value) => value.item_id === button.dataset.itemId);
-  const recommendation = item?.recommendations.find((value) => value.recommendation_id === button.dataset.recommendation);
-  if (!recommendation) return;
-  const decision = button.dataset.decision;
-  const key = decisionKey(run.run_id, item.item_id, recommendation.recommendation_id), old = agent.decisions.get(key);
-  if (old?.pending || old?.response) return;
-  if (old?.error?.outcomeUnknown && !window.confirm("上次记录结果未知。请先与后端核对；确定重新提交这条模拟决策？")) return;
-  const note = $$("[data-decision-note]").find((input) => input.dataset.decisionNote === key)?.value.trim() || "";
-  const record = { pending: true, note, response: null, error: null };
-  agent.decisions.set(key, record); renderOutput(type);
-  const payload = { item_id: item.item_id, recommendation_id: recommendation.recommendation_id, decision, note };
-  try {
-    const response = await api(`/agent-runs/${encodeURIComponent(run.run_id)}/decisions`, { method: "POST", body: JSON.stringify(payload) });
-    record.response = validateDecisionResponse(response, { run_id: run.run_id, ...payload });
-  } catch (error) { record.error = error; }
+async function act(view,work) {
+  if(mutation || view.pending) return;
+  mutation=view; view.busy=true; view.error=null; view.notice=''; render(view);
+  try { await work(); }
+  catch(error) {view.error=error;}
   finally {
-    record.pending = false;
-    if (agent.run?.run_id === run.run_id) renderOutput(type);
+    mutation=null; view.busy=false;
+    const visible=views.get(active); render(visible);
+    if(!visible.data && !visible.pending && !visible.error) void loadView(visible);
   }
 }
-
-function renderData() {
-  const manifest = state.manifest;
-  const titles = { dataset: "完整输入数据包", stores: "门店", skus: "商品", inventory_snapshots: "库存快照", sales_daily: "日销售", purchase_orders: "采购单", inventory_lots: "批次库存", policies: "经营规则" };
-  const rows = Object.entries(manifest.files).filter(([key]) => titles[key]).map(([key, file]) => `<tr><th scope="row">${titles[key]}</th><td><a href="${escapeHtml(sampleDownloadTarget(manifest, key))}" download>下载 ${file.path.endsWith(".json") ? "JSON" : "CSV"}</a></td><td><code>${escapeHtml(file.sha256)}</code></td></tr>`).join("");
-  $("#data-content").innerHTML = `<section class="result-card"><h2>固定合成输入 · 可复现</h2><dl class="details-grid"><div><dt>契约</dt><dd>${escapeHtml(manifest.contract_version)}</dd></div><div><dt>数据版本</dt><dd>${escapeHtml(manifest.data_version)}</dd></div><div><dt>规则版本</dt><dd>${escapeHtml(manifest.policy_version)}</dd></div><div><dt>固定分析日</dt><dd>${escapeHtml(manifest.as_of)}</dd></div><div><dt>随机种子</dt><dd>${manifest.seed}</dd></div><div><dt>时区</dt><dd>${escapeHtml(manifest.timezone)}</dd></div></dl><p>页面筛选项来自这份本地合成输入包。下载不会把文件自动加载到后端；实际运行的版本由服务响应确认。</p><p>当前契约只定义运行与模拟决策接口。数据加载由魏的后端完成，前端不调用旧版导入、审批、执行或重置接口。</p></section><section class="result-card"><h2>七类共享模型与完整数据包</h2><div class="table-wrap" tabindex="0" role="region" aria-label="合成数据下载与校验值"><table class="data-table"><thead><tr><th>数据</th><th>文件</th><th>SHA-256</th></tr></thead><tbody>${rows}</tbody></table></div></section><section class="result-card"><h2>复现与联调</h2><p>所有金额字段使用整数分；数量保留商品计量单位。零销量与缺失销量分别处理，未知值显示为未知。</p><ul><li><a href="docs/API_CONTRACT.md">魏的 v0.3 接口原文</a></li><li><a href="sample-data/README.md">数据口径、场景与参考预期</a></li><li><a href="docs/FRONTEND_INTEGRATION.md">联调说明与待确认事项</a></li><li><a href="docs/VALIDATION_RESULT.md">本次验证记录</a></li></ul><p>样例预期只供验收，页面不会读取预期文件生成运行结果。</p></section>`;
+function navigate() {
+  const route=location.hash.slice(1).split('?')[0]; active=Object.hasOwn(TITLES,route)?route:'overview'; nav(false);
+  const view=views.get(active); render(view); if(!view.data && !view.pending) void loadView(view);
 }
 
-async function loadManifest() {
-  state.manifestError = null; renderConnection();
-  try {
-    const load = createApiClient({ baseUrl: location.protocol === "file:" ? null : "/sample-data" });
-    state.manifest = validateManifest(await load("/manifest.json"));
-    for (const type of AGENT_TYPES) state.agents.set(type, createAgent(type));
-  } catch (error) { state.manifest = null; state.manifestError = error; }
-  renderConnection(); renderPage();
+function overviewMarkup(view) {
+  const data=view.data;
+  const stores=data.stores || [];
+  const sorted=[...stores].sort((a,b)=>{const key=view.sort || 'risk_cost'; if(key==='store_name') return a.store_name.localeCompare(b.store_name,'zh-CN'); if(a[key]==null)return 1;if(b[key]==null)return -1;return b[key]-a[key];});
+  const selected=(view.riskTypes || []), shown=sorted.filter(s=>!selected.length || (s.risk_types || []).some(t=>selected.includes(t)));
+  return `<form class="workspace-form" id="overview-form"><fieldset><div class="form-grid">${select('period','观察周期',[['7','最近7天'],['30','最近30天']],view.filter.period)}${select('store_id','门店范围',[['all','全部门店'],...stores.map(s=>[s.store_id,s.store_name])],view.filter.store_id)}</div><div class="form-actions"><button class="primary-button">更新范围</button>${button('reload','刷新数据')}</div></fieldset></form>
+    <div class="metric-grid">${metric('账户可用资金',money(data.account.balance))}${metric('库存成本占用',money(data.inventory.cost))}${metric('待关注库存成本',money(data.inventory.risk_cost))}${metric('未来30天已确认采购付款',money(data.purchase_commitments.amount))}</div>
+    ${data.metadata.missing?.length?panel('数据缺项',list(data.metadata.missing),'is-warning'):''}
+    <section class="result-card"><h2>门店待关注事项</h2><div class="form-grid">${select('store_sort','排序',[['risk_cost','待关注成本从高到低'],['inventory_cost','库存占用从高到低'],['turnover_days','周转天数从高到低'],['store_name','门店名称']],view.sort || 'risk_cost')}<label class="field"><span>风险类型（可多选）</span><select name="risk_types" multiple size="4">${['滞销','近效期','采购过量','门店错配'].map(t=>`<option ${selected.includes(t)?'selected':''}>${t}</option>`).join('')}</select></label></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>门店</th><th>库存占用</th><th>待关注成本</th><th>周转天数</th><th>待关注商品</th></tr></thead><tbody>${shown.map(s=>`<tr><th>${e(s.store_name)}</th><td>${money(s.inventory_cost)}</td><td>${money(s.risk_cost)}</td><td>${number(s.turnover_days)}</td><td>${(s.risk_items || []).map(r=>`<button type="button" class="text-button" ${Number.isSafeInteger(r.risk_id) && r.risk_id>0?`data-risk="${r.risk_id}"`:'disabled'}>${e(r.product)} · ${money(r.inventory_cost)}</button>`).join('<br>') || '无记录'}</td></tr>`).join('')}</tbody></table></div><p class="form-hint">每店仅展示服务返回的前五项。库存成本、账户余额与预计采购付款各自独立。</p></section>
+    <details class="result-card"><summary>指标来源与完整假设</summary>${details({account:data.account,purchase_commitments:data.purchase_commitments,metadata:data.metadata})}</details>`;
 }
 
-$("#agent-form").addEventListener("submit", (event) => { event.preventDefault(); runAgent(); });
-$("#agent-form").addEventListener("input", editInput);
-$("#agent-form").addEventListener("change", editInput);
-document.addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-  if (!button || button.disabled) return;
-  if (button.dataset.agent || button.dataset.page) {
-    setNavigationOpen(false);
-    location.hash = button.dataset.agent || button.dataset.page;
-    return;
+function diagnosisMarkup(view) {
+  const data=view.data, detail=data.detail;
+  if(!detail) return panel('当前没有待关注商品','<p>请核对已导入的库存范围和缺失字段。</p>');
+  const risk=detail.risk;
+  const fb=view.feedback;
+  return `<form class="workspace-form" id="risk-form"><fieldset>${select('risk_id','选择门店商品',data.items.map(r=>[r.id,`${r.product} · ${r.store}`]),view.riskId)}</fieldset></form>
+    <section class="result-card"><h2>${e(risk.product)} · ${e(risk.store)}</h2><div class="metric-grid">${metric('库存数量',`${number(risk.inventory_qty)} ${risk.unit || '件'}`)}${metric('近30天销量',`${number(risk.sales_30)} ${risk.unit || '件'}`)}${metric('库存覆盖',risk.sales_30===0?'近30天未售':`${number(risk.days_to_sell)} 天`)}</div><p>${e(risk.observation || '')}</p>${details(detail.diagnosis)}
+    <details open><summary>数据依据与缺项</summary>${details({facts:detail.facts,evidence:detail.evidence})}</details><details><summary>待核查原因</summary>${details(detail.factors)}</details><div class="form-actions">${RISK_WORKBENCH[risk.risk_type]?button('open-workbench',TITLES[RISK_WORKBENCH[risk.risk_type]],false,`data-module="${RISK_WORKBENCH[risk.risk_type]}"`):''}</div></section>
+    <section class="result-card"><h2>门店反馈 · 人工核查</h2><p>后端当前使用规则草稿，不能视作模型已理解原因。请逐项核对原文，编辑后再确认。</p><form id="feedback-form"><fieldset><label class="field"><span>原始反馈</span><textarea name="raw_text" required rows="3">${e(view.feedbackText || '')}</textarea></label><div class="form-actions"><button class="secondary-button">保存原文并生成待核对草稿</button></div></fieldset></form>
+    ${fb?`<p>反馈编号 ${e(fb.id)} · ${e(fb.confirmation_status)}</p><form id="feedback-confirm-form"><fieldset ${fb.confirmation_status==='confirmed'?'disabled':''}><label class="field"><span>人工核对后的结构化内容（JSON）</span><textarea name="confirmed_json" rows="9" required>${e(view.confirmedText || JSON.stringify(fb.draft,null,2))}</textarea></label><label class="checkbox-field"><input name="reviewed" type="checkbox" required>我已核对原文、日期与原因，未把假设当作事实</label><div class="form-actions"><button class="primary-button">确认反馈版本</button></div></fieldset></form>`:''}
+    ${button('replan','按已确认事实重新计算')}</section>`;
+}
+
+function workbenchMarkup(view) {
+  const data=view.data, i=view.input, proposal=view.proposal;
+  const unit=data.risk.unit || i.unit || '件';
+  let fields='';
+  if(view.route==='transfer') fields=select('target_store_id','接收门店',(data.transfer_network || []).map(s=>[s.store_id,`${s.name} · 运费${money(s.transport_fee)}`]),i.target_store_id)+input('quantity',`调拨数量（${unit}）`,i.quantity,{min:1,step:1});
+  else if(view.route==='expiry-rescue') fields=input('transfer_qty',`调拨数量（${unit}）`,i.transfer_qty,{step:1})+input('promo_qty',`促销投放量（${unit}）`,i.promo_qty,{step:1})+input('promo_price','促销价格（元）',i.promo_price,{step:0.01})+input('return_qty',`退供数量（${unit}）`,i.return_qty,{step:1});
+  else fields=select('action','调整方式',[['reduce','减少采购量'],['cancel','取消采购量'],['delay_arrival','推迟到货'],['delay_payment','推迟付款']],i.action)+input('adjustment_qty',`调整数量（${unit}）`,i.adjustment_qty,{min:1,step:1})+input('new_payment_date','调整后付款日',i.new_payment_date || '',{type:'date',required:i.action==='delay_payment'});
+  const canSave=!view.dirty && data.calculation?.valid;
+  return `<form class="workspace-form" id="workbench-form"><fieldset>${select('risk_id','选择门店商品',(data.items || []).map(r=>[r.id,`${r.product} · ${r.store}`]),view.riskId)}<div class="form-grid form-section">${fields}</div><div class="form-actions"><button class="primary-button" data-action="calculate" type="submit">重新计算</button>${button('save-draft','保存编辑输入')}${button('save','保存方案草稿',!canSave)}</div></fieldset></form>
+    ${view.dirty?panel('输入已修改','<p>旧测算与本地确认已失效。请保存或重新计算当前输入。</p>','is-warning'):''}
+    ${!view.dirty && data.calculation?`<section class="result-card" id="calculation-result"><h2>${data.calculation.valid?'工具计算结果':'约束未通过'}</h2>${data.calculation.errors?.length?panel('需要调整',list(data.calculation.errors),'is-error'):''}${details(data.calculation)}</section>`:''}
+    <details class="result-card"><summary>当前输入事实与来源</summary>${details(i)}<p>候选门店事实、单位成本与约束均由接口提供。编辑仅改变上方允许调整的字段。</p></details>
+    ${proposal?`<section class="result-card" id="workbench-proposal"><h2>方案 ${e(proposal.id)}</h2><p>${e(STATUS_LABELS[proposal.status] || proposal.status)} · V${proposal.current_version}</p>${proposalButton(proposal,'submit','提交审批',view.dirty || !canSave || proposal.status!=='draft')}<a href="#today">查看审批与执行跟进</a></section>`:''}`;
+}
+function proposalButton(proposal,action,label,disabled=false) {return `<button type="button" class="secondary-button" data-proposal-action="${action}" data-id="${e(proposal.id)}" data-version="${proposal.current_version}" ${disabled?'disabled':''}>${label}</button>`;}
+function unsavedWorkbench(view) {return view.dirty || ['needs_recalculation','blocked','calculated'].includes(view.data?.draft?.status);}
+function dirtyRisk(riskId) {return [...views.values()].some(v=>WORKBENCHES.has(v.route) && Number(v.riskId)===Number(riskId) && unsavedWorkbench(v));}
+function todayMarkup(view) {
+  const data=view.data, tasks=data.tasks;
+  const proposals=data.proposals.filter(p=>view.tab==='pending'?p.status==='pending_approval':view.tab==='followup'?p.status==='approved' && !tasks.some(t=>t.proposal_id===p.id):view.tab==='drafts'?['draft','needs_replan','replan_pending','invalidated'].includes(p.status):false);
+  const shownTasks=tasks.filter(t=>view.tab==='completed'?['received','completed'].includes(t.status):view.tab==='followup'?!['received','completed'].includes(t.status):false);
+  return `<div class="form-actions">${[['pending','待我审批'],['followup','审批后跟进'],['completed','已完成'],['drafts','草稿与待重算']].map(([key,label])=>button('tab',label,false,`data-tab="${key}" aria-pressed="${view.tab===key}"`)).join('')}${button('reload','刷新最新状态')}</div>
+    ${proposals.length || shownTasks.length?'':panel('此分类暂无记录','<p>可先在工作台计算并保存方案。</p>')}
+    ${proposals.map(p=>`<article class="result-card" data-proposal-id="${e(p.id)}"><h2>${e(p.product || p.id)}</h2><p>${e(p.id)} · V${p.current_version} · ${e(STATUS_LABELS[p.status] || p.status)}</p>${dirtyRisk(p.risk_id)?panel('存在未完成的编辑','<p>请先到对应工作台重新计算并保存版本。</p>','is-warning'):''}<details><summary>审核当前版本的输入、计算与证据</summary>${details(p.version?.payload || {})}</details><div class="form-actions">${p.status==='pending_approval'?proposalButton(p,'approve','批准当前版本',dirtyRisk(p.risk_id)):p.status==='approved'?proposalButton(p,'execute','生成待执行任务',dirtyRisk(p.risk_id)):p.status==='draft'?proposalButton(p,'submit','提交审批',dirtyRisk(p.risk_id)):''}</div></article>`).join('')}
+    ${shownTasks.map(t=>`<article class="result-card" data-task-id="${e(t.id)}"><h2>${e(t.id)}</h2><p>方案 ${e(t.proposal_id)} · V${t.proposal_version} · ${e(STATUS_LABELS[t.status] || t.status)}</p><p>本系统未向外部 ERP 写入；以下状态和回执由人员记录。</p>${details(t.metadata || {})}<form class="task-form" data-task-id="${e(t.id)}"><fieldset><div class="form-grid">${select('status','人工记录执行进度',[['pending_dispatch','待发出'],['in_transit','运输中'],['awaiting_receipt','待回执'],['received','已收货'],['completed','已完成'],['exception','异常']],t.status)}${input('receipt_ref','执行回执号',t.metadata?.receipt_ref || '',{type:'text',required:false})}</div><div class="form-actions"><button class="secondary-button">保存人工回执</button></div></fieldset></form></article>`).join('')}
+    ${view.tab==='pending' && data.work.length?`<details class="result-card"><summary>待评估建议</summary>${data.work.map(w=>`<p>${e(w.title || w.label || w.id)} ${WORKBENCHES.has(w.route)?`<button class="text-button" data-action="open-workbench" data-module="${w.route}" data-risk-id="${w.risk_id}">进入工作台</button>`:''}</p>`).join('')}</details>`:''}`;
+}
+
+function simulationMarkup(view) {
+  const s=view.simulation, options=view.data;
+  const preview=view.preview, result=view.result;
+  return `<form class="workspace-form" id="simulation-form"><fieldset><div class="form-grid">${select('store_id','门店',[['all','全部门店'],...options.stores.map(s=>[s.id,s.name])],s.store_id)}${select('category','品类',[['','全部品类'],...options.categories.map(c=>[c,c])],s.category)}${input('horizon_days','模拟天数',s.horizon_days,{min:1,max:90,step:1})}${input('reduction_pct','减少可调整采购量（%）',s.reduction_pct,{min:0,max:100,step:'any'})}<label class="field field-wide"><span>补充说明（原文留存）</span><textarea name="request_text" rows="3" maxlength="2000">${e(s.request_text)}</textarea></label></div><p class="form-hint">请直接填写周期和减采比例。当前规则服务不解析任意自然语言动作；说明文本不会自动改变表单参数。</p><div class="form-actions"><button class="primary-button">核对模拟条件</button>${button('reload','重新读取可用范围')}</div></fieldset></form>
+    ${preview?`<section id="scenario-preview" class="scenario-card"><h2>待确认的采购情景</h2><p>${e(options.stores.find(s=>s.id===preview.store_id)?.name || '全部门店')} · ${e(preview.category || '全部品类')} · ${preview.horizon_days} 天 · 减采 ${contract.formatPercent(preview.reduction_pct)}</p><p>确认后才请求后端计算；不会修改真实采购单或批准业务动作。</p>${button('confirm-simulation','确认并计算')}${button('revise-simulation','返回修改')}</section>`:''}
+    ${result?simulationResult(result):''}`;
+}
+function simulationResult(result) {
+  if(result.status==='unavailable') return `<div id="simulation-result">${panel('当前资料不足以模拟',list(result.metadata.missing),'is-warning')}</div>`;
+  const titles={purchase_outflow:'预计采购现金流出',ending_inventory_cost:'期末库存成本',stockout_risk_count:'缺货风险门店商品数'};
+  return `<section class="result-card" id="simulation-result"><h2>基线与方案</h2>${source(result)}<div class="table-wrap"><table class="data-table"><thead><tr><th>指标</th><th>基线</th><th>方案</th><th>方案减基线</th></tr></thead><tbody>${Object.entries(titles).map(([key,title])=>{const m=result.metrics[key], f=key==='stockout_risk_count'?number:money;return `<tr><th>${title}</th><td>${f(m.baseline)}</td><td>${f(m.scenario)}</td><td>${f(m.delta)}</td></tr>`;}).join('')}</tbody></table></div><p>减少采购支出不是利润或到账回款，请同时核对缺货风险和后续补货压力。</p>${list(result.metadata.assumptions || [])}${result.metadata.missing?.length?panel('缺少数据',list(result.metadata.missing),'is-warning'):''}
+    <details open><summary>分周采购流出（非账户余额）</summary><div class="table-wrap"><table class="data-table"><thead><tr><th>周期</th><th>基线</th><th>方案</th></tr></thead><tbody>${result.weekly.map(w=>`<tr><th>${e(w.label)} · ${e(w.start_date)}—${e(w.end_date)}</th><td>${money(w.baseline)}</td><td>${money(w.scenario)}</td></tr>`).join('')}</tbody></table></div></details><details open><summary>缺货与安全库存风险（${result.risks.length}）</summary>${details(result.risks)}</details><details><summary>逐项计算与原始条件</summary>${details({scenario:result.scenario,lines:result.lines})}</details></section>`;
+}
+function dataMarkup(view) {
+  const manifest=view.data.manifest;
+  return `<section class="result-card"><h2>当前服务的数据来源</h2>${details(view.data.center)}<p>当前导入接口仅记录校验回执，不能把回执等同分析数据已加载。本轮不提供会误导用户的导入按钮。</p></section><section class="result-card"><h2>可复现的合成输入</h2><p>v1.2 · ${e(manifest.source)} · ${e(manifest.as_of_date)}</p><p>所有输入均为合成；生成与下载不会替换正在运行的数据库。</p><ul>${Object.keys(manifest.files).map(key=>`<li><a href="${sampleDownloadTarget(manifest,key)}" download>${e(key)}</a> <code>${e(manifest.files[key].sha256)}</code></li>`).join('')}</ul><a href="API_CONTRACT.md">魏的当前 v1.2 契约</a> · <a href="docs/FRONTEND_INTEGRATION.md">联调边界</a> · <a href="sample-data/README.md">样例说明</a></section>`;
+}
+
+function editWorkbench(view,form) {
+  const values=new FormData(form), next={...view.input};
+  const fields=view.route==='transfer'?['target_store_id','quantity']:view.route==='expiry-rescue'?['transfer_qty','promo_qty','promo_price','return_qty']:['action','adjustment_qty','new_payment_date'];
+  for(const key of fields) next[key]=['target_store_id','action','new_payment_date'].includes(key)?values.get(key):(values.get(key)===''?null:Number(values.get(key)));
+  if(view.route==='transfer' && next.target_store_id!==view.input.target_store_id) {
+    const target=view.data.transfer_network.find(t=>t.store_id===next.target_store_id);
+    if(!target) throw new Error('接收门店不在本次候选范围');
+    Object.assign(next,{target_store:target.name,target_on_hand:target.on_hand,target_capacity:target.capacity,target_safety:target.safety_stock,target_daily_sales:target.daily_sales,transport_fee:target.transport_fee,eta_days:target.eta_days});
   }
-  if (button.dataset.decision) { recordDecision(button); return; }
-  const action = button.dataset.action, agent = state.agents.get(state.active);
-  if (action === "reload-manifest") { loadManifest(); return; }
-  if (!agent) return;
-  if (action === "cancel") agent.controller?.abort();
-  if (action === "example" && !agent.pending) {
-    $('[name="user_input"]', $("#agent-form")).value = AGENT_CONFIG[state.active].example;
-    editInput();
+  if(JSON.stringify(next)!==JSON.stringify(view.input)) {view.input=next; view.dirty=true; view.notice='输入已变化，旧测算不可用于保存或审批。'; view.error=null; $('#calculation-result')?.remove(); $$('#page-content [data-action="save"],#page-content [data-proposal-action]').forEach(b=>b.disabled=true); $('#page-status').innerHTML=panel('需重新计算',`<p>${e(view.notice)}</p>`,'is-warning');}
+}
+async function calculate(view) {
+  const payload=structuredClone(view.input);
+  await act(view,async()=>{
+    await post(`/workbenches/${view.route}/draft`,{input:payload});
+    const result=contract.validateWorkbenchCalculation(await post(`/workbenches/${view.route}/calculate`,{input:payload}));
+    view.input=structuredClone(result.input); Object.assign(view.data,result); view.dirty=false;
+    view.notice=result.calculation.valid?'本次输入已由后端计算；可核对后保存草稿。':'约束未通过，请修改输入。';
+  });
+}
+async function save(view) {
+  if(view.dirty || !view.data.calculation?.valid) return;
+  await act(view,async()=>{
+    const result=contract.validateWorkbenchSave(await post(`/workbenches/${view.route}/save`,{input:structuredClone(view.input)}));
+    view.proposal=result.proposal;
+    view.data=contract.validateWorkbench(await api(`/workbenches/${view.route}?risk_id=${view.riskId}`),{moduleType:view.route,riskId:view.riskId});
+    view.input=structuredClone(view.data.input); view.dirty=false;
+    view.notice='草稿已保存，尚未提交审批。'; views.get('today').data=null;
+  });
+}
+async function proposalAction(view,element) {
+  const id=element.dataset.id,version=Number(element.dataset.version),action=element.dataset.proposalAction;
+  await act(view,async()=>{
+    const latest=contract.validateProposalList(await api('/proposals')).items.find(p=>p.id===id);
+    if(!latest || latest.current_version!==version || dirtyRisk(latest.risk_id)) throw new Error('方案或输入已经变化，请重新读取并核对当前版本。');
+    const module=latest.version?.payload?.proposal_type;
+    if(WORKBENCHES.has(module)) {
+      const wb=contract.validateWorkbench(await api(`/workbenches/${module}?risk_id=${latest.risk_id}`),{moduleType:module,riskId:latest.risk_id});
+      if(unsavedWorkbench({data:wb})) throw new Error('服务端输入尚未保存为方案版本，请先重新计算并保存，再核对审批。');
+    }
+    const allowed={submit:'draft',approve:'pending_approval',execute:'approved'};
+    if(latest.status!==allowed[action]) throw new Error('方案状态已改变，请刷新后操作。');
+    const headers=['approve','execute'].includes(action)?{'Idempotency-Key':`ui-v1.2|demo|${action}|${id}|${version}`}:{ };
+    const result=await post(`/proposals/${encodeURIComponent(id)}/${action}`,{},headers);
+    if(action==='approve') contract.validateApproval(result,{proposalId:id,version});
+    else if(action==='execute') contract.validateExecutionTask(result,{proposalId:id,version});
+    else contract.validateProposal(result,{proposalId:id});
+    const [proposals,tasks]=await Promise.all([api('/proposals'),api('/execution-tasks')]);
+    const currentProposals=contract.validateProposalList(proposals).items;
+    view.proposal=currentProposals.find(p=>p.id===id) || null;
+    const today=views.get('today');today.data={proposals:currentProposals,tasks:contract.validateTaskList(tasks).items,work:today.data?.work || []};
+    today.tab=action==='approve' || action==='execute'?'followup':'pending';
+    view.notice=action==='approve'?'当前版本已审批，仍需单独生成待执行任务。':action==='execute'?'执行草稿已生成，未向外部系统写入。':'当前版本已提交审批。';
+  });
+}
+
+document.addEventListener('submit',event=>{
+  const form=event.target;if(!(form instanceof HTMLFormElement))return;event.preventDefault();
+  const view=views.get(active);if(mutation || view.pending || !form.reportValidity())return;
+  const values=Object.fromEntries(new FormData(form));
+  if(form.id==='overview-form'){view.filter=values;void loadView(view);}
+  if(form.id==='workbench-form'){editWorkbench(view,form);void calculate(view);}
+  if(form.id==='simulation-form'){
+    view.simulation=values;
+    try{view.preview=contract.buildSimulationRequest({...values,horizon_days:Number(values.horizon_days),reduction_pct:Number(values.reduction_pct),category:values.category || null},view.data);view.result=null;view.error=null;render(view);$('#scenario-preview')?.scrollIntoView({block:'center'});}catch(error){view.error=error;render(view);}
   }
-  if (action === "simulate") runAgent("simulate");
-  if (action === "retry") {
-    if (agent.error?.outcomeUnknown && !window.confirm("上次运行是否完成未知。请先核对请求编号；确定提交一个新请求？")) return;
-    // A failed calculation must go through a fresh preview; an old confirmation
-    // cannot silently authorize a second scenario run.
-    runAgent();
+  if(form.id==='feedback-form'){
+    view.feedbackText=values.raw_text;
+    void act(view,async()=>{const investigation=await post(`/risks/${view.riskId}/investigations`); if(!investigation.id) throw new Error('核查接口未返回编号');const fb=await post(`/investigations/${investigation.id}/feedback`,{raw_text:values.raw_text,timezone:'Asia/Shanghai'});if(!fb.id || !fb.draft || fb.investigation_id!==investigation.id)throw new Error('反馈响应与本次核查不一致');view.feedback=fb;view.confirmedText=JSON.stringify(fb.draft,null,2);view.notice='原文已保存。请核对草稿，不要直接采信预填原因。';});
   }
-  if (action === "revise") {
-    agent.revision++; requests.invalidate(state.active); agent.run = null; agent.error = null; agent.request = null; agent.edited = true; agent.decisions.clear();
-    renderOutput(state.active);
+  if(form.id==='feedback-confirm-form'){
+    let confirmed;try{confirmed=JSON.parse(values.confirmed_json);if(!confirmed || Array.isArray(confirmed) || typeof confirmed!=='object')throw new Error();}catch{notify('确认内容必须是有效 JSON 对象');return;}
+    const fb=view.feedback;
+    void act(view,async()=>{const result=await post(`/feedback/${fb.id}/confirm`,{confirmed});if(result.id!==fb.id || result.confirmation_status!=='confirmed')throw new Error('反馈确认没有取得对应回执');view.feedback=result;view.notice='人工反馈版本已确认；请刷新方案检查是否需要重算。';views.get('today').data=null; for(const wb of views.values()) if(WORKBENCHES.has(wb.route) && Number(wb.riskId)===Number(view.riskId)){wb.dirty=true;wb.data=null;}});
   }
-  if (action === "revise" || action === "edit") {
-    $("#agent-form").scrollIntoView({ behavior: "auto", block: "start" });
-    $('[name="user_input"]', $("#agent-form")).focus();
+  if(form.classList.contains('task-form')){
+    if(['received','completed'].includes(values.status) && !values.receipt_ref.trim()){notify('已收货或已完成必须填写实际执行回执号');return;}
+    void act(view,async()=>{const result=contract.validateExecutionTask(await post(`/execution-tasks/${encodeURIComponent(form.dataset.taskId)}/status`,{status:values.status,receipt_ref:values.receipt_ref || null}));if(result.id!==form.dataset.taskId)throw new Error('执行回执编号不一致');view.data.tasks=contract.validateTaskList(await api('/execution-tasks')).items;view.tab=['received','completed'].includes(result.status)?'completed':'followup';view.notice='已保存人工回执；未向外部系统发出业务操作。';});
   }
 });
-$(".skip-link").addEventListener("click", (event) => { event.preventDefault(); $("#workspace").focus(); });
-$("#nav-toggle").addEventListener("click", () => setNavigationOpen(!document.body.classList.contains("nav-open")));
-$("#nav-backdrop").addEventListener("click", () => setNavigationOpen(false));
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") setNavigationOpen(false);
+document.addEventListener('input',event=>{
+  const view=views.get(active);if(mutation || view.pending)return;
+  const form=event.target.closest('form');
+  if(form?.id==='workbench-form' && event.target.name!=='risk_id') editWorkbench(view,form);
+  if(form?.id==='simulation-form') {view.simulation=Object.fromEntries(new FormData(form));view.preview=null;view.result=null;view.error=null;$('#scenario-preview')?.remove();$('#simulation-result')?.remove();$('#page-status').innerHTML=panel('条件已变化','<p>请重新核对情景，旧确认与结果已失效。</p>');}
+  if(form?.id==='feedback-form') view.feedbackText=form.elements.raw_text.value;
+  if(form?.id==='feedback-confirm-form') view.confirmedText=form.elements.confirmed_json.value;
 });
-window.addEventListener("hashchange", navigate);
-navigate(); renderConnection(); loadManifest();
+document.addEventListener('change',event=>{
+  const view=views.get(active);if(mutation || view.pending)return;
+  if(event.target.name==='risk_id'){view.riskId=Number(event.target.value);view.data=null;view.feedback=null;view.confirmedText='';void loadView(view);}
+  if(event.target.name==='store_sort'){view.sort=event.target.value;render(view);}
+  if(event.target.name==='risk_types'){view.riskTypes=[...event.target.selectedOptions].map(x=>x.value);render(view);}
+  if(event.target.name==='action' && WORKBENCHES.has(active))render(view);
+});
+document.addEventListener('click',event=>{
+  const target=event.target.closest('button');if(!target || target.disabled)return;
+  const view=views.get(active);if(target.dataset.proposalAction){void proposalAction(view,target);return;}
+  if(target.dataset.risk){const diagnosis=views.get('slow_moving');diagnosis.riskId=Number(target.dataset.risk);diagnosis.data=null;location.hash='slow_moving';return;}
+  const action=target.dataset.action;
+  if(action==='reload')void loadView(view);
+  if(action==='tab'){view.tab=target.dataset.tab;render(view);}
+  if(action==='save')void save(view);
+  if(action==='save-draft')void act(view,async()=>{await post(`/workbenches/${view.route}/draft`,{input:structuredClone(view.input)});view.dirty=true;view.notice='编辑输入已保存，仍需重新计算。';});
+  if(action==='open-workbench'){
+    const wb=views.get(target.dataset.module);wb.riskId=Number(target.dataset.riskId || view.riskId);wb.data=null;location.hash=wb.route;
+  }
+  if(action==='replan')void act(view,async()=>{contract.validateProposal(await post(`/risks/${view.riskId}/replan`));view.notice='后端已按确认事实重算，新的方案仍需审批。';views.get('today').data=null;});
+  if(action==='revise-simulation'){view.preview=null;render(view);$('#simulation-form [name="reduction_pct"]').focus();}
+  if(action==='confirm-simulation' && view.preview){const request=structuredClone(view.preview);view.preview=null;void act(view,async()=>{view.result=contract.validateSimulation(await post('/retail/simulate',request),request);view.notice=view.result.status==='completed'?'后端计算完成；请核对两种方案的采购、库存和风险。':'当前资料不足以计算，未生成演示结果。';});}
+});
+$('.skip-link').addEventListener('click',event=>{event.preventDefault();$('#workspace').focus();});
+$('#nav-toggle').addEventListener('click',()=>nav(!document.body.classList.contains('nav-open')));
+$('#nav-backdrop').addEventListener('click',()=>nav(false));
+$('#app-nav').addEventListener('click',()=>nav(false));
+document.addEventListener('keydown',event=>{if(event.key==='Escape')nav(false);});
+window.addEventListener('hashchange',navigate);
+navigate();

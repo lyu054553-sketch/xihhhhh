@@ -1,4 +1,4 @@
-"""Serve the public frontend and forward the two v0.3 POST routes.
+"""Serve the public frontend and forward explicitly supported v1.2 API routes.
 
 This development server has no business rules, database, or sample API responses.
 """
@@ -20,18 +20,28 @@ from urllib.parse import quote, unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_BODY_BYTES = 2 * 1024 * 1024
-PUBLIC_FILES = {"index.html", "app.js", "styles.css", "favicon.svg", "README.md"}
+PUBLIC_FILES = {"index.html", "app.js", "styles.css", "favicon.svg", "README.md", "API_CONTRACT.md"}
 PUBLIC_DOCS = {
-    "docs/API_CONTRACT.md", "docs/FRONTEND_INTEGRATION.md",
+    "docs/API_CONTRACT_V0_3_DRAFT.md", "docs/FRONTEND_INTEGRATION.md",
     "docs/DEMO_RUNBOOK.md", "docs/DEMO_SLIDES.html", "docs/DEMO_SLIDES.pptx",
-    "docs/VALIDATION_RESULT.md", "docs/ZHU_DELIVERY.md", "docs/FRONTEND_BLUEPRINT.md", "docs/demo-recording/contract-flow.webm",
-    "docs/demo-recording/contract-flow.png",
+    "docs/VALIDATION_RESULT.md", "docs/ZHU_DELIVERY.md", "docs/FRONTEND_BLUEPRINT.md",
+    "docs/demo-recording/live-flow.webm", "docs/demo-recording/live-flow.png",
 }
 ASSET_SUFFIXES = {".js", ".mjs", ".css", ".woff2", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".ico", ".txt"}
 DATA_SUFFIXES = {".json", ".csv", ".md", ".txt"}
-FORWARDED_REQUEST_HEADERS = ("Content-Type", "Accept", "Authorization", "X-Request-ID")
+FORWARDED_REQUEST_HEADERS = ("Content-Type", "Accept", "Authorization", "X-Request-ID", "X-Tenant-Id", "Idempotency-Key")
 FORWARDED_RESPONSE_HEADERS = ("Content-Type", "Content-Encoding", "Content-Language", "Retry-After", "X-Request-ID")
-RUN_ROUTE = re.compile(r"/api/v1/agent-runs(?:/[^/]+/decisions)?\Z")
+READ_ROUTE = re.compile(
+    r"/api/v1/(?:retail/(?:overview|simulation-options)|risks(?:/[0-9]+)?|"
+    r"workbenches/(?:transfer|expiry-rescue|procurement-brake)|"
+    r"proposals(?:/[A-Za-z0-9_-]+/versions)?|execution-tasks|data-center|work-items|cases)\Z"
+)
+WRITE_ROUTE = re.compile(
+    r"/api/v1/(?:retail/simulate|risks/[0-9]+/(?:investigations|replan)|"
+    r"investigations/[A-Za-z0-9_-]+/feedback|feedback/[A-Za-z0-9_-]+/(?:confirm|revisions)|"
+    r"workbenches/(?:transfer|expiry-rescue|procurement-brake)/(?:draft|calculate|save)|"
+    r"proposals/[A-Za-z0-9_-]+/(?:submit|approve|execute)|execution-tasks/[A-Za-z0-9_-]+/status)\Z"
+)
 
 
 def validate_api_base(value: str | None) -> str | None:
@@ -87,7 +97,7 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
         raise ValueError("A directory and positive timeout are required")
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "FrontendDev/0.3"
+        server_version = "FrontendDev/1.2"
         sys_version = ""
 
         def respond(self, status, body=b"", headers=None):
@@ -119,6 +129,12 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
         def do_GET(self):
             path = self.path_or_error()
             if path is None:
+                return
+            if READ_ROUTE.fullmatch(path):
+                if self.command == "HEAD":
+                    self.error(405, "METHOD_NOT_ALLOWED", "API reads require GET.")
+                else:
+                    self.forward(path)
                 return
             relative = "index.html" if path == "/" else path.lstrip("/")
             if not public_path(relative):
@@ -153,8 +169,8 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
             path = self.path_or_error()
             if path is None:
                 return
-            if not RUN_ROUTE.fullmatch(path):
-                self.error(404, "NOT_FOUND", "Only v0.3 Agent runs and decisions are forwarded.")
+            if not WRITE_ROUTE.fullmatch(path):
+                self.error(404, "NOT_FOUND", "This API route is not supported by the frontend.")
                 return
             if self.headers.get("Transfer-Encoding"):
                 self.error(400, "INVALID_REQUEST", "Chunked request bodies are not accepted.")
@@ -173,9 +189,6 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
             if length > MAX_BODY_BYTES:
                 self.error(413, "BODY_TOO_LARGE", "Request body exceeds 2 MiB.")
                 return
-            if upstream is None:
-                self.error(503, "API_NOT_CONFIGURED", "Configure AGENT_API_BASE or --api-base with Wei's v0.3 API URL.")
-                return
             self.connection.settimeout(timeout)
             try:
                 body = self.rfile.read(length)
@@ -184,6 +197,12 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
                 return
             if len(body) != length:
                 self.error(400, "INVALID_REQUEST", "Incomplete request body.")
+                return
+            self.forward(path, body)
+
+        def forward(self, path, body=None):
+            if upstream is None:
+                self.error(503, "API_NOT_CONFIGURED", "Configure AGENT_API_BASE or --api-base with Wei's v1.2 API URL.")
                 return
             parts = urlsplit(upstream)
             connection_class = http.client.HTTPSConnection if parts.scheme == "https" else http.client.HTTPConnection
@@ -194,7 +213,7 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
                 target += "?" + query
             headers = {key: self.headers[key] for key in FORWARDED_REQUEST_HEADERS if key in self.headers}
             try:
-                connection.request("POST", target, body=body, headers=headers)
+                connection.request(self.command, target, body=body, headers=headers)
                 response = connection.getresponse()
                 payload = response.read()
                 response_headers = {key: response.getheader(key) for key in FORWARDED_RESPONSE_HEADERS if response.getheader(key) is not None}
@@ -202,7 +221,7 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
             except (TimeoutError, socket.timeout):
                 self.error(504, "UPSTREAM_TIMEOUT", "The configured API did not respond in time.", True)
             except (OSError, http.client.HTTPException):
-                self.error(502, "UPSTREAM_UNAVAILABLE", "Cannot reach the configured v0.3 API.", True)
+                self.error(502, "UPSTREAM_UNAVAILABLE", "Cannot reach the configured v1.2 API.", True)
             finally:
                 connection.close()
 
@@ -231,7 +250,7 @@ def main():
     except ValueError as error:
         parser.error(str(error))
     print(f"Frontend: http://{args.host}:{args.port}")
-    print(f"Upstream v0.3 API: {api_base or 'not configured; Agent requests return API_NOT_CONFIGURED'}")
+    print(f"Upstream v1.2 API: {api_base or 'not configured; API requests return API_NOT_CONFIGURED'}")
     print("Static frontend and API forwarding only; no database or business server is started.")
     if args.check:
         return
