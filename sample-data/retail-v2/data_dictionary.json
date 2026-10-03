@@ -1,0 +1,4279 @@
+[
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "store_name",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "region",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "store_type",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "latitude",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "longitude",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "coordinate_system",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "open_date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "data_scope",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "include_in_summary",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "product_name",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "category_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "specification",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "base_unit",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "purchase_unit",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "units_per_purchase_unit",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "shelf_life_days",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "storage_condition",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "default_unit_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "regular_unit_price",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "gross_weight_kg",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "volume_m3",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "商品",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "供应商",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "供应商",
+    "field": "supplier_name",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "供应商",
+    "field": "confirmation_contact_role",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "供应商",
+    "field": "confirmation_channel",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "供应商",
+    "field": "contact_email",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "供应商",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "供应商",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "供应商",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "供应商",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "人员",
+    "field": "person_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "人员",
+    "field": "display_name",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "人员",
+    "field": "role",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "人员",
+    "field": "store_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "人员",
+    "field": "channel_target",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "人员",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "人员",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "人员",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "人员",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "is_listed",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "can_receive_transfer",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "capacity_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "safety_stock_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "target_coverage_days",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "min_receive_sellable_days",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "storage_condition",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "门店商品",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "policy_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "scope",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "valid_from",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "valid_to",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "slow_coverage_days_threshold",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "min_observed_days",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "expiry_alert_days",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "stop_sale_days_before_expiry",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "safety_stock_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "target_coverage_days",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "rule_version",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "01_主数据与规则.xlsx",
+    "sheet": "风险规则",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "inventory_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "snapshot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "snapshot_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "stock_state",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "quantity",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "shipment_line_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "blocked_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "reserved_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "unit_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "sellable_until",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存快照",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "supplier_batch_no",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "production_date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "expiry_date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "purchase_order_line_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "商品批次",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "sales_day_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "sold_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "customer_return_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "sales_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "refund_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "sold_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "returned_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "regular_unit_price",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "actual_unit_price",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "promotion_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日销售",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "opening_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "received_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "closing_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "open_hours",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "on_shelf_hours",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "in_stock_hours",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "listing_status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "stockout_flag",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "逐日可售状态",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "movement_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "event_type",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "quantity_delta",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "document_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "库存变动",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "po_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "po_line_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "ordered_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "unit_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "received_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "paid_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "payment_status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "ordered_at",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "original_document_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "02_库存与90天经营事实.xlsx",
+    "sheet": "历史采购",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "forecast_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "demand_low",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "demand_base",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "demand_high",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "method",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "assumption_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "generated_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "逐日需求假设",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "route_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "from_store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "to_store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "route_label",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "route_points",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "distance_km",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "travel_minutes",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "dispatch_rule",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "handling_minutes",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "eta_days",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "fee_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "fee_basis",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "max_qty_per_trip",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "quantity_unit",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "applicable_sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "storage_condition",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "valid_from",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "valid_to",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "version",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "路线与运费",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "is_open",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "can_receive",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "receive_window",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "capacity_override",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "收货日历",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "po_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "po_line_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "ordered_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "received_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "unit_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "paid_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "payment_status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "order_status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "due_at",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "original_document_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "已确认采购",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "shipment_line_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "purchase_order_line_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "transfer_order_line_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "shipped_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "received_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "expected_arrival_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "ownership",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "unit_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "采购在途",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "account_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "account_name",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "currency",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "snapshot_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "available_balance",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "source_document",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "scope",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "账户快照",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "payable_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "po_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "original_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "due_at",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "paid_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "applied_credit_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "outstanding_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "应付款",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "term_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "sku_scope",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "effective_from",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "effective_to",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "allowed_settlement_modes",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "return_deadline_rule",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "min_remaining_shelf_life_days",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "packaging_requirements",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "max_return_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "max_return_ratio",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "refund_price_rule",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "restocking_fee_rule",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "freight_payer",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "settlement_trigger",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "settlement_days",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "source_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "confirmed_by",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "confirmed_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "退供条款",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "promotion_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "stage_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "bundle_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "start_date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "end_date_exclusive",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "bundle_price",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "floor_price",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "min_margin_pct",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "available_bundle_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "execution_fee",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "forecast_unit",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "demand_low",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "demand_base",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "demand_high",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "assumption_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "阶段促销",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "bundle_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "qty_per_bundle",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "base_unit",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "unit_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "regular_unit_price",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "组合商品",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "assumption_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "kind",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "description",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "low_factor",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "base_factor",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "high_factor",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "03_需求路线采购与条款.xlsx",
+    "sheet": "假设说明",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "title",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "branches",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "input_scope",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "base_snapshot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "decision_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "evaluation_end",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "notes",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景目录",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "quantity",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "sales_30",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "valid_observed_days",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "sellable_until",
+    "type": "date",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "unit_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "policy_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "input_scope",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "独立风险输入",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "override_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "table_name",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "record_key",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "field",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "value_json",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "reason",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "隔离场景覆盖",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "production_date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "expiry_date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "po_line_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "场景批次",
+    "field": "input_role",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "material_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "type",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "party_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "source_location",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "text",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "evidence_uri",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "原始材料",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "intent_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "source_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "channel",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "intent_status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "store_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "quantity",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "unit",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "unit_cost",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "expected_arrival_date",
+    "type": "date",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "payment_date",
+    "type": "date",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "confirmation_required",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "采购意向",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "payable_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "po_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "original_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "due_at",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "paid_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "applied_credit_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "outstanding_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "source_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "04_场景输入与原始材料.xlsx",
+    "sheet": "抵款场景应付",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "task_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "type",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "owner_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "planned_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "unit",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "proposal_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "proposal_version",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "approved_by",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "approved_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "due_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "initial_execution_status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "initial_result_status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "completion_criteria",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "external_write",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "方案及任务",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "event_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "occurred_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "event_type",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "task_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "store_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "to_store_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "quantity",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "from_state",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "to_state",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "receipt_ref",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "from_store_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "affected_qty",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "reason",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "resolved",
+    "type": "boolean",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "accepted_mode",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "rejected_qty",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "unit_cost",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "cash_difference",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "credit_note_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "amount",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "supplier_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "expires_at",
+    "type": "date",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "payable_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "po_line_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "payment_due",
+    "type": "date",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "shipment_line_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "promotion_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "reported_by",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "confirmed_by",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "old_data_version",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "new_data_version",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "proposal_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "old_proposal_version",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "业务回执",
+    "field": "new_proposal_version",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "action_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "action_event_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "task_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "proposal_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "proposal_version",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "channel",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "content_snapshot",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "target_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "idempotency_key",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "external_write",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "receipt_ref",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "渠道动作记录",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "sale_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "sold_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "unit_price",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "sales_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "sold_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "attribution",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "task_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "批次销售",
+    "field": "bundle_sale_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "cash_event_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "account_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "occurred_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "direction",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "business_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "receipt_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "现金流水",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "allocation_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "cash_event_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "business_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "allocated_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "核销分配",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "return_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "task_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "term_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "sku_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "lot_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "po_line_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "requested_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "accepted_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "accepted_mode",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "accepted_unit_price",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "return_fee",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "confirmation_ref",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "expected_settlement_date",
+    "type": "date",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "replacement_sku_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "replacement_lot_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "replacement_qty",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "replacement_unit_cost",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "credit_amount",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "payable_id",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "source",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "is_demo",
+    "type": "boolean",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "data_version",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "05_未来执行与结算回放.xlsx",
+    "sheet": "退供确认",
+    "field": "known_at",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "风险预期",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "风险预期",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "风险预期",
+    "field": "coverage_days",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "风险预期",
+    "field": "remaining_sellable_days",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "风险预期",
+    "field": "slow_result",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "风险预期",
+    "field": "expiry_result",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "风险预期",
+    "field": "risk_cost_once",
+    "type": "number",
+    "nullable": true
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "风险预期",
+    "field": "missing_or_check",
+    "type": "text",
+    "nullable": true
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "scenario_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "branch_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "as_of",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "execution_status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "result_status",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "shipped_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "received_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "sold_transferred_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "collected_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "unmatched_amount",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "remaining_unexecuted_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "06_验收预期结果.xlsx",
+    "sheet": "进度预期",
+    "field": "attention_reason",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "sku",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "store",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "store_id",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "product",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "unit",
+    "type": "text",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "inventory_qty",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "unit_cost",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "sales_30",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "sales_90",
+    "type": "number",
+    "nullable": false
+  },
+  {
+    "file": "07_当前库存导入.xlsx",
+    "sheet": "库存导入",
+    "field": "sales_cost_30",
+    "type": "number",
+    "nullable": false
+  }
+]

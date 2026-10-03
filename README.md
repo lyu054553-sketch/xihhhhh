@@ -39,6 +39,30 @@ python -m venv .venv
 
 -ApiBase 或 AGENT_API_BASE 配置后使用外部服务；-Check 只校验配置，不启动服务。可用 -Database 或 INVENTORY_AGENT_DB 指定仓库外的数据库文件；INVENTORY_AGENT_MODE=real 时保持真实模式，不自动加入合成种子。不要双击 index.html。scripts/serve_frontend.py 是前端静态与代理服务；它自身不做业务计算。后端私有端口由启动器分配，以输出为准。
 
+## 模型 API 配置入口
+
+已预留 DeepSeek、千问、MiniMax 三组后端配置，模板见 [.env.example](./.env.example)。本机已有 `.env` 时直接编辑；首次从仓库获取项目且尚无该文件时，可复制模板：
+
+```bash
+cp -n .env.example .env
+```
+
+在 `.env` 中填写所需服务的配置，修改后重启后端。API Key、模型名称允许暂时留空，不影响本地规则计算。
+
+| 服务 | 密钥字段 | 其他配置 |
+|---|---|---|
+| DeepSeek | `DEEPSEEK_API_KEY` | `DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`DEEPSEEK_VISION_MODEL` |
+| 千问／阿里云百炼 | `QWEN_API_KEY` | `QWEN_BASE_URL`、`QWEN_MODEL`、`QWEN_VISION_MODEL` |
+| MiniMax | `MINIMAX_API_KEY` | `MINIMAX_BASE_URL`、`MINIMAX_MODEL`、`MINIMAX_VISION_MODEL` |
+
+`AGENT_MODEL_PROVIDER` 和 `AGENT_VISION_PROVIDER` 分别预留文本分析、图片识别的服务选择，可填 `deepseek`、`qwen`、`minimax`，未决定时留空。模型名称按账号实际可用模型填写；图片入口需对应支持图片输入的模型。千问默认地址为北京地域，其他地域或专属工作空间需要替换成与密钥匹配的地址。接口地址依据 [DeepSeek 文档](https://api-docs.deepseek.com/)、[百炼地域与接口说明](https://help.aliyun.com/en/model-studio/base-url)、[MiniMax 文档](https://platform.minimax.cn/docs/api-reference/text-openai-api) 预留，可自行修改。
+
+后端从项目根目录 `.env` 读取，已有环境变量优先；密钥使用 `SecretStr` 保存，配置不通过前端接口返回，`.env` 已被 Git 忽略。本次开发与比赛不设 API 总费用上限，配置中的 `api_budget_limit_cny=None` 表示不限，后续接入仍保留请求超时、有限重试与用量记录。
+
+**目前完成的是配置读取入口；尚未接入模型请求、图片识别或自动切换。** 填写配置不会触发付费调用。新增依赖 `python-dotenv`，更新后先按上面的命令安装 `requirements.txt`。
+
+## 数据与协作
+
 ## 使用与边界
 
 - 经营总览区分账户余额、库存成本、待关注库存成本和未来采购付款；缺少真实资料时保留 null，显示“未接入／待补充”。
