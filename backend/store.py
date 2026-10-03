@@ -6,7 +6,9 @@ import json
 import sqlite3
 import uuid
 from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path
+from threading import RLock
 from typing import Any, Dict, Iterable, List, Optional
 
 from .domain import TEACHER_BASELINE_VERSION, evidence_label, evidence_level, money
@@ -170,15 +172,29 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _serialized(method):
+    """Keep a shared connection exclusive until a whole Store operation finishes."""
+    @wraps(method)
+    def locked(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return locked
+
+
 class Store:
     def __init__(self, path: str = "inventory_cash_agent.db") -> None:
         self.path = path
+        # check_same_thread=False permits cross-thread use; it does not serialize
+        # execute/fetch, statement-cache access or multi-statement mutations.
+        # Nested Store calls need a reentrant lock on the same connection.
+        self._lock = RLock()
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
         self._migrate_real_inventory_lines()
         self.conn.commit()
 
+    @_serialized
     def _migrate_real_inventory_lines(self) -> None:
         """为已导入的库存快照补齐老师口径字段，不重建或删除历史快照。"""
         columns = {
@@ -214,9 +230,11 @@ class Store:
             "ON real_inventory_lines(snapshot_id, teacher_candidate, teacher_priority)"
         )
 
+    @_serialized
     def close(self) -> None:
         self.conn.close()
 
+    @_serialized
     def reset_demo(self) -> None:
         for table in [
             "audit_events", "cases", "cash_events", "execution_tasks", "approvals",
@@ -226,6 +244,7 @@ class Store:
         self.conn.commit()
         self.seed_demo()
 
+    @_serialized
     def seed_demo(self) -> None:
         # 用户已导入真实库存时，不新增或迁移任何演示商品。
         if self.real_inventory_snapshot("demo"):
@@ -279,6 +298,7 @@ class Store:
         self._seed_cash_events()
         self.conn.commit()
 
+    @_serialized
     def _seed_proposal(self, risk_id: int, version: int, action_type: str, created: str) -> str:
         proposal_id = "PROP-AC10-001"
         payload = {
@@ -291,6 +311,7 @@ class Store:
         self.conn.execute("INSERT OR IGNORE INTO proposal_versions(id, proposal_id, version, payload_json, status, invalid_reason, created_at) VALUES(?,?,?,?,?,?,?)", ("PV-AC10-V1", proposal_id, version, json.dumps(payload, ensure_ascii=False), "pending_approval", None, created))
         return proposal_id
 
+    @_serialized
     def _seed_cash_events(self) -> None:
         events = [
             ("ev-b-r1", "baseline-r1", "sales_receipt", "1000", "in", "2026-09-30", "sale-baseline", "sample", "AC04"),
@@ -302,17 +323,21 @@ class Store:
         for event in events:
             self.conn.execute("INSERT OR IGNORE INTO cash_events(id, tenant_id, scenario_id, event_type, amount, direction, event_date, business_ref, source, evidence_ref) VALUES(?,?,?,?,?,?,?,?,?,?)", (event[0], "demo", *event[1:]))
 
+    @_serialized
     def rows(self, sql: str, args: Iterable[Any] = ()) -> List[Dict[str, Any]]:
         return [dict(row) for row in self.conn.execute(sql, tuple(args)).fetchall()]
 
+    @_serialized
     def one(self, sql: str, args: Iterable[Any] = ()) -> Optional[Dict[str, Any]]:
         row = self.conn.execute(sql, tuple(args)).fetchone()
         return dict(row) if row else None
 
+    @_serialized
     def audit(self, entity_type: str, entity_id: str, event_type: str, payload: Dict[str, Any], tenant_id: str = "demo", actor_id: str = "demo-user") -> None:
         self.conn.execute("INSERT INTO audit_events(id, tenant_id, entity_type, entity_id, event_type, payload_json, actor_id, created_at) VALUES(?,?,?,?,?,?,?,?)", (str(uuid.uuid4()), tenant_id, entity_type, entity_id, event_type, json.dumps(payload, ensure_ascii=False), actor_id, now_iso()))
         self.conn.commit()
 
+    @_serialized
     def risk(self, risk_id: int, tenant_id: str = "demo") -> Optional[Dict[str, Any]]:
         row = self.one("SELECT * FROM risks WHERE id=? AND tenant_id=?", (risk_id, tenant_id))
         if not row:
@@ -328,9 +353,11 @@ class Store:
         row["proposal_version"] = proposal["current_version"] if proposal else None
         return row
 
+    @_serialized
     def risks(self, tenant_id: str = "demo") -> List[Dict[str, Any]]:
         return [self.risk(row["id"], tenant_id) for row in self.rows("SELECT id FROM risks WHERE tenant_id=? ORDER BY priority='紧急' DESC, id", (tenant_id,))]
 
+    @_serialized
     def create_investigation(self, risk_id: int, actor_id: str = "demo-user", tenant_id: str = "demo") -> Dict[str, Any]:
         existing = self.one("SELECT * FROM investigations WHERE risk_id=? AND tenant_id=? AND status NOT IN ('confirmed','unable_to_verify') ORDER BY created_at DESC LIMIT 1", (risk_id, tenant_id))
         if existing:
@@ -342,6 +369,7 @@ class Store:
         self.audit("investigation", investigation_id, "created", {"risk_id": risk_id}, tenant_id, actor_id)
         return self.one("SELECT * FROM investigations WHERE id=?", (investigation_id,)) or {}
 
+    @_serialized
     def add_feedback(self, investigation_id: str, raw_text: str, submitted_at: str, draft: Dict[str, Any], actor_id: str = "demo-user", tenant_id: str = "demo") -> Dict[str, Any]:
         investigation = self.one("SELECT * FROM investigations WHERE id=? AND tenant_id=?", (investigation_id, tenant_id))
         if not investigation:
@@ -354,6 +382,7 @@ class Store:
         self.audit("feedback", feedback_id, "draft_created", {"investigation_id": investigation_id, "version": version}, tenant_id, actor_id)
         return self.feedback(feedback_id, tenant_id) or {}
 
+    @_serialized
     def feedback(self, feedback_id: str, tenant_id: str = "demo") -> Optional[Dict[str, Any]]:
         row = self.one("SELECT * FROM feedback_versions WHERE id=? AND tenant_id=?", (feedback_id, tenant_id))
         if row:
@@ -361,6 +390,7 @@ class Store:
             row["confirmed"] = json.loads(row.pop("confirmed_json")) if row.get("confirmed_json") else None
         return row
 
+    @_serialized
     def confirm_feedback(self, feedback_id: str, confirmed: Dict[str, Any], actor_id: str = "demo-user", tenant_id: str = "demo") -> Dict[str, Any]:
         existing = self.feedback(feedback_id, tenant_id)
         if not existing:
@@ -392,6 +422,7 @@ class Store:
         self.audit("feedback", feedback_id, "confirmed", {"fact_version": new_fact_version}, tenant_id, actor_id)
         return self.feedback(feedback_id, tenant_id) or {}
 
+    @_serialized
     def revise_feedback(self, feedback_id: str, status: str, actor_id: str = "demo-user", tenant_id: str = "demo") -> Dict[str, Any]:
         """保存纠正/撤回，不删除原始反馈和历史版本。"""
         existing = self.feedback(feedback_id, tenant_id)
@@ -406,12 +437,14 @@ class Store:
         self.audit("feedback", feedback_id, status, {}, tenant_id, actor_id)
         return self.feedback(feedback_id, tenant_id) or {}
 
+    @_serialized
     def mark_replan_pending(self, risk_id: int, tenant_id: str = "demo", reason: str = "重算工具失败") -> Dict[str, Any]:
         """事实已保存但计算失败时，让旧方案保持不可执行。"""
         self.conn.execute("UPDATE proposals SET status='replan_pending' WHERE risk_id=? AND tenant_id=? AND status IN ('needs_replan','pending_approval','approved')", (risk_id, tenant_id))
         self.conn.commit()
         return {"status": "replan_pending", "risk_id": risk_id, "reason": reason, "fact_saved": True}
 
+    @_serialized
     def replan(self, risk_id: int, tenant_id: str = "demo", actor_id: str = "demo-user") -> Dict[str, Any]:
         """根据当前事实版本创建可重新审批的方案版本，不覆写旧版。"""
         proposal = self.one("SELECT * FROM proposals WHERE risk_id=? AND tenant_id=? ORDER BY created_at DESC LIMIT 1", (risk_id, tenant_id))
@@ -437,6 +470,7 @@ class Store:
         self.audit("proposal", proposal["id"], "replanned", {"from_version": proposal["current_version"], "to_version": new_version, "fact_version": risk["current_fact_version"]}, tenant_id, actor_id)
         return self.proposal(proposal["id"], tenant_id) or {}
 
+    @_serialized
     def proposal(self, proposal_id: str, tenant_id: str = "demo") -> Optional[Dict[str, Any]]:
         proposal = self.one("SELECT * FROM proposals WHERE id=? AND tenant_id=?", (proposal_id, tenant_id))
         if not proposal:
@@ -447,6 +481,7 @@ class Store:
         proposal["version"] = version
         return proposal
 
+    @_serialized
     def proposal_versions(self, proposal_id: str, tenant_id: str = "demo") -> List[Dict[str, Any]]:
         return self.rows("SELECT pv.* FROM proposal_versions pv JOIN proposals p ON p.id=pv.proposal_id WHERE p.id=? AND p.tenant_id=? ORDER BY pv.version", (proposal_id, tenant_id))
 
@@ -457,6 +492,7 @@ class Store:
         # tenant 与客户端键是自由文本，用 JSON 数组编码保证字段边界无歧义。
         return json.dumps([tenant_id, operation, proposal_id, key], ensure_ascii=False, separators=(",", ":"))
 
+    @_serialized
     def approve(self, proposal_id: str, actor_id: str = "demo-user", tenant_id: str = "demo", idem: Optional[str] = None) -> Dict[str, Any]:
         proposal = self.proposal(proposal_id, tenant_id)
         if not proposal:
@@ -478,6 +514,7 @@ class Store:
         self.audit("proposal", proposal_id, "approved", {"version": version}, tenant_id, actor_id)
         return self.one("SELECT * FROM approvals WHERE id=?", (approval_id,)) or {}
 
+    @_serialized
     def execute(self, proposal_id: str, actor_id: str = "demo-user", tenant_id: str = "demo", idem: Optional[str] = None) -> Dict[str, Any]:
         proposal = self.proposal(proposal_id, tenant_id)
         if not proposal:
@@ -497,6 +534,7 @@ class Store:
 
     # 工作台草稿与方案沿用现有 proposal/proposal_version 作为唯一方案真相源。
     # 草稿只保存尚未提交审批的编辑输入和其计算版本，避免另起一套业务对象。
+    @_serialized
     def workbench_draft(self, module_type: str, risk_id: int, tenant_id: str = "demo") -> Optional[Dict[str, Any]]:
         row = self.one("SELECT * FROM workbench_drafts WHERE tenant_id=? AND module_type=? AND risk_id=?", (tenant_id, module_type, risk_id))
         if row:
@@ -517,6 +555,7 @@ class Store:
             value["risk_id"] = risk_id
         return value
 
+    @_serialized
     def save_workbench_draft(
         self,
         module_type: str,
@@ -547,9 +586,11 @@ class Store:
         self.audit("workbench_draft", draft_id, "calculated" if calculation else "input_changed", {"module_type": module_type, "risk_id": risk_id, "version": version, "status": status}, tenant_id, actor_id)
         return self.workbench_draft(module_type, risk_id, tenant_id) or {}
 
+    @_serialized
     def mark_workbench_dirty(self, module_type: str, risk_id: int, input_data: Dict[str, Any], actor_id: str = "demo-user", tenant_id: str = "demo") -> Dict[str, Any]:
         return self.save_workbench_draft(module_type, risk_id, input_data, None, "needs_recalculation", actor_id, tenant_id)
 
+    @_serialized
     def save_workbench_proposal(
         self,
         module_type: str,
@@ -589,6 +630,7 @@ class Store:
         self.audit("proposal", proposal_id, "workbench_saved", {"module_type": module_type, "version": new_version, "risk_id": risk_id}, tenant_id, actor_id)
         return self.proposal(proposal_id, tenant_id) or {}
 
+    @_serialized
     def submit_proposal(self, proposal_id: str, actor_id: str = "demo-user", tenant_id: str = "demo") -> Dict[str, Any]:
         proposal = self.proposal(proposal_id, tenant_id)
         if not proposal:
@@ -603,12 +645,14 @@ class Store:
         self.audit("proposal", proposal_id, "submitted_for_approval", {"version": proposal["current_version"]}, tenant_id, actor_id)
         return self.proposal(proposal_id, tenant_id) or {}
 
+    @_serialized
     def execution_tasks(self, tenant_id: str = "demo") -> List[Dict[str, Any]]:
         rows = self.rows("SELECT * FROM execution_tasks WHERE tenant_id=? ORDER BY created_at DESC", (tenant_id,))
         for row in rows:
             row["metadata"] = json.loads(row.pop("metadata_json"))
         return rows
 
+    @_serialized
     def update_execution_status(
         self,
         task_id: str,
@@ -637,12 +681,14 @@ class Store:
         result["metadata"] = json.loads(result.pop("metadata_json"))
         return result
 
+    @_serialized
     def add_data_import(self, filename: str, mode: str, status: str, summary: Dict[str, Any], errors: List[Dict[str, Any]], actor_id: str = "demo-user", tenant_id: str = "demo") -> Dict[str, Any]:
         import_id = "IMP-" + uuid.uuid4().hex[:10]
         self.conn.execute("INSERT INTO data_imports(id, tenant_id, filename, mode, status, summary_json, errors_json, created_at, actor_id) VALUES(?,?,?,?,?,?,?,?,?)", (import_id, tenant_id, filename, mode, status, json.dumps(summary, ensure_ascii=False), json.dumps(errors, ensure_ascii=False), now_iso(), actor_id))
         self.conn.commit()
         return self.one("SELECT * FROM data_imports WHERE id=?", (import_id,)) or {}
 
+    @_serialized
     def data_imports(self, tenant_id: str = "demo") -> List[Dict[str, Any]]:
         rows = self.rows("SELECT * FROM data_imports WHERE tenant_id=? ORDER BY created_at DESC", (tenant_id,))
         for row in rows:
@@ -650,6 +696,7 @@ class Store:
             row["errors"] = json.loads(row.pop("errors_json"))
         return rows
 
+    @_serialized
     def real_inventory_snapshot(self, tenant_id: str = "demo") -> Optional[Dict[str, Any]]:
         row = self.one(
             "SELECT * FROM real_inventory_snapshots WHERE tenant_id=? ORDER BY created_at DESC LIMIT 1",
@@ -659,6 +706,7 @@ class Store:
             row["metadata"] = json.loads(row.pop("metadata_json") or "{}")
         return row
 
+    @_serialized
     def real_inventory_store_summary(self, snapshot_id: str, tenant_id: str = "demo") -> List[Dict[str, Any]]:
         rows = self.rows(
             """
@@ -693,6 +741,7 @@ class Store:
                 row[key] = float(row.get(key) or 0)
         return rows
 
+    @_serialized
     def real_inventory_attention_items(self, snapshot_id: str, tenant_id: str = "demo", limit_per_store: int = 5) -> List[Dict[str, Any]]:
         """每店按库存成本取前几项已计算的候选，供经营总览下钻展示。"""
         return self.rows(
@@ -714,6 +763,7 @@ class Store:
             (snapshot_id, tenant_id, max(1, int(limit_per_store))),
         )
 
+    @_serialized
     def real_teacher_baseline_summary(self, snapshot_id: str, tenant_id: str = "demo") -> Dict[str, Any]:
         row = self.one(
             """
@@ -738,6 +788,7 @@ class Store:
             )
         }
 
+    @_serialized
     def real_teacher_candidates(
         self,
         snapshot_id: str,
@@ -768,6 +819,7 @@ class Store:
             tuple(parameters),
         )
 
+    @_serialized
     def real_teacher_line(self, snapshot_id: str, line_id: int, tenant_id: str = "demo") -> Optional[Dict[str, Any]]:
         return self.one(
             """
@@ -784,6 +836,7 @@ class Store:
             (snapshot_id, tenant_id, int(line_id)),
         )
 
+    @_serialized
     def real_sku_sales_comparison(self, snapshot_id: str, sku: str, org_code: str, tenant_id: str = "demo") -> List[float]:
         rows = self.rows(
             """
@@ -794,6 +847,7 @@ class Store:
         )
         return [float(row["sales_30"]) for row in rows]
 
+    @_serialized
     def real_inventory_top_lines(self, snapshot_id: str, tenant_id: str = "demo", limit: int = 20) -> List[Dict[str, Any]]:
         rows = self.rows(
             """
@@ -808,18 +862,21 @@ class Store:
         )
         return rows
 
+    @_serialized
     def add_case(self, content: Dict[str, Any], risk_id: Optional[int], actor_id: str = "demo-user", tenant_id: str = "demo") -> Dict[str, Any]:
         case_id = "CASE-" + uuid.uuid4().hex[:10]
         self.conn.execute("INSERT INTO cases(id, tenant_id, risk_id, stage, status, content_json, actor_id, created_at) VALUES(?,?,?,?,?,?,?,?)", (case_id, tenant_id, risk_id, content.get("stage", "confirmed_investigation"), content.get("status", "active"), json.dumps(content, ensure_ascii=False), actor_id, now_iso()))
         self.conn.commit()
         return self.case(case_id, tenant_id) or {}
 
+    @_serialized
     def case(self, case_id: str, tenant_id: str = "demo") -> Optional[Dict[str, Any]]:
         row = self.one("SELECT * FROM cases WHERE id=? AND tenant_id=?", (case_id, tenant_id))
         if row:
             row["content"] = json.loads(row.pop("content_json"))
         return row
 
+    @_serialized
     def cases(self, tenant_id: str = "demo", risk_type: Optional[str] = None) -> List[Dict[str, Any]]:
         rows = self.rows("SELECT * FROM cases WHERE tenant_id=? AND status!='withdrawn' ORDER BY created_at DESC", (tenant_id,))
         result = []
