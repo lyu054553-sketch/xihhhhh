@@ -144,6 +144,21 @@ legend { margin-bottom: 14px; padding: 0; font-size: 16px; font-weight: 650; }
 .toast { position: fixed; z-index: 80; right: 24px; bottom: 24px; max-width: min(420px, calc(100vw - 32px)); padding: 13px 18px; color: #fff; border: 1px solid #40566e; border-radius: 8px; background: var(--navy-deep); font-size: 13px; overflow-wrap: anywhere; box-shadow: 0 4px 18px #1020331f; }
 
 /* Returned evidence, steps, calculations, and recommendations */
+.workflow-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 18px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.workflow-status > span, .workflow-status > small { color: var(--muted); font-size: 12px; }
+.workflow-status > strong { color: var(--ink); }
+.workflow-status > small { flex-basis: 100%; }
+.decision-line { font-size: 17px; font-weight: 600; }
+.cash-summary, .export-controls { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.cash-summary h3, .export-controls h3 { margin: 0 0 12px; }
+.work-list { margin-top: 20px; }
+.work-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 24px 0; border-top: 1px solid var(--line); }
+.work-item h3 { margin: 10px 0; font-size: 16px; }
+.work-item p { margin: 8px 0 0; }
+.work-item-meta { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 12px; }
+.feedback-review h3 { margin: 28px 0 14px; padding-top: 18px; border-top: 1px solid var(--line); }
+.feedback-review textarea[readonly] { background: var(--subtle); }
+.feedback-review .checkbox-field { margin-top: 24px; }
 .result-card, .scenario-card { min-width: 0; overflow-wrap: anywhere; }
 .text-button { padding: 3px 0; color: var(--blue-dark); border: 0; background: transparent; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .detail-list { padding-left: 20px; }
@@ -193,6 +208,7 @@ details[open] > summary { margin-bottom: 10px; }
   .toast { right: 16px; bottom: 16px; }
 }
 @media (max-width: 560px) {
+  .work-item { grid-template-columns: minmax(0, 1fr); }
   .topbar { gap: 8px; padding-right: 16px; padding-left: 16px; }
   .topbar-start { gap: 9px; }
   .topbar-title, .demo-label { font-size: 11px; }

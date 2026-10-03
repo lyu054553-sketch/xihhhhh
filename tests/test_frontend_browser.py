@@ -5,6 +5,8 @@ this suite verifies Wei's actual deterministic rules and persisted workflow.
 """
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 from pathlib import Path
@@ -156,6 +158,15 @@ class FrontendBrowserTests(unittest.TestCase):
     def posts_to(self, suffix):
         return [request for request in self.api_calls if request.method == 'POST' and urlparse(request.url).path.endswith(suffix)]
 
+    def save_feedback(self, text):
+        form = self.page.locator('#feedback-form')
+        form.locator('[name="raw_text"]').fill(text)
+        with self.page.expect_response(lambda response: response.url.endswith('/feedback')) as event:
+            form.locator('button').click()
+        feedback = event.value.json()
+        expect(self.page.locator('#feedback-confirm-form [name="feedback_id"]')).to_have_value(feedback['id'])
+        return feedback
+
     def frame(self):
         if self.artifact_dir:
             self.page.wait_for_timeout(700)
@@ -239,25 +250,185 @@ class FrontendBrowserTests(unittest.TestCase):
 
     def test_feedback_requires_explicit_human_review_before_confirmation(self):
         self.open('slow_moving')
-        form = self.page.locator('#feedback-form')
-        form.locator('[name="raw_text"]').fill('合成核查：此前未上架，今日已补货上架；因果关系仍未知。')
-        with self.page.expect_response(lambda response: response.url.endswith('/feedback')) as event:
-            form.locator('button').click()
-        self.assertEqual(event.value.json()['confirmation_status'], 'pending_confirmation')
+        feedback = self.save_feedback('合成核查：此前未上架，今日已补货上架；因果关系仍未知。')
+        self.assertEqual(feedback['confirmation_status'], 'pending_confirmation')
         confirmation = self.page.locator('#feedback-confirm-form')
         expect(confirmation).to_be_visible()
-        confirmation.locator('[name="confirmed_json"]').fill(json.dumps({
-            'factors': [{'label':'人工确认此前未上架', 'causal_status':'unknown'}],
-            'remediation_status':'done'}, ensure_ascii=False))
+        expect(confirmation.locator('[name="confirmed_json"]')).to_have_count(0)
+        confirmation.locator('[name="factor_0_label"]').fill('人工确认此前未上架')
+        confirmation.locator('[name="factor_0_status"]').select_option('accepted')
+        confirmation.locator('[name="remediation_status"]').select_option('done')
+        confirmation.locator('[name="reviewed"]').check()
+        confirmation.locator('[name="current_status"]').fill('已核对上架记录，原因仍需后续销量验证。')
+        expect(confirmation.locator('[name="reviewed"]')).not_to_be_checked()
         confirmation.locator('button').click()
         self.assertEqual(self.posts_to('/confirm'), [])
         confirmation.locator('[name="reviewed"]').check()
         with self.page.expect_response(lambda response: response.url.endswith('/confirm')) as event:
             confirmation.locator('button').click()
         self.assertEqual(event.value.json()['confirmation_status'], 'confirmed')
+        confirmed = self.posts_to('/confirm')[0].post_data_json['confirmed']
+        self.assertEqual(confirmed['factors'][0]['confirmation_status'], 'confirmed')
+        self.assertEqual(confirmed['factors'][0]['causal_status'], 'unknown')
+        self.assertEqual(confirmed['raw_text'], feedback['raw_text'])
         with self.page.expect_response(lambda response: response.url.endswith('/replan')) as event:
             self.page.locator('[data-action="replan"]').click()
         self.assertEqual(event.value.json()['status'], 'pending_approval')
+
+    def test_feedback_review_keeps_unverified_draft_claims_unknown(self):
+        self.open('slow_moving')
+        feedback = self.save_feedback('上个月可能有一段时间未上架，具体日期和处理结果尚未核实。')
+        form = self.page.locator('#feedback-confirm-form')
+        expect(form.locator('[name="factor_0_status"]')).to_have_value('unknown')
+        expect(form.locator('[name="remediation_status"]')).to_have_value('unknown')
+        expect(form.locator('[name="current_status"]')).to_have_value('')
+        expect(form.locator('[name="date_status"]')).to_have_value('unknown')
+        form.locator('[name="reviewed"]').check()
+        with self.page.expect_response(lambda response: response.url.endswith('/confirm')):
+            form.locator('button').click()
+        confirmed = self.posts_to('/confirm')[0].post_data_json['confirmed']
+        self.assertEqual(confirmed['raw_text'], feedback['raw_text'])
+        self.assertEqual(confirmed['factors'][0]['confirmation_status'], 'pending_confirmation')
+        self.assertEqual(confirmed['factors'][0]['causal_status'], 'unknown')
+        self.assertEqual(confirmed['remediation_status'], 'unknown')
+        self.assertIsNone(confirmed['current_status'])
+        self.assertTrue(confirmed['date_interpretation']['needs_confirmation'])
+        self.assertIsNone(confirmed['date_interpretation']['relative_date_resolved'])
+        self.assertEqual(confirmed['date_interpretation']['uncertain_ranges'], [])
+
+    def test_feedback_original_and_review_are_isolated_per_risk(self):
+        self.open('slow_moving')
+        first = self.save_feedback('合成记录A：坚果陈列待核查。')
+        review = self.page.locator('#feedback-confirm-form')
+        review.locator('[name="factor_0_status"]').select_option('excluded')
+        review.locator('[name="current_status"]').fill('坚果已有独立门店说明A。')
+        with self.page.expect_response(lambda response: response.url.endswith('/risks/3')):
+            self.page.locator('#risk-form [name="risk_id"]').select_option('3')
+        expect(self.page.locator('#feedback-form [name="raw_text"]')).to_have_value('')
+        expect(self.page.locator('#feedback-confirm-form')).to_have_count(0)
+        second = self.save_feedback('合成记录B：牛奶批次待核查。')
+        self.assertNotEqual(first['id'], second['id'])
+        self.assertNotEqual(first['investigation_id'], second['investigation_id'])
+        with self.page.expect_response(lambda response: response.url.endswith('/risks/1')):
+            self.page.locator('#risk-form [name="risk_id"]').select_option('1')
+        expect(self.page.locator('#feedback-form [name="raw_text"]')).to_have_value(first['raw_text'])
+        expect(self.page.locator('#feedback-confirm-form [name="feedback_id"]')).to_have_value(first['id'])
+        expect(self.page.locator('#feedback-confirm-form [name="factor_0_status"]')).to_have_value('excluded')
+        expect(self.page.locator('#feedback-confirm-form [name="current_status"]')).to_have_value('坚果已有独立门店说明A。')
+        self.assertEqual(self.posts_to('/confirm'), [])
+
+    def test_editing_saved_feedback_requires_a_new_review_version(self):
+        self.open('slow_moving')
+        first = self.save_feedback('合成原文：尚未核查。')
+        self.page.locator('#feedback-confirm-form [name="reviewed"]').check()
+        self.page.locator('#feedback-form [name="raw_text"]').fill('合成更正原文：检查记录仍待提供。')
+        expect(self.page.locator('#feedback-confirm-form')).to_have_count(0)
+        expect(self.page.locator('#feedback-review-content')).to_contain_text('原文已修改')
+        self.assertEqual(self.posts_to('/confirm'), [])
+        second = self.save_feedback('合成更正原文：检查记录仍待提供。')
+        self.assertNotEqual(first['id'], second['id'])
+        self.assertEqual(first['investigation_id'], second['investigation_id'])
+        expect(self.page.locator('#feedback-confirm-form [name="reviewed"]')).not_to_be_checked()
+        expect(self.page.locator('#feedback-confirm-form [name="factor_0_status"]')).to_have_value('unknown')
+
+    def test_saved_proposal_exports_csv_and_json_without_write_requests(self):
+        self.open('transfer')
+        csv_button = self.page.locator('[data-action="export-proposal"][data-format="csv"]')
+        expect(csv_button).to_be_disabled()  # Initial seed has actions but no saved input/calculation.
+        self.page.locator('#workbench-form [name="quantity"]').fill('41')
+        with self.page.expect_response(lambda response: response.url.endswith('/transfer/calculate')):
+            self.page.locator('[data-action="calculate"]').click()
+        with self.page.expect_response(lambda response: response.url.endswith('/transfer/save')) as event:
+            self.page.locator('[data-action="save"]').click()
+        proposal = event.value.json()['proposal']
+        expect(csv_button).to_be_enabled()
+        before = len([call for call in self.api_calls if call.method == 'POST'])
+        with self.page.expect_download() as event:
+            csv_button.click()
+        downloaded = event.value
+        self.assertTrue(downloaded.suggested_filename.endswith(f'-v{proposal["current_version"]}.csv'))
+        raw = Path(downloaded.path()).read_bytes()
+        self.assertTrue(raw.startswith(b'\xef\xbb\xbf'))
+        rows = list(csv.reader(io.StringIO(raw.decode('utf-8-sig'))))
+        self.assertEqual(rows[0], ['分类','字段','值','单位'])
+        self.assertTrue(all(len(row)==4 for row in rows))
+        self.assertEqual(next(row[2] for row in rows if row[1]=='方案编号'), proposal['id'])
+        self.assertEqual(next(row[2] for row in rows if row[1]=='方案版本'), str(proposal['current_version']))
+        self.assertEqual(next(row[2] for row in rows if row[1]=='调拨数量'), '41')
+        self.assertIn('不代表审批或执行完成', raw.decode('utf-8-sig'))
+        with self.page.expect_download() as event:
+            self.page.locator('[data-action="export-proposal"][data-format="json"]').click()
+        data = json.loads(Path(event.value.path()).read_text(encoding='utf-8'))
+        self.assertEqual(data['metadata']['proposal_version'], proposal['current_version'])
+        self.assertEqual(data['metadata']['proposal_status'], 'draft')
+        self.assertEqual(len([call for call in self.api_calls if call.method=='POST']), before)
+        self.page.locator('#workbench-form [name="quantity"]').fill('42')
+        expect(csv_button).to_be_disabled()
+        with self.page.expect_response(lambda response: response.url.endswith('/transfer/calculate')):
+            self.page.locator('[data-action="calculate"]').click()
+        expect(csv_button).to_be_disabled()
+
+    def test_export_refuses_a_newer_saved_backend_version(self):
+        self.open('transfer')
+        with self.page.expect_response(lambda response: response.url.endswith('/transfer/save')) as event:
+            self.page.locator('[data-action="save"]').click()
+        proposal = event.value.json()['proposal']
+        button = self.page.locator('[data-action="export-proposal"][data-format="csv"]')
+        expect(button).to_be_enabled()
+        status, newer = self.http(self.backend_url + '/api/v1/workbenches/transfer/save', 'POST', {'input':{'risk_id':1,'quantity':41}})
+        self.assertEqual(status,200)
+        self.assertGreater(newer['proposal']['current_version'],proposal['current_version'])
+        downloads = []
+        self.page.on('download', lambda download: downloads.append(download))
+        before = len([call for call in self.api_calls if call.method=='POST'])
+        button.click()
+        expect(self.page.locator('#page-status')).to_contain_text('方案或输入已经变化')
+        self.assertEqual(downloads, [])
+        self.assertEqual(len([call for call in self.api_calls if call.method=='POST']), before)
+
+    def test_export_refuses_a_version_saved_between_its_two_read_checks(self):
+        self.open('transfer')
+        with self.page.expect_response(lambda response: response.url.endswith('/transfer/save')) as event:
+            self.page.locator('[data-action="save"]').click()
+        proposal = event.value.json()['proposal']
+        button = self.page.locator('[data-action="export-proposal"][data-format="csv"]')
+        expect(button).to_be_enabled()
+        changes, downloads = [], []
+
+        def save_new_version_before_workbench_read(route):
+            # A second client saves after /proposals was read. The browser still
+            # receives the real backend response; no successful response is mocked.
+            changes.append(self.http(self.backend_url + '/api/v1/workbenches/transfer/save',
+                                     'POST', {'input': {'risk_id': 1, 'quantity': 41}}))
+            route.continue_()
+
+        self.page.route('**/api/v1/workbenches/transfer?risk_id=1', save_new_version_before_workbench_read)
+        self.page.on('download', lambda download: downloads.append(download))
+        before = len([call for call in self.api_calls if call.method == 'POST'])
+        button.click()
+        expect(self.page.locator('#page-status')).to_contain_text('核对期间方案版本或状态已变化')
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0][0], 200)
+        self.assertGreater(changes[0][1]['proposal']['current_version'], proposal['current_version'])
+        self.assertEqual(downloads, [])
+        self.assertEqual(len([call for call in self.api_calls if call.method == 'POST']), before)
+
+    def test_action_queue_opens_the_returned_workbench_and_risk(self):
+        status, work = self.http(self.backend_url + '/api/v1/work-items')
+        self.assertEqual(status, 200)
+        candidate = next(item for item in work['items']
+                         if item['route'] == 'expiry-rescue'
+                         and isinstance(item.get('workbench_risk_id', item.get('risk_id')), int))
+        risk_id = candidate.get('workbench_risk_id', candidate.get('risk_id'))
+        self.open('today')
+        self.page.locator('[data-action="tab"][data-tab="actions"]').click()
+        card = self.page.locator(f'[data-work-id="{candidate["id"]}"]')
+        expect(card).to_contain_text(candidate['title'])
+        card.locator('[data-action="open-workbench"]').click()
+        expect(self.page).to_have_url(f'{self.base_url}/#expiry-rescue')
+        expect(self.page.locator('#workbench-form [name="risk_id"]')).to_have_value(str(risk_id))
+        self.assertEqual(self.posts_to('/expiry-rescue/calculate'), [])
+        self.assertEqual(self.posts_to('/expiry-rescue/save'), [])
 
     def test_overview_displays_live_data_and_can_change_period(self):
         self.open()

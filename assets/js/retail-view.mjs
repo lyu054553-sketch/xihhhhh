@@ -15,6 +15,7 @@ export const LABELS = {
   conclusion:'判断',observation:'观察事实',hypothesis:'待核查原因',evidence_level:'证据程度',supporting_refs:'证据引用',conflicts:'冲突',factors:'原因假设',causal_status:'因果关系',confirmation_status:'确认状态',date_interpretation:'日期解释',raw_text:'原始反馈',current_status:'当前情况',
   purchase_outflow:'预计采购支出',ending_inventory_cost:'期末库存成本',stockout_risk_count:'缺货风险门店商品数',baseline:'基线',scenario:'方案',delta:'方案减基线',baseline_days:'基线覆盖天数',scenario_days:'方案覆盖天数',safety_days:'安全库存天数',risk_level:'风险级别',shortage_qty:'缺货数量',is_new_risk:'新增风险',
   metadata:'来源与假设',basis:'方案依据',proposal_version:'方案版本',receipt_ref:'人工回执号',actual_cash:'人工填报现金',external_write:'已写入外部系统',timeline:'人工状态记录',
+  target_store_future_sales_receipts:'接收门店未来销售回款',future_sales_receipts:'未来销售回款',supplier_payment_schedule:'供应商付款计划',price_sales_elasticity:'价格与销量关系依据',supplier_return_terms:'供应商退换条款',payment_date_in_horizon:'评估期内付款日期',post_feedback_sales:'反馈确认后的销售数据',
 };
 const MONEY = new Set(['unit_cost','inventory_cost','cost','risk_cost','balance','amount','known_amount','cash_in','cash_out','opening_balance','gross_profit','sales','risk_value','inventory_value','potential_loss_without_transfer','transport_fee','net_avoidable_loss','avoided_loss','estimated_net_cash_improvement','known_cash_effect','fee','cash_impact','adjusted_amount','deferred_payment_pressure','actual_cash','promo_price','purchase_outflow','ending_inventory_cost']);
 export const labelFor = (key) => LABELS[key] || key;
