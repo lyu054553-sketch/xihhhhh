@@ -26,9 +26,20 @@ class IdempotencyIsolationTests(unittest.TestCase):
         Path(self.tmp.name).unlink(missing_ok=True)
 
     def _add_pending_proposal(self, proposal_id, tenant_id):
+        risk_id, snapshot_id = 1, "snapshot-demo-v1"
+        if tenant_id != "demo":
+            # Each proposal must reference its own tenant's facts. The old fixture
+            # accidentally reused demo's risk and obscured this ownership check.
+            snapshot_id = "snapshot-" + tenant_id
+            self.store.conn.execute("INSERT OR IGNORE INTO snapshots SELECT ?,?,kind,created_at,source,is_sample,metadata_json FROM snapshots WHERE id='snapshot-demo-v1'", (snapshot_id, tenant_id))
+            risk = dict(self.store.conn.execute("SELECT * FROM risks WHERE id=1").fetchone())
+            risk.pop("id")
+            risk.update(tenant_id=tenant_id, snapshot_id=snapshot_id)
+            cursor = self.store.conn.execute("INSERT INTO risks(" + ",".join(risk) + ") VALUES(" + ",".join("?" for _ in risk) + ")", tuple(risk.values()))
+            risk_id = cursor.lastrowid
         self.store.conn.execute(
             "INSERT INTO proposals(id, tenant_id, risk_id, current_version, status, snapshot_id, fact_version, created_at) VALUES(?,?,?,?,?,?,?,?)",
-            (proposal_id, tenant_id, 1, 1, "pending_approval", "snapshot-demo-v1", 1, "2026-10-03T00:00:00"),
+            (proposal_id, tenant_id, risk_id, 1, "pending_approval", snapshot_id, 1, "2026-10-03T00:00:00"),
         )
         self.store.conn.execute(
             "INSERT INTO proposal_versions(id, proposal_id, version, payload_json, status, invalid_reason, created_at) VALUES(?,?,?,?,?,?,?)",
@@ -67,6 +78,12 @@ class IdempotencyIsolationTests(unittest.TestCase):
     def test_other_tenant_cannot_pass_through_foreign_proposal(self):
         with self.assertRaises(ValueError):
             self.store.approve("PROP-AC10-001", tenant_id=OTHER_TENANT, idem="any-key")
+
+    def test_proposal_cannot_reference_another_tenants_risk(self):
+        self.store.conn.execute("UPDATE proposals SET risk_id=1 WHERE id=?", (OTHER_PROPOSAL,))
+        self.store.conn.commit()
+        with self.assertRaises(ValueError):
+            self.store.approve(OTHER_PROPOSAL, tenant_id=OTHER_TENANT)
 
     def test_scoped_key_encoding_has_no_field_boundary_ambiguity(self):
         # tenant 与客户端键都来自请求头，可以含分隔符；不同字段组合不能拼出同一个键。
