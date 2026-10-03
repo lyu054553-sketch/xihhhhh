@@ -89,6 +89,7 @@ legend { margin-bottom: 14px; padding: 0; font-size: 16px; font-weight: 650; }
 .demo-label .material-symbols-rounded { color: var(--green); font-size: 18px; }
 .icon-button { display: inline-grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
 #nav-toggle { display: none; }
+.nav-close { display: none; margin-left: auto; color: #d4deea; border-color: #476376; background: transparent; }
 .nav-backdrop { display: none; }
 .workspace { width: 100%; max-width: 1320px; min-width: 0; margin: 0 auto; padding: 36px; }
 .workspace > *, #page-content { min-width: 0; }
@@ -202,6 +203,7 @@ details[open] > summary { margin-bottom: 10px; }
   body.nav-open .nav-backdrop { display: block; }
   .app-main { margin-left: 0; }
   #nav-toggle { display: inline-grid; }
+  .nav-close { display: inline-grid; }
   .topbar { min-height: 64px; padding: 10px 20px; }
   .workspace { padding: 26px 20px; }
   .page-header h1 { font-size: 25px; }

@@ -35,7 +35,10 @@ def stop_on_input():
     sys.stdin.readline()
     server.should_exit = True
 threading.Thread(target=stop_on_input, daemon=True).start()
-pathlib.Path(os.environ['TEST_READY_FILE']).write_text(json.dumps({'port':sock.getsockname()[1]}))
+ready_file = pathlib.Path(os.environ['TEST_READY_FILE'])
+ready_temporary = ready_file.with_suffix('.tmp')
+ready_temporary.write_text(json.dumps({'port':sock.getsockname()[1]}))
+ready_temporary.replace(ready_file)
 try:
     server.run(sockets=[sock])
 finally:
@@ -166,6 +169,31 @@ class FrontendBrowserTests(unittest.TestCase):
         feedback = event.value.json()
         expect(self.page.locator('#feedback-confirm-form [name="feedback_id"]')).to_have_value(feedback['id'])
         return feedback
+
+    def create_execution_task(self, module='transfer', risk_id=1):
+        status, saved = self.http(self.backend_url + f'/api/v1/workbenches/{module}/save',
+                                  'POST', {'input': {'risk_id': risk_id}})
+        self.assertEqual(status, 200)
+        proposal = saved['proposal']
+        for action in ('submit', 'approve', 'execute'):
+            status, result = self.http(self.backend_url + f'/api/v1/proposals/{proposal["id"]}/{action}',
+                                       'POST', {}, {'Idempotency-Key': f'browser-setup-{proposal["id"]}-{action}'})
+            self.assertEqual(status, 200)
+        self.assertEqual(result['status'], 'draft_pending_external_execution')
+        return result, proposal
+
+    def open_task_queue(self):
+        self.open('today')
+        self.page.locator('[data-action="tab"][data-tab="followup"]').click()
+
+    def receipt_form(self, task):
+        return self.page.locator(f'form[data-task-id="{task["id"]}"]')
+
+    def edit_receipt(self, task, status, reference):
+        form = self.receipt_form(task)
+        form.locator('[name="status"]').select_option(status)
+        form.locator('[name="receipt_ref"]').fill(reference)
+        return form
 
     def select_workbench_risk(self, module, risk_id):
         with self.page.expect_response(lambda response: response.url.endswith(f'/workbenches/{module}?risk_id={risk_id}')) as event:
@@ -690,6 +718,163 @@ class FrontendBrowserTests(unittest.TestCase):
         self.assertEqual(self.posts_to('/approve'), [])
         self.assertFalse(any(call.method == 'POST' for call in self.api_calls))
 
+    def test_task_queue_search_uses_saved_identity_and_requires_an_explicit_initial_status(self):
+        first, proposal = self.create_execution_task()
+        second, _ = self.create_execution_task('expiry-rescue', 3)
+        self.open_task_queue()
+        expect(self.page.locator('#queue-results')).to_contain_text('当前分类共 2 项，显示 2 项')
+        saved_input = proposal['version']['payload']['input']
+        for query in (saved_input['product'], saved_input['source_store'], first['id'].lower()):
+            self.page.locator('#queue-search').fill(query)
+            expect(self.page.locator('#queue-results')).to_contain_text('当前分类共 2 项，显示 1 项')
+            expect(self.receipt_form(first)).to_be_visible()
+            expect(self.receipt_form(second)).to_have_count(0)
+        self.page.locator('[data-action="tab"][data-tab="completed"]').click()
+        expect(self.page.locator('#queue-results')).to_contain_text('当前分类共 0 项，显示 0 项')
+        self.page.locator('[data-action="tab"][data-tab="followup"]').click()
+        form = self.receipt_form(first)
+        expect(form.locator('[name="status"]')).to_have_value('')
+        expect(form.locator('button[type="submit"]')).to_be_disabled()
+        form.locator('[name="receipt_ref"]').fill('SYNTHETIC-REFERENCE-ONLY')
+        form.locator('button[type="submit"]').click()
+        self.assertTrue(form.locator('[name="status"]').evaluate('select => select.validity.valueMissing'))
+        expect(form.locator('[name="status"]')).to_have_value('')
+        self.assertFalse(any(call.method == 'POST' for call in self.api_calls))
+
+    def test_receipt_drafts_are_isolated_across_filters_routes_and_individual_saves(self):
+        first, _ = self.create_execution_task()
+        second, _ = self.create_execution_task('expiry-rescue', 3)
+        self.open_task_queue()
+        self.edit_receipt(first, 'in_transit', 'SYNTHETIC-LOCAL-FIRST')
+        self.edit_receipt(second, 'awaiting_receipt', 'SYNTHETIC-LOCAL-SECOND')
+        expect(self.page.locator('#receipt-drafts')).to_contain_text('有 2 项人工回执尚未保存')
+        self.page.locator('[data-action="tab"][data-tab="completed"]').click()
+        expect(self.page.locator('#queue-results form.task-form')).to_have_count(0)
+        self.page.locator('#app-nav a[href="#overview"]').click()
+        expect(self.page.locator('#overview-form')).to_be_visible()
+        self.page.locator('#app-nav a[href="#today"]').click()
+        self.page.locator('[data-action="tab"][data-tab="followup"]').click()
+        self.page.locator('#queue-search').fill(first['id'])
+        expect(self.receipt_form(first).locator('[name="receipt_ref"]')).to_have_value('SYNTHETIC-LOCAL-FIRST')
+        self.cancel_reload_warning()
+        reads_before = len([call for call in self.api_calls if call.method == 'GET' and call.url.endswith('/execution-tasks')])
+        with self.page.expect_response(lambda response: response.url.endswith(f'/execution-tasks/{first["id"]}/status')) as event:
+            self.receipt_form(first).locator('button[type="submit"]').click()
+        self.assertEqual(event.value.json()['metadata']['receipt_ref'], 'SYNTHETIC-LOCAL-FIRST')
+        expect(self.page.locator('#receipt-drafts')).to_contain_text('有 1 项人工回执尚未保存')
+        expect(self.page.locator('#receipt-drafts')).not_to_contain_text(first['id'])
+        self.assertEqual(len([call for call in self.api_calls if call.method == 'GET' and call.url.endswith('/execution-tasks')]), reads_before + 1)
+        self.page.locator(f'[data-action="resume-receipt"][data-task-id="{second["id"]}"]').click()
+        expect(self.receipt_form(second).locator('[name="status"]')).to_have_value('awaiting_receipt')
+        expect(self.receipt_form(second).locator('[name="receipt_ref"]')).to_have_value('SYNTHETIC-LOCAL-SECOND')
+        self.cancel_reload_warning()
+        self.assertEqual(len(self.posts_to('/status')), 1)
+        status, tasks = self.http(self.backend_url + '/api/v1/execution-tasks')
+        self.assertEqual(status, 200)
+        untouched = next(task for task in tasks['items'] if task['id'] == second['id'])
+        self.assertEqual(untouched['status'], 'draft_pending_external_execution')
+        self.assertIsNone(untouched['metadata'].get('receipt_ref'))
+
+    def test_receipt_input_remains_visible_during_save_and_after_a_network_failure(self):
+        task, _ = self.create_execution_task()
+        self.open_task_queue()
+        form = self.edit_receipt(task, 'completed', 'SYNTHETIC-UNSAVED-RECEIPT')
+        pending = []
+        self.page.route(f'**/api/v1/execution-tasks/{task["id"]}/status', lambda route: pending.append(route))
+        self.addCleanup(lambda: [route.abort() for route in pending])
+        with self.page.expect_request(lambda request: request.url.endswith(f'/execution-tasks/{task["id"]}/status')):
+            form.locator('button[type="submit"]').click()
+        expect(form.locator('[name="receipt_ref"]')).to_be_disabled()
+        expect(form.locator('[name="receipt_ref"]')).to_have_value('SYNTHETIC-UNSAVED-RECEIPT')
+        expect(form.locator('[name="status"]')).to_have_value('completed')
+        self.cancel_reload_warning()
+        self.assertEqual(len(pending), 1)
+        pending.pop().abort('connectionfailed')
+        expect(self.page.locator('#page-status')).to_contain_text('请求未完成')
+        expect(form.locator('[name="receipt_ref"]')).to_be_enabled()
+        expect(form.locator('[name="receipt_ref"]')).to_have_value('SYNTHETIC-UNSAVED-RECEIPT')
+        expect(form.locator('[name="status"]')).to_have_value('completed')
+        expect(self.page.locator('#receipt-drafts')).to_contain_text(task['id'])
+        status, tasks = self.http(self.backend_url + '/api/v1/execution-tasks')
+        self.assertEqual(status, 200)
+        self.assertEqual(next(item for item in tasks['items'] if item['id'] == task['id'])['status'], 'draft_pending_external_execution')
+
+    def test_another_clients_receipt_blocks_overwrite_until_local_edits_are_discarded(self):
+        task, _ = self.create_execution_task()
+        self.open_task_queue()
+        form = self.edit_receipt(task, 'completed', 'SYNTHETIC-OLDER-LOCAL')
+        status, _ = self.http(self.backend_url + f'/api/v1/execution-tasks/{task["id"]}/status', 'POST',
+                              {'status': 'in_transit', 'receipt_ref': 'SYNTHETIC-REMOTE-UPDATE'})
+        self.assertEqual(status, 200)
+        form.locator('button[type="submit"]').click()
+        expect(self.page.locator('#page-status')).to_contain_text('已变化')
+        expect(form.locator('[name="receipt_ref"]')).to_have_value('SYNTHETIC-OLDER-LOCAL')
+        expect(form.locator('button[type="submit"]')).to_be_disabled()
+        self.assertEqual(self.posts_to('/status'), [])
+        self.page.locator(f'article[data-task-id="{task["id"]}"] [data-action="discard-receipt"]').click()
+        expect(form.locator('[name="status"]')).to_have_value('in_transit')
+        expect(form.locator('[name="receipt_ref"]')).to_have_value('SYNTHETIC-REMOTE-UPDATE')
+        expect(form.locator('button[type="submit"]')).to_be_disabled()
+        self.edit_receipt(task, 'awaiting_receipt', 'SYNTHETIC-RECONCILED')
+        with self.page.expect_response(lambda response: response.url.endswith(f'/execution-tasks/{task["id"]}/status')) as event:
+            form.locator('button[type="submit"]').click()
+        self.assertEqual(event.value.json()['metadata']['receipt_ref'], 'SYNTHETIC-RECONCILED')
+        expect(self.page.locator('#receipt-drafts')).to_be_empty()
+        self.assertEqual(len(self.posts_to('/status')), 1)
+
+    def test_receipt_draft_survives_read_failure_and_a_task_missing_from_the_real_service(self):
+        task, _ = self.create_execution_task()
+        self.open_task_queue()
+        self.edit_receipt(task, 'in_transit', 'SYNTHETIC-KEEP-WHILE-MISSING')
+        self.page.route('**/api/v1/execution-tasks', lambda route: route.abort('connectionfailed'))
+        self.page.locator('#page-content [data-action="reload"]').click()
+        expect(self.page.locator('#page-status')).to_contain_text('请求未完成')
+        self.cancel_reload_warning()
+        # Finish all outstanding reads before resetting this test's own database.
+        # The next response is a real service list with the previous task absent.
+        self.page.wait_for_load_state('networkidle')
+        status, _ = self.http(self.backend_url + '/api/v1/demo/reset', 'POST', {})
+        self.assertEqual(status, 200)
+        self.page.unroute('**/api/v1/execution-tasks')
+        self.page.locator('#page-status [data-action="reload"]').click()
+        expect(self.page.locator('#receipt-drafts')).to_contain_text(task['id'])
+        expect(self.page.locator('#receipt-drafts')).to_contain_text('当前服务列表未返回此任务')
+        expect(self.page.locator('#receipt-drafts')).to_contain_text('SYNTHETIC-KEEP-WHILE-MISSING')
+        expect(self.page.locator('[data-action="resume-receipt"]')).to_have_count(0)
+        self.cancel_reload_warning()
+        self.assertFalse(any(call.method == 'POST' for call in self.api_calls))
+
+    def test_completed_task_does_not_hide_a_new_approved_proposal_for_the_same_risk(self):
+        previous, _ = self.create_execution_task()
+        status, _ = self.http(self.backend_url + f'/api/v1/execution-tasks/{previous["id"]}/status', 'POST',
+                              {'status': 'completed', 'receipt_ref': 'SYNTHETIC-PREVIOUS-COMPLETED'})
+        self.assertEqual(status, 200)
+        status, saved = self.http(self.backend_url + '/api/v1/workbenches/transfer/save', 'POST',
+                                  {'input': {'risk_id': 1, 'quantity': 41}})
+        self.assertEqual(status, 200)
+        proposal = saved['proposal']
+        # The real backend preserves an executed proposal and creates a new ID;
+        # it does not advance the previous task's proposal to a new version.
+        self.assertNotEqual(proposal['id'], previous['proposal_id'])
+        for action in ('submit', 'approve'):
+            status, _ = self.http(self.backend_url + f'/api/v1/proposals/{proposal["id"]}/{action}',
+                                  'POST', {}, {'Idempotency-Key': f'browser-new-{proposal["id"]}-{action}'})
+            self.assertEqual(status, 200)
+        self.open_task_queue()
+        execute = self.page.locator(f'[data-proposal-action="execute"][data-id="{proposal["id"]}"]')
+        expect(execute).to_be_visible()
+        with self.page.expect_response(lambda response: response.url.endswith(f'/proposals/{proposal["id"]}/execute')) as event:
+            execute.click()
+        current = event.value.json()
+        self.assertEqual(current['proposal_id'], proposal['id'])
+        self.assertEqual(current['proposal_version'], proposal['current_version'])
+        expect(execute).to_have_count(0)
+        expect(self.receipt_form(current)).to_be_visible()
+        self.page.locator('[data-action="tab"][data-tab="completed"]').click()
+        expect(self.receipt_form(previous)).to_be_visible()
+        expect(self.receipt_form(previous).locator('[name="receipt_ref"]')).to_have_value('SYNTHETIC-PREVIOUS-COMPLETED')
+        expect(self.receipt_form(current)).to_have_count(0)
+
     def test_empty_tenant_overview_keeps_unknown_money_out_of_sample_values(self):
         self.context.set_extra_http_headers({'X-Tenant-Id':'empty-browser-view'})
         self.open()
@@ -719,6 +904,111 @@ class FrontendBrowserTests(unittest.TestCase):
         self.page.locator('#app-nav a[href="#cashflow_simulation"]').click()
         expect(self.page.locator('#simulation-form')).to_be_visible()
         expect(toggle).to_have_attribute('aria-expanded', 'false')
+
+    def test_mobile_navigation_contains_keyboard_focus_and_escape_restores_the_opener(self):
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.open('cashflow_simulation')
+        expect(self.page.locator('#simulation-form')).to_be_visible()
+        sidebar = self.page.locator('#app-sidebar')
+        toggle = self.page.locator('#nav-toggle')
+        expect(sidebar).to_have_attribute('inert', '')
+        toggle.focus()
+        self.page.keyboard.press('Tab')
+        expect(self.page.locator('#simulation-form [name="store_id"]')).to_be_focused()
+        self.page.keyboard.press('Shift+Tab')
+        expect(toggle).to_be_focused()
+        self.page.keyboard.press('Enter')
+        expect(sidebar).to_have_attribute('role', 'dialog')
+        expect(sidebar).to_have_attribute('aria-modal', 'true')
+        expect(self.page.locator('.app-main')).to_have_attribute('inert', '')
+        expect(self.page.locator('#app-nav a[href="#cashflow_simulation"]')).to_be_focused()
+        self.page.locator('#app-nav a').last.focus()
+        self.page.keyboard.press('Tab')
+        expect(self.page.locator('[data-close-navigation]')).to_be_focused()
+        self.page.keyboard.press('Shift+Tab')
+        expect(self.page.locator('#app-nav a').last).to_be_focused()
+        self.page.keyboard.press('Escape')
+        expect(toggle).to_be_focused()
+        expect(toggle).to_have_attribute('aria-expanded', 'false')
+        expect(sidebar).to_have_attribute('inert', '')
+        expect(self.page.locator('.app-main')).not_to_have_attribute('inert', '')
+
+    def test_mobile_navigation_selection_moves_focus_to_content_even_for_current_route(self):
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.open('cashflow_simulation')
+        expect(self.page.locator('#simulation-form')).to_be_visible()
+        self.page.locator('#nav-toggle').click()
+        self.page.keyboard.press('Enter')
+        expect(self.page.locator('#workspace')).to_be_focused()
+        expect(self.page.locator('#nav-toggle')).to_have_attribute('aria-expanded', 'false')
+        self.page.locator('#nav-toggle').click()
+        self.page.locator('#app-nav a[href="#transfer"]').focus()
+        self.page.keyboard.press('Enter')
+        expect(self.page.locator('#workbench-form')).to_be_visible()
+        expect(self.page.locator('#workspace')).to_be_focused()
+        expect(self.page.locator('#app-sidebar')).to_have_attribute('inert', '')
+        self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), 390)
+
+    def test_navigation_breakpoint_changes_release_inert_and_hidden_focus(self):
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.open('cashflow_simulation')
+        expect(self.page.locator('#simulation-form')).to_be_visible()
+        self.page.locator('#nav-toggle').click()
+        expect(self.page.locator('.app-main')).to_have_attribute('inert', '')
+        self.page.set_viewport_size({'width': 1440, 'height': 1000})
+        expect(self.page.locator('.app-main')).not_to_have_attribute('inert', '')
+        expect(self.page.locator('#app-sidebar')).not_to_have_attribute('inert', '')
+        expect(self.page.locator('#app-sidebar')).not_to_have_attribute('aria-modal', 'true')
+        expect(self.page.locator('#nav-backdrop')).to_be_hidden()
+        self.page.locator('#app-nav a[href="#transfer"]').focus()
+        self.page.keyboard.press('Escape')
+        expect(self.page.locator('#app-nav a[href="#transfer"]')).to_be_focused()
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        expect(self.page.locator('#nav-toggle')).to_be_focused()
+        expect(self.page.locator('#app-sidebar')).to_have_attribute('inert', '')
+        self.page.locator('#nav-toggle').click()
+        self.page.locator('[data-close-navigation]').click()
+        expect(self.page.locator('#nav-toggle')).to_be_focused()
+        expect(self.page.locator('.app-main')).not_to_have_attribute('inert', '')
+        self.page.locator('#nav-toggle').click()
+        self.page.locator('[data-close-navigation]').focus()
+        self.page.set_viewport_size({'width': 1440, 'height': 1000})
+        expect(self.page.locator('#workspace')).to_be_focused()
+        expect(self.page.locator('.app-main')).not_to_have_attribute('inert', '')
+
+    def test_navigation_recovers_layout_blur_before_media_change_without_stealing_intentional_blur(self):
+        self.page.add_init_script('''
+            const breakpoint = matchMedia('(max-width: 800px)');
+            window.navigationFocusOrder = [];
+            document.addEventListener('focusout', event => {
+                if (breakpoint.matches && event.target.closest('#app-sidebar')) {
+                    navigationFocusOrder.push('focusout');
+                }
+            });
+            breakpoint.addEventListener('change', () => {
+                if (!breakpoint.matches) return;
+                const active = document.activeElement;
+                // Reproduce the browser's permitted layout-first ordering using
+                // its real hidden element, before the navigation module's listener.
+                if (active.closest('#app-sidebar') && getComputedStyle(active).visibility === 'hidden') active.blur();
+                navigationFocusOrder.push(`before-controller:${document.activeElement.tagName}`);
+            });
+        ''')
+        self.open('cashflow_simulation')
+        expect(self.page.locator('#simulation-form')).to_be_visible()
+        link = self.page.locator('#app-nav a[href="#transfer"]')
+        link.focus()
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        expect(self.page.locator('#nav-toggle')).to_be_focused()
+        order = self.page.evaluate('navigationFocusOrder')
+        self.assertLess(order.index('focusout'), order.index('before-controller:BODY'))
+        self.page.set_viewport_size({'width': 1440, 'height': 1000})
+        expect(self.page.locator('#app-sidebar')).not_to_have_attribute('inert', '')
+        link.focus()
+        link.evaluate('element => element.blur()')
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        expect(self.page.locator('#app-sidebar')).to_have_attribute('inert', '')
+        self.assertEqual(self.page.evaluate('document.activeElement.tagName'), 'BODY')
 
     def test_live_backend_version_and_public_api_boundary(self):
         status, schema = self.http(self.backend_url + '/openapi.json')

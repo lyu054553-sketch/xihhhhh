@@ -6,9 +6,13 @@ import { createFeedbackReview, buildFeedbackConfirmation, renderFeedbackReview }
 import { buildProposalExport, canExportProposal, EXPORT_NOTICE } from './assets/js/proposal-export.mjs';
 import { calculationSummary, proposalSummary, workItemsMarkup, workflowStatus } from './assets/js/workflow-view.mjs';
 import { createWorkbenchEdits, editableInput, sameEditableInput, resolveWorkbenchInput } from './assets/js/workbench-edits.mjs';
+import { createTaskReceipts, RECEIPT_STATUSES } from './assets/js/task-receipts.mjs';
+import { createNavigation } from './assets/js/navigation.mjs';
+import { filterQueue, taskContext, taskContextMarkup } from './assets/js/queue-view.mjs';
 
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
+const navigation = createNavigation({sidebar:$('#app-sidebar'),toggle:$('#nav-toggle'),backdrop:$('#nav-backdrop'),main:$('.app-main'),workspace:$('#workspace')});
 const api = createApiClient({baseUrl:location.protocol==='file:'?null:$('meta[name="api-base"]').content,timeoutMs:60000});
 const post = (path,body={},headers={}) => api(path,{method:'POST',body:JSON.stringify(body),headers});
 const money = contract.formatYuan;
@@ -20,6 +24,7 @@ const DESCRIPTIONS = {overview:'先看需要关注的门店，再进入具体商
 const views = new Map(Object.keys(TITLES).map(route=>[route,{route,data:null,error:null,pending:false,busy:false,sequence:0,notice:'',riskId:null,dirty:false,input:null,preview:null,proposal:null,tab:'pending',filter:{period:'7',store_id:'all'},simulation:{horizon_days:'14',reduction_pct:'20',store_id:'all',category:'',request_text:''}}]));
 const feedbackSessions = new Map();
 const workbenchEdits = createWorkbenchEdits();
+const taskReceipts = createTaskReceipts();
 function feedbackSession(riskId) {
   const key=String(riskId);
   if(!feedbackSessions.has(key)) feedbackSessions.set(key,{text:'',feedback:null,review:null,reviewDirty:false,investigationId:null});
@@ -29,10 +34,10 @@ let active='overview';
 let mutation=null;
 
 function notify(message) { $('#toast').textContent=message; $('#toast').hidden=false; clearTimeout(notify.timer); notify.timer=setTimeout(()=>{$('#toast').hidden=true;},5000); }
-function nav(open) { document.body.classList.toggle('nav-open',open); $('#nav-backdrop').hidden=!open; $('#nav-toggle').setAttribute('aria-expanded',String(open)); }
+function nav(open) { navigation.setOpen(open); }
 function current(view) { return active===view.route; }
 function hasUnsavedEdits() {
-  return workbenchEdits.hasAny() || [...feedbackSessions.values()].some(session=>session.text!==(session.feedback?.raw_text || '') || session.reviewDirty);
+  return workbenchEdits.hasAny() || taskReceipts.hasAny() || [...feedbackSessions.values()].some(session=>session.text!==(session.feedback?.raw_text || '') || session.reviewDirty);
 }
 function restoreWorkbench(view, data) {
   const restored=workbenchEdits.restore(view.route,data);
@@ -56,10 +61,10 @@ function render(view=views.get(active)) {
   $('#connection-status').innerHTML=provenance(view);
   $('#page-status').innerHTML=view.error?panel('请求未完成',errorMarkup(view.error)+button('reload','刷新核对当前状态',view.busy),'is-error'):view.pending?panel('正在读取服务数据','<p>保持当前范围，等待实际返回结果。</p>','is-loading'):view.busy?panel('正在提交','<p>等待服务确认；离开页面不会撤销已提交的请求。</p>','is-loading'):view.notice?panel('当前状态',`<p>${e(view.notice)}</p>`):'';
   const content=$('#page-content');
-  if(!view.data) { content.innerHTML=view.pending?'':panel('暂无可用数据',`${WORKBENCHES.has(view.route) && workbenchEdits.has(view.route,view.riskId)?'<p>此商品尚未保存的编辑仍保留在当前页面中，重新读取后可继续。</p>':''}${button('reload','重新读取')}`); return; }
+  if(!view.data) { content.innerHTML=view.pending?'':panel('暂无可用数据',`${WORKBENCHES.has(view.route) && workbenchEdits.has(view.route,view.riskId)?'<p>此商品尚未保存的编辑仍保留在当前页面中，重新读取后可继续。</p>':''}${view.route==='today' && taskReceipts.hasAny()?'<p>尚未保存的人工回执仍保留在当前页面中，重新读取后可继续。</p>':''}${button('reload','重新读取')}`); return; }
   content.innerHTML=active==='overview'?overviewMarkup(view):active==='today'?todayMarkup(view):active==='slow_moving'?diagnosisMarkup(view):WORKBENCHES.has(active)?workbenchMarkup(view):active==='cashflow_simulation'?simulationMarkup(view):dataMarkup(view);
   if(mutation && mutation!==view) $('#page-status').innerHTML=panel('另一项操作正在提交',`<p>${e(TITLES[mutation.route])}正在等待服务确认。可继续浏览，完成后恢复编辑。</p>`,'is-loading');
-  if(mutation || view.pending) $$('fieldset, button',content).forEach(el=>{el.disabled=true;});
+  if(mutation || view.pending) $$('fieldset, button, #queue-search',content).forEach(el=>{el.disabled=true;});
 }
 async function loadView(view) {
   if(view.busy) return;
@@ -152,15 +157,56 @@ function proposalButton(proposal,action,label,disabled=false) {return `<button t
 function unsavedWorkbench(view) {return view.dirty || ['needs_recalculation','blocked','calculated'].includes(view.data?.draft?.status);}
 function dirtyRisk(riskId) {return workbenchEdits.hasRisk(riskId) || [...views.values()].some(v=>WORKBENCHES.has(v.route) && Number(v.riskId)===Number(riskId) && unsavedWorkbench(v));}
 function todayMarkup(view) {
-  const data=view.data, tasks=data.tasks;
-  const work=data.work.filter(item=>!['approvals','execution'].includes(item.route));
-  const proposals=data.proposals.filter(p=>view.tab==='pending'?p.status==='pending_approval':view.tab==='followup'?p.status==='approved' && !tasks.some(t=>t.proposal_id===p.id):view.tab==='drafts'?['draft','needs_replan','replan_pending','invalidated'].includes(p.status):false);
-  const shownTasks=tasks.filter(t=>view.tab==='completed'?['received','completed'].includes(t.status):view.tab==='followup'?!['received','completed'].includes(t.status):false);
-  return `<div class="form-actions">${[['actions',`待评估事项 ${work.length}`],['pending',`待我审批 ${data.proposals.filter(p=>p.status==='pending_approval').length}`],['followup','审批后跟进'],['completed','已完成'],['drafts','草稿与待重算']].map(([key,label])=>button('tab',label,false,`data-tab="${key}" aria-pressed="${view.tab===key}"`)).join('')}${button('reload','刷新最新状态')}</div>
-    ${view.tab==='actions'?workItemsMarkup(work):proposals.length || shownTasks.length?'':panel('此分类暂无记录','<p>可到待评估事项中选择门店问题，再计算并保存方案。</p>')}
+  const data=view.data;
+  return `<div class="form-actions">${[['actions',`待评估事项 ${filterQueue(data,{tab:'actions'}).total}`],['pending',`待我审批 ${filterQueue(data,{tab:'pending'}).total}`],['followup','审批后跟进'],['completed','已完成'],['drafts','草稿与待重算']].map(([key,label])=>button('tab',label,false,`data-tab="${key}" aria-pressed="${view.tab===key}"`)).join('')}${button('reload','刷新最新状态')}</div>
+    <label class="field"><span>查找当前分类的门店、商品或编号</span><input type="search" id="queue-search" value="${e(view.query || '')}" aria-controls="queue-results" placeholder="门店、商品、方案号或任务号"></label>
+    <div id="receipt-drafts">${receiptDraftsMarkup(view)}</div><div id="queue-results">${todayResultsMarkup(view)}</div>`;
+}
+function todayResultsMarkup(view) {
+  const {work,proposals,tasks,total,shown}=filterQueue(view.data,{tab:view.tab,query:view.query || ''});
+  return `<p role="status">当前分类共 ${total} 项，显示 ${shown} 项。</p>
+    ${!shown?panel(total?'没有匹配记录':'此分类暂无记录',total?'<p>请修改搜索词，或切换其他分类。</p>':'<p>可到待评估事项中选择门店问题，再计算并保存方案。</p>'):view.tab==='actions'?workItemsMarkup(work):''}
     ${proposals.map(p=>`<article class="result-card" data-proposal-id="${e(p.id)}"><h2>${e(p.approval_summary?.title || p.product || p.id)}</h2><p>${e(p.id)} · V${p.current_version} · ${e(STATUS_LABELS[p.status] || p.status)}</p>${dirtyRisk(p.risk_id)?panel('存在未完成的编辑','<p>请先到对应工作台重新计算并保存版本。</p>','is-warning'):''}${proposalSummary(p)}<details><summary>审核当前版本的输入、计算与证据</summary>${details(p.version?.payload || {})}</details><div class="form-actions">${p.status==='pending_approval'?proposalButton(p,'approve','批准当前版本',dirtyRisk(p.risk_id)):p.status==='approved'?proposalButton(p,'execute','生成待执行任务',dirtyRisk(p.risk_id)):p.status==='draft'?proposalButton(p,'submit','提交审批',dirtyRisk(p.risk_id)):''}</div>${exportControls(p,dirtyRisk(p.risk_id))}</article>`).join('')}
-    ${shownTasks.map(t=>`<article class="result-card" data-task-id="${e(t.id)}"><h2>${e(t.id)}</h2><p>方案 ${e(t.proposal_id)} · V${t.proposal_version} · ${e(STATUS_LABELS[t.status] || t.status)}</p><p>本系统未向外部 ERP 写入；以下状态和回执由人员记录。</p>${details(t.metadata || {})}<form class="task-form" data-task-id="${e(t.id)}"><fieldset><div class="form-grid">${select('status','人工记录执行进度',[['pending_dispatch','待发出'],['in_transit','运输中'],['awaiting_receipt','待回执'],['received','已收货'],['completed','已完成'],['exception','异常']],t.status)}${input('receipt_ref','执行回执号',t.metadata?.receipt_ref || '',{type:'text',required:false})}</div><div class="form-actions"><button class="secondary-button">保存人工回执</button></div></fieldset></form></article>`).join('')}
-    `;
+    ${tasks.map(t=>taskMarkup(t,view.data.proposals)).join('')}`;
+}
+function receiptMessage(draft) {
+  return draft.conflict?'服务端记录已变化，本地输入仍保留。请核对最新状态和回执，放弃本地编辑后再填写。':draft.dirty?'此任务的人工回执尚未保存。切换分类或页面会保留，刷新或关闭前请保存。':'请按实际执行情况填写；保存前须明确选择执行进度。';
+}
+function taskMarkup(task,proposals) {
+  const draft=taskReceipts.restore(task), context=taskContext(task,proposals);
+  return `<article class="result-card" data-task-id="${e(task.id)}"><h2>${e(task.id)}</h2><p>方案 ${e(task.proposal_id)} · V${task.proposal_version} · ${e(STATUS_LABELS[task.status] || task.status)}</p>${taskContextMarkup(context)}<p>本系统未向外部 ERP 写入；以下状态和回执由人员记录。</p><details><summary>服务端已记录的执行信息</summary>${details(task.metadata || {})}</details>
+    <form class="task-form" data-task-id="${e(task.id)}"><fieldset><div class="form-grid">${select('status','人工记录执行进度',[['','请选择实际执行进度'],...RECEIPT_STATUSES],draft.input.status,'required')}${input('receipt_ref','执行回执号',draft.input.receipt_ref,{type:'text',required:false})}</div><p class="form-hint" data-receipt-message>${e(receiptMessage(draft))}</p><div class="form-actions"><button type="submit" class="secondary-button" ${!draft.dirty || draft.conflict?'disabled':''}>保存人工回执</button></div></fieldset></form>
+    <div class="form-actions">${button('discard-receipt','放弃此任务的本地编辑',!draft.dirty,`data-task-id="${e(task.id)}"`)}${context.matched && WORKBENCHES.has(context.moduleType) && Number.isSafeInteger(context.riskId)?button('open-workbench','查看当前商品工作台',false,`data-module="${e(context.moduleType)}" data-risk-id="${context.riskId}"`):''}</div></article>`;
+}
+function receiptDraftsMarkup(view) {
+  const drafts=taskReceipts.list();
+  return drafts.length?panel(`有 ${drafts.length} 项人工回执尚未保存`,drafts.map(d=>`<p>${e(d.id)} · ${e(STATUS_LABELS[d.input.status] || '尚未选择进度')} · ${e(d.input.receipt_ref || '未填写回执号')}</p>${view.data.tasks.some(t=>t.id===d.id)?button('resume-receipt','继续填写',false,`data-task-id="${e(d.id)}"`):`<p>当前服务列表未返回此任务，输入仍保留，请刷新核对。</p>${button('discard-receipt','放弃此任务的本地编辑',false,`data-task-id="${e(d.id)}"`)}`}`).join(''),'is-warning'):'';
+}
+function editTaskReceipt(view,form) {
+  const task=view.data.tasks.find(t=>t.id===form.dataset.taskId);
+  if(!task)return;
+  taskReceipts.capture(task,Object.fromEntries(new FormData(form)));
+  const draft=taskReceipts.restore(task);
+  $('[data-receipt-message]',form).textContent=receiptMessage(draft);
+  $('button[type="submit"]',form).disabled=!draft.dirty || draft.conflict;
+  $('[data-action="discard-receipt"]',form.closest('article')).disabled=!draft.dirty;
+  $('#receipt-drafts').innerHTML=receiptDraftsMarkup(view);
+}
+async function saveTaskReceipt(view,form) {
+  const taskId=form.dataset.taskId;
+  editTaskReceipt(view,form);
+  try {taskReceipts.prepare(view.data.tasks.find(t=>t.id===taskId));}
+  catch(error){notify(error.message);return;}
+  await act(view,async()=>{
+    view.data.tasks=contract.validateTaskList(await api('/execution-tasks')).items;
+    const latest=view.data.tasks.find(t=>t.id===taskId);
+    if(!latest) throw new Error('最新服务列表未返回此任务，本地输入继续保留，请核对任务记录。');
+    const submission=taskReceipts.prepare(latest);
+    const result=taskReceipts.accept(await post(`/execution-tasks/${encodeURIComponent(taskId)}/status`,submission.input),submission);
+    view.data.tasks=view.data.tasks.map(t=>t.id===taskId?result:t);
+    view.tab=['received','completed'].includes(result.status)?'completed':'followup';
+    view.notice='已取得匹配的人工回执保存结果；本系统未向外部 ERP 发出操作。';
+  });
 }
 
 function simulationMarkup(view) {
@@ -295,13 +341,14 @@ document.addEventListener('submit',event=>{
     void act(view,async()=>{const result=await post(`/feedback/${fb.id}/confirm`,{confirmed});if(result.id!==fb.id || result.investigation_id!==fb.investigation_id || result.raw_text!==fb.raw_text || result.confirmation_status!=='confirmed')throw new Error('反馈确认没有取得对应回执');session.feedback=result;session.review=createFeedbackReview(result);session.reviewDirty=false;view.notice='人工反馈版本已确认；请刷新方案检查是否需要重算。';views.get('today').data=null; for(const wb of views.values()) if(WORKBENCHES.has(wb.route) && Number(wb.riskId)===Number(riskId)){wb.dirty=true;wb.data=null;}});
   }
   if(form.classList.contains('task-form')){
-    if(['received','completed'].includes(values.status) && !values.receipt_ref.trim()){notify('已收货或已完成必须填写实际执行回执号');return;}
-    void act(view,async()=>{const result=contract.validateExecutionTask(await post(`/execution-tasks/${encodeURIComponent(form.dataset.taskId)}/status`,{status:values.status,receipt_ref:values.receipt_ref || null}));if(result.id!==form.dataset.taskId)throw new Error('执行回执编号不一致');view.data.tasks=contract.validateTaskList(await api('/execution-tasks')).items;view.tab=['received','completed'].includes(result.status)?'completed':'followup';view.notice='已保存人工回执；未向外部系统发出业务操作。';});
+    void saveTaskReceipt(view,form);
   }
 });
 document.addEventListener('input',event=>{
   const view=views.get(active);if(mutation || view.pending)return;
   const form=event.target.closest('form');
+  if(event.target.id==='queue-search'){view.query=event.target.value;$('#queue-results').innerHTML=todayResultsMarkup(view);}
+  if(form?.classList.contains('task-form'))editTaskReceipt(view,form);
   if(form?.id==='workbench-form' && event.target.name!=='risk_id') editWorkbench(view,form);
   if(form?.id==='simulation-form') {view.simulation=Object.fromEntries(new FormData(form));view.preview=null;view.result=null;view.error=null;$('#scenario-preview')?.remove();$('#simulation-result')?.remove();$('#page-status').innerHTML=panel('条件已变化','<p>请重新核对情景，旧确认与结果已失效。</p>');}
   if(form?.id==='feedback-form') {
@@ -336,6 +383,13 @@ document.addEventListener('click',event=>{
   if(action==='discard-edits'){
     workbenchEdits.discard(view.route,view.riskId);view.notice='已放弃此商品在本页尚未保存的编辑；正在重新读取服务端输入。';void loadView(view);
   }
+  if(action==='discard-receipt'){
+    taskReceipts.discard(target.dataset.taskId);view.notice='已放弃此任务的本地编辑，正在读取服务端记录。';void loadView(view);
+  }
+  if(action==='resume-receipt'){
+    const task=view.data.tasks.find(t=>t.id===target.dataset.taskId);
+    if(task){view.tab=['received','completed'].includes(task.status)?'completed':'followup';view.query=task.id;render(view);$(`form[data-task-id="${CSS.escape(task.id)}"] [name="status"]`)?.focus();}
+  }
   if(action==='open-workbench'){
     const wb=views.get(target.dataset.module);wb.riskId=Number(target.dataset.riskId || view.riskId);wb.data=null;location.hash=wb.route;
   }
@@ -344,10 +398,6 @@ document.addEventListener('click',event=>{
   if(action==='confirm-simulation' && view.preview){const request=structuredClone(view.preview);view.preview=null;void act(view,async()=>{view.result=contract.validateSimulation(await post('/retail/simulate',request),request);view.notice=view.result.status==='completed'?'后端计算完成；请核对两种方案的采购、库存和风险。':'当前资料不足以计算，未生成演示结果。';});}
 });
 $('.skip-link').addEventListener('click',event=>{event.preventDefault();$('#workspace').focus();});
-$('#nav-toggle').addEventListener('click',()=>nav(!document.body.classList.contains('nav-open')));
-$('#nav-backdrop').addEventListener('click',()=>nav(false));
-$('#app-nav').addEventListener('click',()=>nav(false));
-document.addEventListener('keydown',event=>{if(event.key==='Escape')nav(false);});
 window.addEventListener('hashchange',navigate);
 window.addEventListener('beforeunload',event=>{
   if(mutation || hasUnsavedEdits()){event.preventDefault();event.returnValue='';}
