@@ -13,7 +13,7 @@ from backend.hackathon_calculations import CalculationService
 from backend.hackathon_execution import ExecutionService, migrate
 
 
-class ExecutionServiceTests(unittest.TestCase):
+class ExecutionTestCase(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory(prefix="retail-execution-")
         self.path = str(Path(self.directory.name) / "case.sqlite")
@@ -79,6 +79,8 @@ class ExecutionServiceTests(unittest.TestCase):
     def accounting(self):
         return self.execution.get_accounting({"context": self.context})
 
+
+class ExecutionServiceTests(ExecutionTestCase):
     def test_confirmation_is_one_atomic_shared_task_and_idempotent_after_reopen(self):
         first = self.approve()
         repeated = self.execution.confirm_and_schedule(self.confirm_request)
@@ -229,6 +231,10 @@ class ExecutionServiceTests(unittest.TestCase):
         with self.store.transaction() as tx:
             self.assertEqual(tx.execute("SELECT COUNT(*) FROM inventory_reservations").fetchone()[0], 0)
         self.assertEqual(self.accounting()["tasks"][0]["result"]["outstanding_cash"], 1000)
+        case = self.execution.get_case({"context": self.context, "case_id": self.saved["proposal_id"]})["case"]
+        cancelled = next(event for event in case["events"] if event["kind"] == "execution_cancelled")
+        self.assertEqual(cancelled["occurred_at"], self.context["as_of"])
+        self.assertEqual(cancelled["reason"], "Remaining stock needs a new plan")
 
     def test_combination_confirmation_is_atomic(self):
         self.approve(inputs={"sales_settlement_days": 0, "combination": [
