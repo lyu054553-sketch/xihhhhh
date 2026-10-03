@@ -113,6 +113,7 @@ class AIServiceTests(unittest.TestCase):
     def test_draft_survives_refresh_and_does_not_change_facts_until_confirm(self):
         draft = self.service.extract_material(self.extract)
         self.assertEqual(draft["status"], "needs_review")
+        self.assertEqual(draft["context"], self.extract["context"])
         self.assertEqual(draft["fields"]["quantity"]["value"], 10)
         self.assertIn("supplier_id", draft["missing_fields"])
         self.assertEqual(self.stored("test_facts", "version"), [1])
@@ -121,6 +122,7 @@ class AIServiceTests(unittest.TestCase):
         self.assertEqual(other.get_material(draft["material_id"], tenant_id="tenant-a")["text"], "SKU-1 10件")
         confirmed = other.confirm_material(draft["draft_id"], self.confirmation(), expected_fact_version=1)
         self.assertEqual(confirmed["fact_version"], 2)
+        self.assertEqual(confirmed["context"], self.facts.get_context("tenant-a", "S01"))
         self.assertEqual(confirmed["confirmed_fields"]["unit_cost_cny"], 3.5)
         event = json.loads(self.stored("test_events", "payload")[0])
         self.assertEqual(event["event_type"], "material_confirmed")
@@ -128,6 +130,37 @@ class AIServiceTests(unittest.TestCase):
         self.assertIsNone(event["task_id"])
         self.assertFalse(event["external_write"])
         self.assertEqual(other.get_draft(draft["draft_id"], tenant_id="tenant-a")["status"], "confirmed")
+        reread = other.get_draft(draft["draft_id"], tenant_id="tenant-a")
+        self.assertEqual(reread["context"], confirmed["context"])
+        self.assertEqual(reread["source_context"], draft["context"])
+
+    def test_published_material_context_must_match_authoritative_scope(self):
+        draft = self.service.extract_material(self.extract)
+        publish = self.facts.apply_business_events
+        def corrupt_context(tx, events, *, expected_fact_version):
+            result = publish(tx, events, expected_fact_version=expected_fact_version)
+            return {**result, "context": {**self.facts.context, "fact_version": 2, "branch_id": "other"}}
+        self.facts.apply_business_events = corrupt_context
+        with self.assertRaisesRegex(ValueError, "scope and version"):
+            self.service.confirm_material(draft["draft_id"], self.confirmation(), expected_fact_version=1)
+        self.assertEqual(self.stored("test_facts", "version"), [1])
+        self.assertEqual(self.service.get_draft(draft["draft_id"], tenant_id="tenant-a")["status"], "needs_review")
+
+    def test_historical_confirmed_draft_does_not_invent_or_downgrade_context(self):
+        draft = self.service.extract_material(self.extract)
+        confirmed = self.service.confirm_material(draft["draft_id"], self.confirmation(), expected_fact_version=1)
+        saved = self.service.get_draft(draft["draft_id"], tenant_id="tenant-a")
+        del saved["context"]
+        with self.database.transaction() as tx:
+            tx.execute("UPDATE ha_ai_drafts SET draft_json=? WHERE id=?", (dumps(saved), draft["draft_id"]))
+        self.assertEqual(self.service.get_draft(draft["draft_id"], tenant_id="tenant-a")["context"], confirmed["context"])
+        del confirmed["context"]
+        with self.database.transaction() as tx:
+            tx.execute("UPDATE ha_ai_drafts SET confirmation_json=? WHERE id=?", (dumps(confirmed), draft["draft_id"]))
+        historical = self.service.get_draft(draft["draft_id"], tenant_id="tenant-a")
+        self.assertEqual(historical["fact_version"], 2)
+        self.assertIsNone(historical["context"])
+        self.assertEqual(historical["source_context"], draft["context"])
 
     def test_idempotency_payload_conflict_and_confirm_replay_after_version_change(self):
         draft = self.service.extract_material(self.extract)

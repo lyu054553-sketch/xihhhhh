@@ -89,3 +89,11 @@ provider reasoning_content/reasoning_details 只在内存内部续轮协议保�
 运行依赖交由任务 0 统一加入 requirements：`httpx>=0.27,<1`（目前 requirements-dev 已包含）。材料的业务时区严格限定当前 retail-v2 契约支持的 Asia/Shanghai，submitted_at 自身必须带 UTC 偏移；没有实际时区转换需求，不引入额外 IANA 时区数据库依赖，Windows 无需安装 tzdata。
 
 尚未验证：三家实际账户／具体模型的在线文字、视觉、function calling 能力；HTTP／前端完整联调。配置未最终确认前不发起真实模型请求，也不将 MockTransport 测试称为模型连通验证。
+
+## 2026-10-04：跟进完整材料上下文
+
+新提取草稿保存并返回完整 `context`。人工确认在同一事务读取发布后的真实上下文，核对租户、场景、分支、快照、数据版本和发布事实版本，再返回 `context`；刷新草稿也返回确认后的上下文，并在 `source_context` 保留原提取依据。若事实服务返回错范围或版本，整次确认回滚，不能只替换版本号拼出上下文。
+
+历史草稿优先读取已存 `confirmation_json.context`；早期确认记录没有完整发布上下文时，保留原 `fact_version` 与 `source_context`，`context=null`，不把确认版本退回提取版本，也不拿今天的事实冒充历史依据。
+
+新增两项回归验证错误发布范围回滚和旧草稿恢复；现有材料持久化用例也断言提取、确认、刷新三个阶段上下文。AI 共 51 项测试通过；与经营总览新增 6 项一起运行共 57 项通过（19.835 秒）。未增加真实模型调用、未改公共 HTTP 路由或配置。

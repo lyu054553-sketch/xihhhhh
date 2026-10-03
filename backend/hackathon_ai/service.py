@@ -368,11 +368,18 @@ class AIService:
 
     def get_draft(self, draft_id, *, tenant_id):
         with self.database.transaction() as tx:
-            row = tx.execute("SELECT draft_json,context_json FROM ha_ai_drafts WHERE id=? AND tenant_id=?", (draft_id, tenant_id)).fetchone()
+            row = tx.execute("SELECT draft_json,context_json,confirmation_json FROM ha_ai_drafts WHERE id=? AND tenant_id=?", (draft_id, tenant_id)).fetchone()
             if row is None:
                 raise ValueError("Unknown material draft")
             draft = _loads(row["draft_json"])
-            draft["context"] = _loads(row["context_json"])
+            if "context" not in draft:
+                # Existing drafts retain their recorded extraction basis. Never
+                # attach today's facts to a historical model result.
+                source_context = _loads(row["context_json"])
+                confirmation = _loads(row["confirmation_json"]) if row["confirmation_json"] else {}
+                draft["source_context"] = source_context
+                draft["context"] = confirmation.get("context") or (source_context
+                    if draft["fact_version"] == source_context["fact_version"] else None)
             return draft
 
     def get_material(self, material_id, *, tenant_id):
@@ -414,6 +421,7 @@ class AIService:
             tx.execute("INSERT INTO ha_ai_materials VALUES(?,?,?,?,?,?,?,?,?,?)", (material_id, tenant, dumps(context), material.source_name,
                        material.raw_text, image, metadata.get("mime_type"), source_hash, actor, _now()))
             draft = {"contract_version": CONTRACT_VERSION, "draft_id": draft_id, "material_id": material_id,
+                     "context": deepcopy(context),
                      "tenant_id": tenant, "scenario_id": context["scenario_id"], "fact_version": context["fact_version"],
                      "kind": kind, "status": "needs_review", "source": "manager_image" if image else "manager_text", "is_demo": context["is_demo"],
                      "external_write": False, "fields": {}, "missing_fields": ["extraction_pending"], "unmatched_entities": [],
@@ -516,12 +524,20 @@ class AIService:
             version = published.get("fact_version") or published.get("context", {}).get("fact_version")
             if type(version) is not int or version <= expected_fact_version:
                 raise ValueError("Fact service did not return the published fact version")
+            published_context = published.get("context")
+            if published_context is None:
+                published_context = self.facts.get_context(tenant, context["scenario_id"], context["branch_id"], tx=tx)
+            published_context = ContextInput.model_validate(published_context).model_dump()
+            if (published_context["fact_version"] != version or any(published_context[field] != context[field]
+                    for field in ("tenant_id", "scenario_id", "branch_id", "snapshot_id", "data_version", "is_demo"))):
+                raise ValueError("Published material context does not match its fact scope and version")
             response = {"contract_version": CONTRACT_VERSION, "draft_id": draft_id, "material_id": row["material_id"],
+                        "context": published_context,
                         "status": "confirmed", "fact_version": version, "confirmed_by": actor, "confirmed_at": _now(),
                         "confirmed_fields": json_value(confirmed), "evidence_refs": [{"material_id": row["material_id"], "field": name,
                         "quoted_text": draft.get("fields", {}).get(name, {}).get("evidence_text")} for name in confirmed],
                         "missing_fields": missing, "is_demo": context["is_demo"], "external_write": False}
-            draft.update(status="confirmed", fact_version=version)
+            draft.update(status="confirmed", fact_version=version, context=published_context, source_context=context)
             for name, value in confirmed.items():
                 field = draft["fields"].setdefault(name, {"unit": None, "evidence_text": None, "page": None, "confidence": None})
                 field.update(value=json_value(value), review_status="missing" if value is None else "confirmed")
