@@ -63,5 +63,5 @@ mounted.destroy();
 
 - 公共契约已发布并标记 `ready_for_parallel`。`assets/hackathon/shared/api-client.js` 已有本组件使用的方法；但 `backend/api.py` 当前没有注册 `/hackathon/tasks`、`/hackathon/accounting`、`/hackathon/cases` 和确认／事件／渠道动作路由。契约标为计划的路由须由后端集成后才能真实联调；失败时组件明确显示错误。
 - 本次集成准备新增共享 client 的 `listProposals()` 与 `getOverview()`，跟进模块已分别消费待确认方案与首页汇总。后端仍需实现公共契约中标为计划的对应路由。
-- 前端现已接入主工作台 `execution-followup` 路由，复用原版导航、字体、绿色按钮与卡片间距；集成样式限定在此路由内。`assets/hackathon/preview.html` 可切换两个嵌入原版外壳的只读 fixture 预览。
+- 前端现已接入主工作台 `execution-followup` 路由，复用原版导航、字体、绿色按钮与卡片间距；集成样式限定在此路由内。统一预览入口 `assets/hackathon/preview.html` 使用原版工作台和左侧导航访问两个模块；此模块独立预览页仅用于组件开发检查。
 - 服务端 `/hackathon/*` 路由尚待后端注册，因此未完成真实后端／数据库刷新恢复联调。当前环境的 CUA 初始化异常，无法提供截图级浏览器验证；可通过本地预览入口直接检查页面。不要给渠道动作接入真实消息平台。

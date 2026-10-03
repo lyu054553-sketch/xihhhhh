@@ -26,7 +26,7 @@
 ## 前端与预览
 
 - 两个模块在原版 `app.js` 外壳内统一使用 `{ api, navigate, context }` 挂载参数和 camelCase 宿主上下文；共享 API 客户端负责 snake_case 传输。原版 `styles.css`、导航、卡片、颜色、字体和间距保持为基础，新增样式限定在组件根节点。
-- 正式挂载使用 HTTP client；开发预览使用显式只读 fixture，HTTP 失败不会降级成 fixture。预览入口：`assets/hackathon/preview.html`，以及原版 hash `#decision-entry` / `#execution-followup`。
+- 正式挂载使用 HTTP client；开发预览使用显式只读 fixture，HTTP 失败不会降级成 fixture。唯一公开预览入口是 `assets/hackathon/preview.html`，会打开原版清新绿工作台并默认进入方案决策；使用原版左侧导航切换到审批与执行跟进。模块目录下的单页预览只保留作组件开发检查。
 - 图片上传会存档原图和提取草稿。测试配置未提供 vision provider，故状态保持 `failed`／人工复核，可继续人工编辑；不将上传成功说成识别成功。Agent Run 也以持久化的 `unavailable` 状态返回，不触发外部模型。
 
 ## 联调与验证

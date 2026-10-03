@@ -325,4 +325,4 @@ v1.3 是接口变更。朱需按新版版本字段、导入状态、手工确认
 
 `business_inputs` 接受按 `transfer`、`promotion`、`return`、`procurement` 分组的动作字段，字段明细与观察期口径见 `docs/PARALLEL_CONTRACT.md` 第 7 节。观察期结束日为半开区间边界，起始日期必须等于当前事实时点的日期；路由转换成计算服务内部 DTO 并拒绝未声明字段。材料可使用 JSON 文字或 multipart 单张 PNG/JPG，文件上限 5 MiB、请求上限 6 MiB；未配置 vision provider 时，图片仍会保存成 `failed/manual_review` 草稿并允许人工补录，响应不得标成 AI 已识别。Agent/provider 不可用返回真实失败／不可用状态，不能改用预览 fixture。
 
-前端共享适配器为 `window.HackathonApiClient.createApiClient({baseUrl, tenantId, actorId})`。本地原版外壳中的两个模块预览入口是 `assets/hackathon/preview.html` 与 `?hackathonPreview=1#decision-entry` / `?hackathonPreview=1#execution-followup`；preview 明确为只读 fixture 展示，不证明真实后端成功。端到端覆盖与剩余限制记录在 `docs/parallel-handoff/05-integration.md`。
+前端共享适配器为 `window.HackathonApiClient.createApiClient({baseUrl, tenantId, actorId})`。统一预览入口是 `assets/hackathon/preview.html`：它进入原版清新绿主页面，默认打开方案决策，并可通过原版左侧导航切换到审批与执行跟进。该预览模式下两个模块只使用只读 fixture，不证明真实后端成功。端到端覆盖与剩余限制记录在 `docs/parallel-handoff/05-integration.md`。

@@ -96,7 +96,7 @@
 - `assets/hackathon/followup/followup.js`：独立读取待确认方案、任务与首页总览；接受统一 camelCase context。
 - `index.html`、`app.js`：增加 `decision-entry`、`execution-followup` 页面和原版左侧导航入口；页面路由事件驱动组件挂载和卸载。
 - `assets/hackathon/integration.js`、`integration.css`：注入统一 camelCase context、共享 API client 与宿主导航；样式仅作用于两个新模块根节点，颜色、字体、标签页和留白向原版绿色工作台对齐。
-- `assets/hackathon/preview.html`：切换到原版工作台外壳中的两个只读 fixture 预览；也可在主应用显式加 `?hackathonPreview=1` 查看。
+- `assets/hackathon/preview.html`：唯一公开预览入口，直接进入原版工作台外壳的决策页；通过原版左侧导航切换到跟进页。两个模块继续共用原版绿色导航、字体和页面框架；预览使用只读 fixture。单模块 HTML 仅供组件开发检查。
 - 主应用普通路由使用 HTTP client；主应用只有显式预览参数才启用 fixture。独立组件预览页也保持显式只读 fixture。任何模拟写操作都不会标成真实接口成功。
 
 上述 `/hackathon/*` 服务端路由仍未在 `backend/api.py` 注册。后端到齐后再按公共契约注册路由并进行真实联调；当前前端预览不能用于证明后端成功。
