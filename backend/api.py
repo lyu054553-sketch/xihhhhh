@@ -37,6 +37,7 @@ from .errors import BusinessConflict
 from .serialization import numeric_response, dumps
 from .imports import inventory_rows, REQUIRED_INVENTORY_FIELDS
 from .retail import demo_dataset, demo_overview, simulate_purchase, simulation_options
+from .model_config import load_model_config
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +48,7 @@ if os.environ.get("INVENTORY_AGENT_MODE", "demo") != "real":
     store.seed_demo()
 
 app = FastAPI(title="货不压钱｜连锁零售库存资金 Agent API", version="1.4.0")
+app.state.model_config = load_model_config()
 
 
 class InvestigationInput(BaseModel):

@@ -1,0 +1,939 @@
+{
+  "dataset_id": "retail-v2.1",
+  "seed": 20261003,
+  "decision_at": "2026-10-03T09:30:00+08:00",
+  "snapshot_id": "SNAP-20261003-BASE",
+  "history_start": "2026-07-05",
+  "history_end": "2026-10-02",
+  "replay_start": "2026-10-03",
+  "replay_end": "2026-11-01",
+  "complete_store_count": 6,
+  "directory_store_count": 50,
+  "sku_count": 12,
+  "currency": "CNY",
+  "amount_unit": "yuan",
+  "ratio_unit": "percent_0_100",
+  "is_demo": true,
+  "files": [
+    {
+      "file": "01_主数据与规则.xlsx",
+      "role": "facts_or_assumptions",
+      "sheets": [
+        {
+          "name": "门店",
+          "row_count": 50,
+          "columns": [
+            "store_id",
+            "store_name",
+            "region",
+            "store_type",
+            "latitude",
+            "longitude",
+            "coordinate_system",
+            "open_date",
+            "status",
+            "data_scope",
+            "include_in_summary",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "商品",
+          "row_count": 12,
+          "columns": [
+            "sku_id",
+            "product_name",
+            "category_id",
+            "specification",
+            "base_unit",
+            "purchase_unit",
+            "units_per_purchase_unit",
+            "shelf_life_days",
+            "storage_condition",
+            "default_unit_cost",
+            "regular_unit_price",
+            "gross_weight_kg",
+            "volume_m3",
+            "supplier_id",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "供应商",
+          "row_count": 3,
+          "columns": [
+            "supplier_id",
+            "supplier_name",
+            "confirmation_contact_role",
+            "confirmation_channel",
+            "contact_email",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "人员",
+          "row_count": 5,
+          "columns": [
+            "person_id",
+            "display_name",
+            "role",
+            "store_id",
+            "channel_target",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "门店商品",
+          "row_count": 72,
+          "columns": [
+            "store_id",
+            "sku_id",
+            "is_listed",
+            "can_receive_transfer",
+            "capacity_qty",
+            "safety_stock_qty",
+            "target_coverage_days",
+            "min_receive_sellable_days",
+            "storage_condition",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "风险规则",
+          "row_count": 2,
+          "columns": [
+            "policy_id",
+            "scope",
+            "valid_from",
+            "valid_to",
+            "slow_coverage_days_threshold",
+            "min_observed_days",
+            "expiry_alert_days",
+            "stop_sale_days_before_expiry",
+            "safety_stock_qty",
+            "target_coverage_days",
+            "rule_version",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        }
+      ],
+      "sha256": "4c05fdec892d5e99bd4bc7863fceff3d92e8271edcbc1eacb504eba7e7666df2",
+      "bytes": 23599
+    },
+    {
+      "file": "02_库存与90天经营事实.xlsx",
+      "role": "facts_or_assumptions",
+      "sheets": [
+        {
+          "name": "库存快照",
+          "row_count": 74,
+          "columns": [
+            "inventory_id",
+            "snapshot_id",
+            "snapshot_at",
+            "store_id",
+            "sku_id",
+            "lot_id",
+            "stock_state",
+            "quantity",
+            "shipment_line_id",
+            "blocked_qty",
+            "reserved_qty",
+            "unit_cost",
+            "sellable_until",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "商品批次",
+          "row_count": 74,
+          "columns": [
+            "lot_id",
+            "sku_id",
+            "supplier_id",
+            "supplier_batch_no",
+            "production_date",
+            "expiry_date",
+            "purchase_order_line_id",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "逐日销售",
+          "row_count": 6480,
+          "columns": [
+            "sales_day_id",
+            "date",
+            "store_id",
+            "sku_id",
+            "lot_id",
+            "sold_qty",
+            "customer_return_qty",
+            "sales_amount",
+            "refund_amount",
+            "sold_cost",
+            "returned_cost",
+            "regular_unit_price",
+            "actual_unit_price",
+            "promotion_id",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "逐日可售状态",
+          "row_count": 6480,
+          "columns": [
+            "date",
+            "store_id",
+            "sku_id",
+            "opening_qty",
+            "received_qty",
+            "closing_qty",
+            "open_hours",
+            "on_shelf_hours",
+            "in_stock_hours",
+            "listing_status",
+            "stockout_flag",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "库存变动",
+          "row_count": 7362,
+          "columns": [
+            "movement_id",
+            "date",
+            "store_id",
+            "sku_id",
+            "lot_id",
+            "event_type",
+            "quantity_delta",
+            "document_ref",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "历史采购",
+          "row_count": 936,
+          "columns": [
+            "po_id",
+            "po_line_id",
+            "supplier_id",
+            "store_id",
+            "sku_id",
+            "lot_id",
+            "ordered_qty",
+            "unit_cost",
+            "received_qty",
+            "paid_amount",
+            "payment_status",
+            "ordered_at",
+            "original_document_ref",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        }
+      ],
+      "sha256": "93637cdd44c2670e7ddc6cb08d09991aa045c45721f1265350cde22c53389a5f",
+      "bytes": 1349724
+    },
+    {
+      "file": "03_需求路线采购与条款.xlsx",
+      "role": "facts_or_assumptions",
+      "sheets": [
+        {
+          "name": "逐日需求假设",
+          "row_count": 2160,
+          "columns": [
+            "forecast_id",
+            "store_id",
+            "sku_id",
+            "date",
+            "demand_low",
+            "demand_base",
+            "demand_high",
+            "method",
+            "assumption_id",
+            "generated_at",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "路线与运费",
+          "row_count": 30,
+          "columns": [
+            "route_id",
+            "from_store_id",
+            "to_store_id",
+            "route_label",
+            "route_points",
+            "distance_km",
+            "travel_minutes",
+            "dispatch_rule",
+            "handling_minutes",
+            "eta_days",
+            "fee_amount",
+            "fee_basis",
+            "max_qty_per_trip",
+            "quantity_unit",
+            "applicable_sku_id",
+            "storage_condition",
+            "valid_from",
+            "valid_to",
+            "version",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "收货日历",
+          "row_count": 180,
+          "columns": [
+            "store_id",
+            "date",
+            "is_open",
+            "can_receive",
+            "receive_window",
+            "capacity_override",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "已确认采购",
+          "row_count": 2,
+          "columns": [
+            "po_id",
+            "po_line_id",
+            "supplier_id",
+            "store_id",
+            "sku_id",
+            "lot_id",
+            "ordered_qty",
+            "received_qty",
+            "unit_cost",
+            "paid_amount",
+            "payment_status",
+            "order_status",
+            "due_at",
+            "original_document_ref",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "采购在途",
+          "row_count": 2,
+          "columns": [
+            "shipment_line_id",
+            "purchase_order_line_id",
+            "transfer_order_line_id",
+            "store_id",
+            "sku_id",
+            "lot_id",
+            "shipped_qty",
+            "received_qty",
+            "expected_arrival_at",
+            "status",
+            "ownership",
+            "unit_cost",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "账户快照",
+          "row_count": 1,
+          "columns": [
+            "account_id",
+            "account_name",
+            "currency",
+            "snapshot_at",
+            "available_balance",
+            "source_document",
+            "scope",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "应付款",
+          "row_count": 2,
+          "columns": [
+            "payable_id",
+            "supplier_id",
+            "po_id",
+            "original_amount",
+            "due_at",
+            "paid_amount",
+            "applied_credit_amount",
+            "outstanding_amount",
+            "status",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "退供条款",
+          "row_count": 1,
+          "columns": [
+            "term_id",
+            "supplier_id",
+            "sku_scope",
+            "effective_from",
+            "effective_to",
+            "allowed_settlement_modes",
+            "return_deadline_rule",
+            "min_remaining_shelf_life_days",
+            "packaging_requirements",
+            "max_return_qty",
+            "max_return_ratio",
+            "refund_price_rule",
+            "restocking_fee_rule",
+            "freight_payer",
+            "settlement_trigger",
+            "settlement_days",
+            "source_ref",
+            "confirmed_by",
+            "confirmed_at",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "阶段促销",
+          "row_count": 2,
+          "columns": [
+            "promotion_id",
+            "stage_id",
+            "scenario_id",
+            "store_id",
+            "bundle_id",
+            "start_date",
+            "end_date_exclusive",
+            "bundle_price",
+            "floor_price",
+            "min_margin_pct",
+            "available_bundle_qty",
+            "execution_fee",
+            "forecast_unit",
+            "demand_low",
+            "demand_base",
+            "demand_high",
+            "assumption_id",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "组合商品",
+          "row_count": 2,
+          "columns": [
+            "bundle_id",
+            "sku_id",
+            "qty_per_bundle",
+            "base_unit",
+            "unit_cost",
+            "regular_unit_price",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "假设说明",
+          "row_count": 2,
+          "columns": [
+            "assumption_id",
+            "kind",
+            "description",
+            "low_factor",
+            "base_factor",
+            "high_factor",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        }
+      ],
+      "sha256": "c6a307f19b84a9bbe6fcb99c37119a9e1ed9cc6541d20889c444b2ddbd841310",
+      "bytes": 152301
+    },
+    {
+      "file": "04_场景输入与原始材料.xlsx",
+      "role": "isolated_scenarios",
+      "sheets": [
+        {
+          "name": "场景目录",
+          "row_count": 10,
+          "columns": [
+            "scenario_id",
+            "title",
+            "branches",
+            "input_scope",
+            "store_id",
+            "sku_id",
+            "lot_id",
+            "base_snapshot_id",
+            "decision_at",
+            "evaluation_end",
+            "notes",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "独立风险输入",
+          "row_count": 7,
+          "columns": [
+            "scenario_id",
+            "branch_id",
+            "sku_id",
+            "quantity",
+            "sales_30",
+            "valid_observed_days",
+            "sellable_until",
+            "unit_cost",
+            "policy_id",
+            "input_scope",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "隔离场景覆盖",
+          "row_count": 12,
+          "columns": [
+            "override_id",
+            "scenario_id",
+            "branch_id",
+            "table_name",
+            "record_key",
+            "field",
+            "value_json",
+            "reason",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "场景批次",
+          "row_count": 3,
+          "columns": [
+            "lot_id",
+            "sku_id",
+            "supplier_id",
+            "production_date",
+            "expiry_date",
+            "po_line_id",
+            "scenario_id",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at",
+            "input_role"
+          ]
+        },
+        {
+          "name": "原始材料",
+          "row_count": 8,
+          "columns": [
+            "material_id",
+            "type",
+            "party_id",
+            "source_location",
+            "text",
+            "evidence_uri",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "采购意向",
+          "row_count": 2,
+          "columns": [
+            "intent_id",
+            "scenario_id",
+            "source_ref",
+            "channel",
+            "intent_status",
+            "store_id",
+            "sku_id",
+            "quantity",
+            "unit",
+            "unit_cost",
+            "expected_arrival_date",
+            "payment_date",
+            "supplier_id",
+            "confirmation_required",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "抵款场景应付",
+          "row_count": 1,
+          "columns": [
+            "scenario_id",
+            "branch_id",
+            "payable_id",
+            "supplier_id",
+            "po_id",
+            "original_amount",
+            "due_at",
+            "paid_amount",
+            "applied_credit_amount",
+            "outstanding_amount",
+            "status",
+            "source_ref",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        }
+      ],
+      "sha256": "464bf8ce0fd111db50731599b13329c0cabf4ffc39e17172de023263df679551",
+      "bytes": 21620
+    },
+    {
+      "file": "05_未来执行与结算回放.xlsx",
+      "role": "future_replay",
+      "sheets": [
+        {
+          "name": "方案及任务",
+          "row_count": 7,
+          "columns": [
+            "task_id",
+            "scenario_id",
+            "branch_id",
+            "type",
+            "owner_id",
+            "planned_qty",
+            "unit",
+            "proposal_id",
+            "proposal_version",
+            "approved_by",
+            "approved_at",
+            "due_at",
+            "initial_execution_status",
+            "initial_result_status",
+            "completion_criteria",
+            "external_write",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "业务回执",
+          "row_count": 24,
+          "columns": [
+            "scenario_id",
+            "branch_id",
+            "event_id",
+            "occurred_at",
+            "event_type",
+            "task_id",
+            "store_id",
+            "to_store_id",
+            "sku_id",
+            "lot_id",
+            "quantity",
+            "from_state",
+            "to_state",
+            "receipt_ref",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at",
+            "from_store_id",
+            "affected_qty",
+            "reason",
+            "resolved",
+            "accepted_mode",
+            "rejected_qty",
+            "unit_cost",
+            "cash_difference",
+            "credit_note_id",
+            "amount",
+            "supplier_id",
+            "expires_at",
+            "payable_id",
+            "po_line_id",
+            "payment_due",
+            "shipment_line_id",
+            "promotion_id",
+            "reported_by",
+            "confirmed_by",
+            "old_data_version",
+            "new_data_version",
+            "proposal_id",
+            "old_proposal_version",
+            "new_proposal_version"
+          ]
+        },
+        {
+          "name": "渠道动作记录",
+          "row_count": 6,
+          "columns": [
+            "action_id",
+            "action_event_id",
+            "scenario_id",
+            "branch_id",
+            "task_id",
+            "proposal_id",
+            "proposal_version",
+            "channel",
+            "status",
+            "content_snapshot",
+            "target_ref",
+            "idempotency_key",
+            "external_write",
+            "receipt_ref",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "批次销售",
+          "row_count": 57,
+          "columns": [
+            "scenario_id",
+            "branch_id",
+            "sale_id",
+            "date",
+            "store_id",
+            "sku_id",
+            "lot_id",
+            "sold_qty",
+            "unit_price",
+            "sales_amount",
+            "sold_cost",
+            "attribution",
+            "task_id",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at",
+            "bundle_sale_id"
+          ]
+        },
+        {
+          "name": "现金流水",
+          "row_count": 56,
+          "columns": [
+            "scenario_id",
+            "branch_id",
+            "cash_event_id",
+            "account_id",
+            "occurred_at",
+            "direction",
+            "amount",
+            "business_ref",
+            "receipt_ref",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "核销分配",
+          "row_count": 59,
+          "columns": [
+            "scenario_id",
+            "branch_id",
+            "allocation_id",
+            "cash_event_id",
+            "business_ref",
+            "allocated_amount",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        },
+        {
+          "name": "退供确认",
+          "row_count": 3,
+          "columns": [
+            "scenario_id",
+            "branch_id",
+            "return_id",
+            "task_id",
+            "term_id",
+            "sku_id",
+            "lot_id",
+            "po_line_id",
+            "requested_qty",
+            "accepted_qty",
+            "accepted_mode",
+            "accepted_unit_price",
+            "return_fee",
+            "confirmation_ref",
+            "expected_settlement_date",
+            "replacement_sku_id",
+            "replacement_lot_id",
+            "replacement_qty",
+            "replacement_unit_cost",
+            "credit_amount",
+            "payable_id",
+            "source",
+            "is_demo",
+            "data_version",
+            "known_at"
+          ]
+        }
+      ],
+      "sha256": "d69129cd25e12ca519185e09e62c749b9afd906555e507620ab467dfc1af9567",
+      "bytes": 36085
+    },
+    {
+      "file": "06_验收预期结果.xlsx",
+      "role": "expected_answers",
+      "sheets": [
+        {
+          "name": "风险预期",
+          "row_count": 7,
+          "columns": [
+            "scenario_id",
+            "branch_id",
+            "coverage_days",
+            "remaining_sellable_days",
+            "slow_result",
+            "expiry_result",
+            "risk_cost_once",
+            "missing_or_check"
+          ]
+        },
+        {
+          "name": "进度预期",
+          "row_count": 3,
+          "columns": [
+            "scenario_id",
+            "branch_id",
+            "as_of",
+            "execution_status",
+            "result_status",
+            "shipped_qty",
+            "received_qty",
+            "sold_transferred_qty",
+            "collected_amount",
+            "unmatched_amount",
+            "remaining_unexecuted_qty",
+            "attention_reason"
+          ]
+        },
+        {
+          "name": "金额复算",
+          "row_count": 16,
+          "columns": [
+            "场景",
+            "指标",
+            "输入1",
+            "输入2",
+            "输入3",
+            "结果",
+            "口径"
+          ]
+        }
+      ],
+      "sha256": "1ef5e28fac727f62276be89c5eaa9f58a7133de32411631b0091da3c9754d477",
+      "bytes": 9459
+    },
+    {
+      "file": "07_当前库存导入.xlsx",
+      "role": "current_import_projection",
+      "sheets": [
+        {
+          "name": "库存导入",
+          "row_count": 72,
+          "columns": [
+            "sku",
+            "store",
+            "store_id",
+            "product",
+            "unit",
+            "inventory_qty",
+            "unit_cost",
+            "sales_30",
+            "sales_90",
+            "sales_cost_30"
+          ]
+        }
+      ],
+      "sha256": "94fbaee038a2f9ab48cd0bb7dd4d271bd684078fb8110d76f6603485f23875d8",
+      "bytes": 8941
+    }
+  ]
+}
