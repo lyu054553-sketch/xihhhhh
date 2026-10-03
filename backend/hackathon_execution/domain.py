@@ -427,6 +427,15 @@ def apply_business_receipt(state, row):
         if task is None:
             raise ValueError("Exception requires a task")
         task["exception_flags"].append(row.get("reason") or "execution_exception")
+    elif kind in {"supplier_reply_recorded", "supplier_terms_reviewed"}:
+        if task is None or task["type"] != "return":
+            raise ValueError("Supplier communications require a confirmed return task")
+        # A recorded local reply is an audit item only. It does not mean that
+        # the supplier accepted the return or changed the approved terms.
+        task["progress"].setdefault("supplier_communications", []).append({
+            "event_type": kind, "receipt_ref": row.get("receipt_ref"),
+            "detail": row.get("detail"), "occurred_at": row.get("occurred_at"),
+        })
     else:
         raise ValueError(f"Unsupported business receipt: {kind}")
     state["receipts"].append(deepcopy(row))

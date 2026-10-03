@@ -184,7 +184,7 @@ test('共享 API client 读取任务与核算；回执通过版本化业务事�
   const calls = {};
   const mounted = followup.mount(container, {
     api: apiFor(task, accounting(), calls),
-    context: { tenantId: 'demo', scenarioId: 'S01', branchId: 'transfer_80', snapshotId: 'SNAP-1', asOf: '2026-10-03T09:30:00+08:00', factVersion: 1 },
+    context: { tenantId: 'demo', scenarioId: 'S01', branchId: 'transfer_80', snapshotId: 'SNAP-1', asOf: '2026-10-03T09:30:00+08:00', factVersion: 1, actorId: 'manager-test' },
     initialGroup: 'followups',
   });
   assert.equal(typeof mounted.destroy, 'function');
@@ -224,7 +224,7 @@ test('本地渠道 API 保留 demo 安全标记，并为重复提交复用幂等
   const container = new FakeContainer();
   const task = sampleTask({ action_type: 'promotion', channel_actions: [{ action_id: 'ACTION-OLD', channel: 'wecom', status: 'draft_saved', content_snapshot: { title: '促销内容', body: '已批准促销文案' } }] });
   const calls = {};
-  const mounted = followup.mount(container, { api: apiFor(task, accounting(), calls), context: { tenantId: 'demo', scenarioId: 'S06', branchId: 'promotion' }, initialGroup: 'followups' });
+  const mounted = followup.mount(container, { api: apiFor(task, accounting(), calls), context: { tenantId: 'demo', scenarioId: 'S06', branchId: 'promotion', actorId: 'manager-test' }, initialGroup: 'followups' });
   await new Promise((resolve) => setTimeout(resolve, 0));
   container.click(fakeTarget({ 'data-hf-detail-tab': 'channels' }));
   container.click(fakeTarget({ 'data-hf-command': 'wecom_publish' }));
@@ -252,7 +252,7 @@ test('确认只调用一次原子 confirmProposal 并发出 proposal-confirmed',
   const pending = sampleTask({ status: 'pending_approval', proposal: { id: 'PROP-1', version: 2, status: 'pending_approval', candidate_id: 'CAND-1', task_assignments: [] } });
   const calls = {};
   const api = apiFor(pending, accounting(), calls);
-  const mounted = followup.mount(container, { api, context: { tenantId: 'demo', scenarioId: 'S01', branchId: 'transfer_80', snapshotId: 'SNAP-1', factVersion: 5 }, initialGroup: 'approvals' });
+  const mounted = followup.mount(container, { api, context: { tenantId: 'demo', scenarioId: 'S01', branchId: 'transfer_80', snapshotId: 'SNAP-1', factVersion: 5, actorId: 'manager-test' }, initialGroup: 'approvals' });
   await new Promise((resolve) => setTimeout(resolve, 0));
   container.click(fakeTarget({ 'data-hf-command': 'confirm_and_arrange' }));
   await new Promise((resolve) => setTimeout(resolve, 0));

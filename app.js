@@ -208,9 +208,11 @@ function hackathonMountContext() {
   const dashboard = state.dashboard || {};
   const dataCenter = state.dataCenter || {};
   return {
-    tenantId: configured.tenantId || dashboard.tenant_id || "demo",
-    scenarioId: configured.scenarioId ?? null,
-    branchId: configured.branchId ?? null,
+    // Hackathon facts use an isolated demo tenant by default so their legacy
+    // risk-FK compatibility rows do not enter the original demo queue.
+    tenantId: configured.tenantId || (configured.scenarioId ? dashboard.tenant_id : "hackathon-demo"),
+    scenarioId: configured.scenarioId ?? "S01",
+    branchId: configured.branchId ?? "transfer_80",
     snapshotId: configured.snapshotId ?? dashboard.snapshot_id ?? dataCenter.snapshot_id ?? null,
     asOf: configured.asOf ?? dashboard.as_of ?? dashboard.as_of_date ?? null,
     dataVersion: configured.dataVersion ?? dashboard.data_version ?? dataCenter.data_version ?? null,
@@ -226,7 +228,7 @@ function hackathonMountContext() {
     storeId: configured.storeId ?? null,
     skuId: configured.skuId ?? null,
     lotId: configured.lotId ?? null,
-    actorId: configured.actorId ?? null,
+    actorId: configured.actorId ?? (configured.isDemo === false ? null : "manager-demo"),
     proposalId: configured.proposalId ?? null,
     proposalVersion: configured.proposalVersion ?? null,
     taskId: configured.taskId ?? null,

@@ -1,24 +1,24 @@
 # 货不压钱｜并行开发公共契约
 
-**状态：`ready_for_parallel`**
+**状态：`integration_wired`（路由已注册，S01 本地主线已联调）**
 
 **契约版本：`hackathon.v1`** · **发布：2026-10-04**
 
 **数据时钟：2026-10-03 09:30（Asia/Shanghai，来自 `retail-v2.1` manifest）**
 
-本文冻结任务 1—6 之间的数据形状、服务边界、事务约束和前端挂载方式，供并行实现使用。它不代表下文标成“计划”的 HTTP 路由已经注册，也不把样例数值当成计算结果。代码中可直接导入的 Python 类型和共享 SQLite 事务入口在 [`backend/hackathon_shared.py`](../backend/hackathon_shared.py) 与 [`backend/store.py`](../backend/store.py)；浏览器请求适配器在 [`assets/hackathon/shared/api-client.js`](../assets/hackathon/shared/api-client.js)。
+本文冻结任务 1—6 之间的数据形状、服务边界、事务约束和前端挂载方式。`/api/v1/hackathon/*` 已由 [`backend/hackathon_routes.py`](../backend/hackathon_routes.py) 注册到现有 FastAPI 应用；“已注册”只说明路由与服务图接通，不代表模型供应商已配置或业务数据自动接入。代码中可直接导入的 Python 类型和共享 SQLite 事务入口在 [`backend/hackathon_shared.py`](../backend/hackathon_shared.py) 与 [`backend/store.py`](../backend/store.py)；浏览器请求适配器在 [`assets/hackathon/shared/api-client.js`](../assets/hackathon/shared/api-client.js)。
 
 本文 JSON 请求块是按契约字段编写的请求模板；JSON 响应块均带 `"fixture_only": true`，属于**开发 fixture**，只用于制作组件和服务夹具。将响应 fixture 复制到开发预览时，必须显式启用 fixture 模式并显示“开发预览”；不能把 fixture 放进生产响应、Agent 输入或真实 API 请求，也不能在 HTTP 失败后用 fixture 代答。所有金额示例均为人民币元；未知值必须为 `null`，不等于 0。
 
-## 1. 现有实现与计划边界
+## 1. 现有实现与集成边界
 
 截至发布时，仓库实际存在以下接口与能力：
 
 - FastAPI 应用版本为 1.4.0，路径前缀为 `/api/v1`。已有风险、核查反馈、三个工作台计算、方案提交／审批／生成任务、手工执行状态、现金规划和旧 retail 演示接口；具体路径与字段以现有 [`API_CONTRACT.md`](../API_CONTRACT.md) 及运行中的 `/openapi.json` 为准。
 - `backend/domain.py` 有确定性调拨、近效期处置、采购刹车、风险金额去重和现金规划函数。`backend/store.py` 是现有 SQLite 真相源，保存旧风险、事实反馈版本、方案版本、审批、任务、预留、现金事件、案例及库存导入快照。
 - 当前 `/feedback` 仍产生 `manual_required` 草稿；`backend/model_config.py` 只读取 DeepSeek／千问／MiniMax 配置，没有真实模型运行编排和材料提取服务。
-- 当前应用还没有 `retail-v2` 整包加载器、字符串业务 ID 事实库、公共 Agent Run、单请求“确认并建任务”、渠道动作记录或按时钟推进的批量回放服务。本文对应新服务与 `/hackathon/*` HTTP 路由均为并行实现契约；第二阶段再注册路由并挂接旧页面。
-- 当前 `backend/api.py` 已把唯一 `Store` 暴露为 `app.state.store`，并通过 `install_services` 安装只含数据库的占位 `HackathonServices`；其 `facts/calculations/agent/execution` 仍为空。集成方须在模块迁移完成后替换为完整服务图。
+- 应用启动时在唯一 `Store` 上注册数据、AI、执行迁移并安装完整服务图；计算服务无迁移。演示模式把所有可用场景／分支导入独立租户 `hackathon-demo`，不污染旧版零售演示队列。`INVENTORY_AGENT_MODE=real` 下不自动导入合成事实。
+- `backend/api.py` 已包含新版 router；`scripts/serve_frontend.py` 仅转发明确列出的读写路径，并允许 6 MiB 请求体以承载单张不超过 5 MiB 的 PNG/JPG 与 multipart 边界。
 
 当前 API 的执行 `status` 值保留为 `draft_pending_external_execution`、`pending_dispatch`、`in_transit`、`awaiting_receipt`、`received`、`completed`、`exception`。现有确认／生成任务仍是两个旧端点；并行组件一律调用本契约的单次 `confirmProposal` 操作。D07 提议的三态展示并未作为持久化/API 枚举定稿：原状态、数量、异常和取消原因必须完整保留，三态只可作为可逆的展示映射。
 
@@ -116,7 +116,7 @@ install_services(app, services)
 | 模块 3 `backend/hackathon_ai/` | 材料原件引用、提取草稿／确认历史、Agent Run 及事件／用量表；不保存第二份业务事实 |
 | 模块 4 `backend/hackathon_execution/` | 渠道动作、执行事件去重、回放进度、核销分配及计算结果引用；旧任务／方案／现金事件仍由公共 Store 提供，不复制账户余额 |
 
-集成后的启动顺序固定为：① `Store` 建立现有公共 `SCHEMA` 并完成自身加法迁移；② 集成方在同一连接上依次注册模块 1 数据迁移、模块 3 AI 迁移、模块 4 执行迁移（模块 2 无迁移）；③ 所有迁移成功后创建完整服务实例并调用 `install_services(app, services)`；④ 校验 manifest 并按下表加载事实；⑤ 才启动服务并允许新路由读写。当前 `backend/api.py` 的模块级 Store 和 `seed_demo()` 顺序仍是旧启动方式，第二阶段需要把模块迁移注册放在业务事实包加载之前；它不是新模块迁移已经接好的证明。迁移由各模块提供、自身拥有；不得从业务模块启动时另建连接。迁移必须可重复，不能删改已有真实快照。
+当前启动顺序为：① `Store` 建立现有公共 `SCHEMA`；② 在同一连接上依次注册模块 1 数据迁移、模块 3 AI 迁移、模块 4 执行迁移（模块 2 无迁移）；③ 安装完整服务实例；④ 演示模式下以租户 `hackathon-demo` 加载场景事实。迁移由各模块提供、自身拥有；不新建第二个数据库连接，不删改已有真实快照。
 
 样例数据加载顺序：校验 manifest 与所有 XLSX 校验和 → 01 主数据与规则 → 02 当前库存／批次／历史 → 03 需求、线路、采购、收款与条款 → 单独建立所选 04 场景快照及经确认的覆盖 → 仅执行服务保留并在时钟推进时揭示 05 → 06 仅在独立验收读取器中加载。07 只作为 02 的兼容投影，不能同库重复入账。失败导入整体回滚，不覆盖用户已有真实库存库。
 
@@ -124,7 +124,7 @@ install_services(app, services)
 
 `FactContext` 必填：`tenant_id`、`scenario_id`、`branch_id`（BASE 可 `null`）、`snapshot_id`、`as_of`、`data_version`、`fact_version`、`is_demo`、`source_refs[]`、`missing_fields[]`。事实查询必须提供完整 context；selector 可为空数组表示该范围内全部，`include[]` 只接受注册过的事实类目。
 
-**POST `/api/v1/hackathon/facts/query`（计划；模块 1 服务已按 Python 协议实现后再注册）**
+**POST `/api/v1/hackathon/facts/query`（已注册）**
 
 ```json
 {
@@ -180,7 +180,7 @@ install_services(app, services)
 
 风险由模块 1 基于当前 facts 与规则产生；慢销、临期分别逐批次返回 `risk / normal / insufficient_data`。允许同一库存行同时出现两类风险，但 `attention_inventory_cost_cny` 依据 `counted_inventory_keys` 去重。风险字段必填 `risk_key/store_id/sku_id/lot_id/risk_type/result/base_unit/evidence_refs/missing_fields/rule_version`；`risk_id` 仅在可靠映射存在时为整数，否则 `null`。缺少销量时覆盖天数为 `null`；缺少效期时临期状态为 `insufficient_data`，不可填 0 天。
 
-**POST `/api/v1/hackathon/risks/assess`（计划）**输入与事实查询相同，由模块 1 的 `FactService.assess_risks` 返回 `RiskAssessment`。`calculation_version` 标识规则实现；每条风险另含其 `rule_version`。下例显示风险重叠及缺销量场景的字段边界：
+**POST `/api/v1/hackathon/risks/assess`（已注册）**输入与事实查询相同，由模块 1 的 `FactService.assess_risks` 返回 `RiskAssessment`。`calculation_version` 标识规则实现；每条风险另含其 `rule_version`。下例显示风险重叠及缺销量场景的字段边界：
 
 ```json
 {
@@ -213,13 +213,13 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 }
 ```
 
-四种处置及适用组合均在相同 `context + horizon + baseline_id` 下比较。候选必含 `candidate_id/action_type/feasible/exclusion_reasons/store_id/target_store_id/sku_id/lot_id/quantity/base_unit/calculation/assumptions/missing_fields`。`action_type` 为 `keep/transfer/promotion/return/procurement`。计算至少报告计划量、预计售出／剩余、执行费用、毛利、预计和已知现金效果及日期；未知项为 `null`，预计流入不可并入已到账。组合候选共享库存、线路和费用占用，不得重复处置或重复记同一运费。
+四种处置及适用组合均在相同 `context + horizon + baseline_id` 下比较。候选必含 `candidate_id/action_type/feasible/exclusion_reasons/store_id/target_store_id/sku_id/lot_id/quantity/base_unit/calculation/assumptions/missing_fields/inventory_changes`。`action_type` 为 `keep/transfer/promotion/return/procurement`。计算至少报告计划量、预计售出／剩余、执行费用、毛利、预计和已知现金效果及日期；未知项为 `null`，预计流入不可并入已到账。组合候选共享库存、线路和费用占用，不得重复处置或重复记同一运费。比较响应始终包含 `candidate_groups[]` 和 `fact_notices[]`；没有组合时 `candidate_groups` 为空数组，`fact_notices` 列明事实查询层面的提示。
 
 候选 `calculation` 必含 `planned_qty/expected_sold_qty/ending_qty/execution_cost_cny/gross_profit_cny/expected_cash_in_cny/actual_cash_in_cny/cash_flow[]/calculation_version`；各数量带 `base_unit`，现金行带 `direction/amount_cny/expected_at/status/source_ref`。实际值尚无凭据时为 `null`。比较响应另含 `calculation_version` 与 `policy_version`，每个候选的 `assumptions[]` 和 `missing_fields[]` 不可省略。`comparison_id` 和 `candidate_id` 是输入、上下文与计算版本的稳定内容 ID：同一 facts／请求的重复计算可复现 ID；事实、政策、假设或结果改变则 ID 改变。它们不是方案号，也不能代替写操作版本检查。
 
 调拨和其他会改变库存位置的候选还必须返回 `inventory_changes[]`。每行按门店、商品、批次列出服务计算的 `quantity_before/quantity_after/quantity_delta/base_unit/source_ref`；`quantity_before` 与 `quantity_after` 描述执行该动作前后的即时库存，不代表预测周期末库存。前端不得自行用调拨量对库存加减；未知数量保留 `null`。没有位置变化的动作返回空数组。
 
-**POST `/api/v1/hackathon/proposals/compare`（计划）**请求：
+**POST `/api/v1/hackathon/proposals/compare`（已注册）**请求：
 
 ```json
 {
@@ -244,10 +244,10 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 | key | 输入字段 | 约束 |
 |---|---|---|
-| `transfer` | `origin_store_id`、`target_store_id`、`sku_id`、`lot_id`、`quantity`、`base_unit`、`route_id`、`route_fee_cny` | 数量和单位必须匹配同一事实；路线费用是报价／用户输入，服务需验证来源并决定是否可行，不是前端计算的执行结果。 |
-| `promotion` | `products[] {sku_id, quantity_per_bundle, base_unit}`、`price_stages[] {label, price_cny, start_date, end_date_exclusive}` | 每阶段日期为半开区间；价格、组合及底价约束由服务校验并重算。 |
-| `return` | `supplier_id`、`sku_id`、`lot_id`、`quantity`、`base_unit`、`settlement_method`、`fee_cny` | `settlement_method` 为 `refund/exchange/offset`；用户输入不等于供应商接受或实际结算。 |
-| `procurement` | `supplier_id`、`purchase_order_id`、`sku_id`、`quantity`、`base_unit`、`unit_cost_cny`、`expected_arrival_date`、`payment_date` | 未确认订单仍是意向；服务结合现货、预留、在途与付款事实重算。 |
+| `transfer` | `origin_store_id`、`target_store_id`、`sku_id`、`lot_id`、`quantity`、`base_unit`、`route_id`、`route_fee_cny`、`eta_days`、`sales_settlement_days` | 数量和单位必须匹配同一事实；路线费用是报价／用户输入，服务需验证来源并决定是否可行，不是前端计算的执行结果。 |
+| `promotion` | `promotion_id`、`products[] {sku_id, quantity_per_bundle, base_unit}`、`price_stages[] {stage_id?, label?, price_cny, start_date?, end_date_exclusive?}`、`quantity`、`sku_id`、`store_id`、`lot_id`、`base_unit`、`sales_settlement_days` | 每阶段日期为半开区间；阶段需唯一匹配当前事实中的 `stage_id`；价格、组合及底价约束由服务校验并重算。 |
+| `return` | `supplier_id`、`sku_id`、`lot_id`、`quantity`、`base_unit`、`settlement_method`、`fee_cny`、`store_id`、`return_terms` | `settlement_method` 为 `refund/exchange/offset`；`return_terms` 仅表达待核对条件，用户输入不等于供应商接受或实际结算。 |
+| `procurement` | `supplier_id`、`purchase_order_id`、`intent_id`、`sku_id`、`store_id`、`quantity`、`base_unit`、`unit_cost_cny`、`expected_arrival_date`、`payment_date`、`recommended_quantity`、`new_payment_date` | 未确认订单仍是意向；通过 `intent_id` 选择已知意向，服务结合现货、预留、在途、观察期和付款事实重算。 |
 
 省略的字段与 `null` 含义不同：省略表示本次没有提供该输入；`null` 表示明确保留未知。数量必须带 `base_unit`。前端只能展示服务返回的可行性、库存变化和金额。
 
@@ -274,11 +274,11 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 ### 待确认方案列表
 
-**GET `/api/v1/hackathon/proposals?scenario_id=...&branch_id=...&status=pending_approval`（计划）**返回当前上下文中的方案记录，不把待审批草稿与已批准执行任务混在一起。列表响应为 `{contract_version, proposals[], metadata}`；每行至少含 `proposal_id/proposal_version/status/context/candidate_id/action_type/title/risk_keys/action_lines/created_at/updated_at/missing_fields`。筛选 `status=pending_approval` 时仅返回待确认项；空列表返回 `proposals: []`。金额和数量仍来自保存时的服务端候选快照，不在列表路由重算或补值。
+**GET `/api/v1/hackathon/proposals?scenario_id=...&branch_id=...&status=pending_approval`（已注册）**返回当前上下文中的方案记录，不把待审批草稿与已批准执行任务混在一起。列表响应为 `{contract_version, proposals[], metadata}`；每行至少含 `proposal_id/proposal_version/status/context/candidate_id/action_type/title/risk_keys/action_lines/created_at/updated_at/missing_fields`。筛选 `status=pending_approval` 时仅返回待确认项；空列表返回 `proposals: []`。金额和数量仍来自保存时的服务端候选快照，不在列表路由重算或补值。
 
 ### 经营总览汇总
 
-**GET `/api/v1/hackathon/overview?scenario_id=...&branch_id=...&snapshot_id=...&as_of=...`（计划）**以当前同一业务快照返回首页四张指标卡和门店库存资金表；不会通过任务列表拼算账户、库存或采购付款金额。响应中 `metadata` 提供 `is_demo/source/as_of_date/as_of/data_version/fact_version/source_refs/missing_fields`；`overview` 字段如下：
+**GET `/api/v1/hackathon/overview?scenario_id=...&branch_id=...&snapshot_id=...&as_of=...`（已注册）**以当前同一业务快照返回首页四张指标卡和门店库存资金表；不会通过任务列表拼算账户、库存或采购付款金额。响应中 `metadata` 提供 `is_demo/source/as_of_date/as_of/data_version/fact_version/source_refs/missing_fields`；`overview` 字段如下：
 
 ```json
 {
@@ -299,7 +299,7 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 ### 持久化选定候选
 
-**POST `/api/v1/hackathon/proposals`（计划）**把一次比较里的所选候选保存为现有公共 proposal/version 草稿，方便刷新后继续。它不审批、不生成任务，也不发渠道动作。服务端根据 `context + risk_keys + objective + horizon + assumption_ids` 重新读取事实并重新比较；只有重算出的 `comparison_id/candidate_id` 与请求一致时才保存，不能信任浏览器提交的金额或数量。`expected_current_proposal_version=0` 表示为该场景风险新建 proposal；大于 0 表示基于当前草稿版本更新，陈旧版本返回 409。此步骤同样需要模块 1 可解析的主风险兼容 ID；proposal 的真实关联仍保存字符串 `risk_key`、场景、批次及版本快照。
+**POST `/api/v1/hackathon/proposals`（已注册）**把一次比较里的所选候选保存为现有公共 proposal/version 草稿，方便刷新后继续。它不审批、不生成任务，也不发渠道动作。服务端根据 `context + risk_keys + objective + horizon + assumption_ids` 重新读取事实并重新比较；只有重算出的 `comparison_id/candidate_id` 与请求一致时才保存，不能信任浏览器提交的金额或数量。`expected_current_proposal_version=0` 表示为该场景风险新建 proposal；大于 0 表示基于当前草稿版本更新，陈旧版本返回 409。此步骤同样需要模块 1 可解析的主风险兼容 ID；proposal 的真实关联仍保存字符串 `risk_key`、场景、批次及版本快照。
 
 ```json
 {
@@ -331,7 +331,7 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 ## 8. 材料草稿与确认
 
-**POST `/api/v1/hackathon/materials/extract`（计划）**接受粘贴文字 JSON，或一个清晰 PNG/JPG multipart 文件（单张，建议不超过 5 MiB）；PDF 直接解析不在范围。返回草稿，不产生订单、库存或条款事实。每个字段携带值、单位、原文证据、置信度及 `needs_review/missing/unmatched`；未知 SKU／供应商和空字段必须留空并提示人工匹配。
+**POST `/api/v1/hackathon/materials/extract`（已注册）**接受粘贴文字 JSON，或一个清晰 PNG/JPG multipart 文件（单张，建议不超过 5 MiB）；PDF 直接解析不在范围。返回草稿，不产生订单、库存或条款事实。每个字段携带值、单位、原文证据、置信度及 `needs_review/missing/unmatched`；未知 SKU／供应商和空字段必须留空并提示人工匹配。
 
 ```json
 {
@@ -372,7 +372,7 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 }
 ```
 
-人工确认 **POST `/api/v1/hackathon/materials/{draft_id}/confirm`（计划）**需要 `expected_fact_version`、操作者和经人工修改的 `fields`，并携带 `Idempotency-Key`。采购意向确认只发布采购意向事实，不表示供应商已确认订单；退供合同条款确认不表示供应商接受本次退货。响应包含 `status="confirmed"`、`fact_version`、确认字段、原始 `material_id` 与证据引用。事实版本冲突返回 409，需重新读取后确认；同确认幂等键重放原结果。模型提取失败保留材料和可编辑人工入口，不能输出 `confirmed` 草稿。
+人工确认 **POST `/api/v1/hackathon/materials/{draft_id}/confirm`（已注册）**需要 `expected_fact_version`、操作者和经人工修改的 `fields`，并携带 `Idempotency-Key`。采购意向确认只发布采购意向事实，不表示供应商已确认订单；退供合同条款确认不表示供应商接受本次退货。响应包含 `status="confirmed"`、`fact_version`、确认字段、原始 `material_id` 与证据引用。事实版本冲突返回 409，需重新读取后确认；同确认幂等键重放原结果。模型提取失败保留材料和可编辑人工入口，不能输出 `confirmed` 草稿。
 
 ```json
 {
@@ -398,7 +398,7 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 ## 9. Agent 运行记录
 
-**POST `/api/v1/hackathon/agent-runs`（计划）**输入 `context`、自然语言 `goal`、可选已确认反馈引用；Agent 只能使用注册事实与计算工具。**GET `/api/v1/hackathon/agent-runs/{run_id}?after_sequence=N`（计划）**按事件序号读取新增事件。状态仅为 `queued/running/completed/failed/unavailable/needs_input`。事件只记录真实阶段、工具名、参数摘要、结果引用、错误及可选用量，不保存或输出隐藏思维链、完整敏感图像或密钥。模型不可用用 `unavailable`，不拿旧运行或开发 fixture 伪装本次成功。
+**POST `/api/v1/hackathon/agent-runs`（已注册）**输入 `context`、自然语言 `goal`、可选已确认反馈引用；Agent 只能使用注册事实与计算工具。**GET `/api/v1/hackathon/agent-runs/{run_id}?after_sequence=N`（已注册）**按事件序号读取新增事件。状态仅为 `queued/running/completed/failed/unavailable/needs_input`。事件只记录真实阶段、工具名、参数摘要、结果引用、错误及可选用量，不保存或输出隐藏思维链、完整敏感图像或密钥。模型不可用用 `unavailable`，不拿旧运行或开发 fixture 伪装本次成功。
 
 ```json
 {
@@ -452,7 +452,7 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 ## 10. 一次确认、任务和本地渠道
 
-**POST `/api/v1/hackathon/proposals/{proposal_id}/confirm`（计划）**将审批、资源预留及一个或多个执行任务放在一次外层事务内。请求必须绑定方案／事实／快照版本并带 `Idempotency-Key`。只有当前可执行候选允许确认；版本过期、缺业务字段、无效数量或共享库存冲突不创建审批／任务。相同租户、操作、方案及幂等键重试返回原批准与任务组；不同 payload 复用同键返回 `idempotency_conflict`。管理员只确认一次，无二次自审批循环。
+**POST `/api/v1/hackathon/proposals/{proposal_id}/confirm`（已注册）**将审批、资源预留及一个或多个执行任务放在一次外层事务内。请求必须绑定方案／事实／快照版本并带 `Idempotency-Key`。只有当前可执行候选允许确认；版本过期、缺业务字段、无效数量或共享库存冲突不创建审批／任务。相同租户、操作、方案及幂等键重试返回原批准与任务组；不同 payload 复用同键返回 `idempotency_conflict`。管理员只确认一次，无二次自审批循环。
 
 ```json
 {
@@ -515,11 +515,11 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 任务 6 在其组件内实现展示 helper `mapFollowupDisplay(task, accounting)`；这是 D07 的页面投影，不写回数据库、不替换原 API `status`。映射返回 `raw_execution_status`、`execution_display_status`、`accounting_display_status`、计划／已完成／未完成数量、`exception` 与 `closed_reason`。待派发归为“待执行”；执行／签收有进度但未达 `completion_criteria`（包括部分完成）归为“执行中”；只有数量及业务完成凭据满足条件才显示“已完成”。异常通过 `needs_attention` 单独突出；取消保留原始状态和原因，归档但不计为完成。核算展示遵循现金流水、核销／换货凭据及任务 `completion_criteria`；存在部分依据但未满足条件时保留“核算中”，未产生结果依据时“待核算”。此 helper 必须同时返回原始状态及进度数据，且不向服务端提交展示枚举。
 
-计划路由：`GET /hackathon/tasks`、`GET /hackathon/tasks/{task_id}`、`POST /hackathon/tasks/{task_id}/channel-actions`、`POST /hackathon/tasks/{task_id}/events`。任务事件输入需包含任务／方案版本、事件唯一 ID、来源回执、数量和单位、发生／获知时间；版本或数量不匹配返回 409。现有手工状态接口仍保持兼容，但不能将它串联成替代原子确认的新前端流程。
+已注册路由：`GET /hackathon/tasks`、`GET /hackathon/tasks/{task_id}`、`POST /hackathon/tasks/{task_id}/channel-actions`、`POST /hackathon/tasks/{task_id}/events`。任务事件输入需包含任务／方案版本、事件唯一 ID、来源回执、数量和单位、发生／获知时间；版本或数量不匹配返回 409。现有手工状态接口仍保持兼容，但不能将它串联成替代原子确认的新前端流程。
 
 ## 11. 回放与核算
 
-**POST `/api/v1/hackathon/replays/advance`（计划）**输入场景、分支、推进后的 `as_of`、已批准方案／版本及幂等键。时钟不能倒退；只选取 `occurred_at <= as_of` 且 `known_at <= as_of` 的 05 事件。分支、任务、批准 proposal/version、数量和单位必须与回放行匹配。方案修改、反馈重算或数量变化后拒绝旧回放；不得以场景名称直接触发预设答案。`event_id` 唯一去重；每条成功事件在同一事务更新业务事件、库存、执行进度、现金流水／核销、审计及事实版本。
+**POST `/api/v1/hackathon/replays/advance`（已注册）**输入场景、分支、推进后的 `as_of`、已批准方案／版本及幂等键。时钟不能倒退；只选取 `occurred_at <= as_of` 且 `known_at <= as_of` 的 05 事件。分支、任务、批准 proposal/version、数量和单位必须与回放行匹配。方案修改、反馈重算或数量变化后拒绝旧回放；不得以场景名称直接触发预设答案。`event_id` 唯一去重；每条成功事件在同一事务更新业务事件、库存、执行进度、现金流水／核销、审计及事实版本。
 
 现金定义：销售记录不等于到账，到账只由现金流水记录；签收只更新货物和执行证据；渠道“已发送”不影响业务状态。一个现金流水可分次核销，但核销合计不可超过流水金额。采购少付是相对冻结原计划的同周期现金流出差额，不是入账回款。退款须经退供验收并有到账流水；换货更新库存但不假造退款；抵款更新应付核销，不形成账户入账。共享运输费用只计一次。结果同时回传计划、实际、未知、部分完成及缺项，不把库存成本、毛利、预计回款和到账简单相加成“收益”。
 
@@ -546,7 +546,7 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 示例进度／资金聚合（S09 的 fixture）：计划 80 盒、签收 60 盒、卖出 40 盒、到账 3,000 元时，回传 `received_qty=60`、`sold_qty=40`、`actual_cash_in_cny=3000`、剩余未执行 20、未到账预期金额 1,000（仅在确认本次计划回款金额 4,000 的条件下）；不得显示全部完成或全部到账。
 
-**GET `/api/v1/hackathon/accounting`（计划）**按 `scenario_id/branch_id/task_id/proposal_id` 聚合原始业务事件和账务依据，返回实际现金流水 ID、核销分配 ID、未匹配金额、费用、剩余量、计算版本、事件证据和 `missing_fields`。若尚无已记账流水，`actual_cash_in_cny=null`，不能将预计回款复制到实际字段。
+**GET `/api/v1/hackathon/accounting`（已注册）**按 `scenario_id/branch_id/task_id/proposal_id` 聚合原始业务事件和账务依据，返回实际现金流水 ID、核销分配 ID、未匹配金额、费用、剩余量、计算版本、事件证据和 `missing_fields`。若尚无已记账流水，`actual_cash_in_cny=null`，不能将预计回款复制到实际字段。
 
 ```json
 {
@@ -590,7 +590,7 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 两个组件使用相同的 camelCase 宿主上下文和 `api/navigate/context` 挂载参数。API payload 继续使用 snake_case。可选的 `businessInputs` 使用第 7 节按动作分组的结构。宿主执行写操作时必须提供 `actorId`；继续已有方案时提供当前方案 ID／版本。这些值属于请求上下文，不是已认证身份。宿主还须提供 `dataVersion/isDemo`，组件不推断数据新鲜度或演示状态。
 
-`mount` 返回 `{ destroy(), updateContext(nextContext) }`。容器由宿主页面拥有，组件只增删自己的子树；样式限定本组件根节点，卸载时移除全部监听器、定时器、AbortController 和订阅。组件不得直接访问全局 app 状态、另起 API 连接、用 `localStorage` 保存业务真相，或在确认后要求第二次审批。index.html、旧 render 和 hash 导航由第二阶段接线。
+`mount` 返回 `{ destroy(), updateContext(nextContext) }`。容器由宿主页面拥有，组件只增删自己的子树；样式限定本组件根节点，卸载时移除全部监听器、定时器、AbortController 和订阅。组件不得直接访问全局 app 状态、另起 API 连接、用 `localStorage` 保存业务真相，或在确认后要求第二次审批。主页面由 `app.js/index.html` 接入；两个模块复用原版 hash 导航和页面外壳。
 
 ```js
 const api = window.HackathonApiClient.createApiClient({ tenantId: "demo" });
@@ -615,10 +615,10 @@ mounted.destroy();
 | `hackathon:run-updated` | `runId`、`status`、`lastSequence` | 更新真实运行过程 |
 | `hackathon:error` | `code`、`message`、`retryable` | 展示可恢复错误，不以假数据替代 |
 
-前端可以维护未提交的表单输入；服务端成功保存后刷新必须重新读取服务数据。改变计算输入即禁用旧 candidate 的确认按钮，直到对应版本的重算响应返回。金额和库存取后端响应；字段展示必须保留单位、来源、`is_demo`、预计／实际与时点口径。
+前端可以维护未提交的表单输入；服务端成功保存后刷新必须重新读取服务数据。改变计算输入即禁用旧 candidate 的确认按钮，直到对应版本的重算响应返回。金额和库存取后端响应；字段展示必须保留单位、来源、`is_demo`、预计／实际与时点口径。无视觉截图时，用户可上传当前页面截图供对照；这不替代接口测试。
 
 ## 13. 并行文件归属与总集成接线
 
 任务 1—6 按 `docs/PARALLEL_DEVELOPMENT.md` 与各自提示词约定的独占路径工作。本契约与共享适配器由任务框 0 维护。若实现需要偏离字段、路径、事务或组件签名，先在自己的 `docs/parallel-handoff/` 记录原因与替代提议；不要悄悄建立第二套契约。
 
-第二阶段由总集成方完成：注册模块服务和迁移；只建立一个 `Store` 并调用 `install_services`；注册计划 `/hackathon/*` 路由；将组件及共享 API 脚本挂到现有页面；映射兼容 `risk_id`；把一次确认、任务与事件写入共用事务；然后以实际六份交接与代码完成 S01 主线和采购／促销／退供代表分支联调。此契约发布不等于整条链路、模型或页面已验收。
+总集成已完成服务注册与迁移、唯一 `Store` 注入、`/api/v1/hackathon/*` 路由、静态代理 allowlist、主页面组件挂载、动作级业务输入转换、库存变化、待确认方案列表和首页聚合。S01 已通过本地 HTTP 服务完成比较、保存、确认、任务、回放和核算主线；S07 采购与 S06 促销公共输入通过代表性 HTTP 路由验证，S05 退供保留供应商／包装／验收缺项并阻止确认。模型 provider 未配置时，材料与 Agent 返回持久化的不可用状态；不调用外部模型，不把本地预览夹具当作接口成功。截图级视觉核验没有通过 CUA 完成，可使用上传的页面截图做人工对照。

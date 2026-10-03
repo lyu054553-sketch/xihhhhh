@@ -368,10 +368,12 @@ class AIService:
 
     def get_draft(self, draft_id, *, tenant_id):
         with self.database.transaction() as tx:
-            row = tx.execute("SELECT draft_json FROM ha_ai_drafts WHERE id=? AND tenant_id=?", (draft_id, tenant_id)).fetchone()
+            row = tx.execute("SELECT draft_json,context_json FROM ha_ai_drafts WHERE id=? AND tenant_id=?", (draft_id, tenant_id)).fetchone()
             if row is None:
                 raise ValueError("Unknown material draft")
-            return _loads(row["draft_json"])
+            draft = _loads(row["draft_json"])
+            draft["context"] = _loads(row["context_json"])
+            return draft
 
     def get_material(self, material_id, *, tenant_id):
         with self.database.transaction() as tx:

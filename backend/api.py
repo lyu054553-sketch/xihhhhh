@@ -34,6 +34,7 @@ from .domain import (
 )
 from .store import Store
 from .hackathon_shared import HackathonServices, install_services
+from .hackathon_routes import initialize_hackathon, router as hackathon_router
 from .errors import BusinessConflict
 from .serialization import numeric_response, dumps
 from .imports import inventory_rows, REQUIRED_INVENTORY_FIELDS
@@ -52,6 +53,14 @@ app = FastAPI(title="货不压钱｜连锁零售库存资金 Agent API", version
 app.state.model_config = load_model_config()
 app.state.store = store
 install_services(app, HackathonServices(database=store))
+app.include_router(hackathon_router)
+
+
+@app.on_event("startup")
+def initialize_hackathon_services() -> None:
+    # The new modules share the original Store and load demo scenarios into an
+    # isolated tenant, leaving the legacy retail dashboard's demo queue intact.
+    initialize_hackathon(app)
 
 
 class InvestigationInput(BaseModel):

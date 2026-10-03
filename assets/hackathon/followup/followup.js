@@ -1030,6 +1030,10 @@
     function emitContextChange(patch) {
       dispatch('hackathon:context-change', { context: { ...state.context }, patch: { ...patch } });
     }
+    function absorbApiContext(apiContext) {
+      if (!apiContext || typeof apiContext !== 'object') return;
+      state.context = { ...state.context, ...normalizeMountContext(apiContext) };
+    }
     function findMatter(id) {
       return array(state.snapshot && (state.snapshot.matters || state.snapshot.items || state.snapshot.work_items))
         .find((matter) => (matter.id || matter.case_id || matter.task_id) === id || matter.task_id === id) || null;
@@ -1158,6 +1162,7 @@
             task_assignments: array(proposal.task_assignments || matter.task_assignments),
           };
           response = unwrap(await api.confirmProposal(proposalId, body, key)) || {};
+          absorbApiContext(response.context);
           const tasks = array(response.tasks);
           const taskIds = tasks.map((row) => row.task_id || row.id).filter(Boolean);
           state.context = { ...state.context, proposalId, ...(taskIds[0] ? { taskId: taskIds[0] } : {}) };
@@ -1202,6 +1207,7 @@
             actor_id: state.context.actorId,
           };
           response = unwrap(await api.recordBusinessEvents(target.task_id, eventBody, key)) || {};
+          absorbApiContext(response.context);
           const updatedTaskVersion = firstValue(response.task_version, response.version, target.task_version);
           dispatch('hackathon:task-updated', { context: { ...state.context, taskId: target.task_id }, taskId: target.task_id, taskVersion: updatedTaskVersion });
         } else {
@@ -1238,6 +1244,7 @@
             external_write: false,
           };
           response = unwrap(await api.recordChannelAction(target.task_id, actionBody, key)) || {};
+          absorbApiContext(response.context);
         }
         state.notice = '操作已记录，正在读取最新状态。';
         const latest = await refresh();

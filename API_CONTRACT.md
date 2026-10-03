@@ -304,3 +304,25 @@ GET /health 仅返回状态和 API 版本，不返回数据库路径。静态服
 POST /demo/reset 默认返回 403，仅当 INVENTORY_AGENT_MODE=demo 且 INVENTORY_AGENT_ALLOW_DEMO_RESET=1 时启用；已有真实库存快照时仍返回 409，其他租户数据不会被删除。此开关仅用于独立演示数据库。
 
 v1.3 是接口变更。朱需按新版版本字段、导入状态、手工确认状态和冲突结构更新前端，并完成浏览器验收。后端交付和复验说明见 docs/backend/DELIVERY_20261003.md。
+
+## 11. Hackathon 总集成接口（hackathon.v1）
+
+新版决策与执行模块共用 `/api/v1/hackathon` 路由组，并与现有 `Store` 共用事务。应用启动时注册数据、AI、执行迁移和完整服务图；演示模式把零售场景事实放进独立租户 `hackathon-demo`。静态代理只转发下表中的明确路径，不对未知请求返回业务夹具。
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| GET | `/hackathon/context` | 返回事实版本、选中目标和观察期 |
+| POST | `/hackathon/facts/query`、`/hackathon/risks/assess` | 读取事实、评估风险 |
+| POST | `/hackathon/proposals/compare` | 根据 `business_inputs` 重算动作候选 |
+| GET / POST | `/hackathon/proposals` | 列出待确认方案、保存比较候选 |
+| POST | `/hackathon/proposals/{proposal_id}/confirm` | 原子确认方案、预留资源并创建任务 |
+| GET | `/hackathon/overview`、`/hackathon/tasks`、`/hackathon/tasks/{task_id}`、`/hackathon/accounting`、`/hackathon/cases/{case_id}` | 读取首页聚合、任务及核算 |
+| POST | `/hackathon/tasks/{task_id}/channel-actions`、`/hackathon/tasks/{task_id}/events`、`/hackathon/replays/advance` | 记录本地渠道动作、人工业务回执或推进隔离回放 |
+| POST / GET | `/hackathon/agent-runs`、`/hackathon/agent-runs/{run_id}` | 启动并读取持久化 Agent 运行 |
+| POST / GET | `/hackathon/materials/extract`、`/hackathon/materials/drafts/{draft_id}`、`/hackathon/materials/{draft_id}/confirm`、`/hackathon/materials/{material_id}`、`/hackathon/materials/{material_id}/image` | 上传材料并提取人工复核草稿、查看／确认字段及原图 |
+
+写接口必须带 `X-Tenant-Id`（缺省为隔离演示租户）、`Idempotency-Key` 和业务 `actor_id`；方案确认还要带方案版本、事实版本、快照 ID 与每条动作的负责人／截止时间。`actor_id` 是审计输入，不是身份认证。候选 `inventory_changes[]` 回传调拨源／目标门店按批次的 `quantity_before/quantity_after/quantity_delta/base_unit/source_ref`；前端不得自行推算。首页 `overview` 返回 `account`、`inventory`、`purchase_commitments`、`pending_approvals` 与 `stores`，未知金额保持 `null`。待确认列表由 `GET /hackathon/proposals?status=pending_approval` 获取。
+
+`business_inputs` 接受按 `transfer`、`promotion`、`return`、`procurement` 分组的动作字段，字段明细与观察期口径见 `docs/PARALLEL_CONTRACT.md` 第 7 节。观察期结束日为半开区间边界，起始日期必须等于当前事实时点的日期；路由转换成计算服务内部 DTO 并拒绝未声明字段。材料可使用 JSON 文字或 multipart 单张 PNG/JPG，文件上限 5 MiB、请求上限 6 MiB；未配置 vision provider 时，图片仍会保存成 `failed/manual_review` 草稿并允许人工补录，响应不得标成 AI 已识别。Agent/provider 不可用返回真实失败／不可用状态，不能改用预览 fixture。
+
+前端共享适配器为 `window.HackathonApiClient.createApiClient({baseUrl, tenantId, actorId})`。本地原版外壳中的两个模块预览入口是 `assets/hackathon/preview.html` 与 `?hackathonPreview=1#decision-entry` / `?hackathonPreview=1#execution-followup`；preview 明确为只读 fixture 展示，不证明真实后端成功。端到端覆盖与剩余限制记录在 `docs/parallel-handoff/05-integration.md`。

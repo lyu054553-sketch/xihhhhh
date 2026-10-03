@@ -19,7 +19,7 @@ from urllib.parse import quote, unquote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MAX_BODY_BYTES = 2 * 1024 * 1024
+MAX_BODY_BYTES = 6 * 1024 * 1024
 PUBLIC_FILES = {
     "index.html", "app.js", "styles.css", "favicon.svg", "README.md", "API_CONTRACT.md",
     "retail-app.js", "retail-app.css", "retail-workbenches.js", "retail-workbenches.css",
@@ -42,13 +42,19 @@ FORWARDED_RESPONSE_HEADERS = ("Content-Type", "Content-Encoding", "Content-Langu
 READ_ROUTE = re.compile(
     r"/api/v1/(?:retail/(?:overview|simulation-options)|risks(?:/[0-9]+)?|"
     r"workbenches/(?:transfer|expiry-rescue|procurement-brake)|"
-    r"proposals(?:/[A-Za-z0-9_-]+/versions)?|execution-tasks|data-center|work-items|cases)\Z"
+    r"proposals(?:/[A-Za-z0-9_-]+/versions)?|execution-tasks|data-center|work-items|cases|"
+    r"hackathon/(?:context|proposals|overview|tasks|tasks/[A-Za-z0-9_-]+|accounting|"
+    r"agent-runs/[A-Za-z0-9_-]+|materials/drafts/[A-Za-z0-9_-]+|"
+    r"materials/[A-Za-z0-9_-]+(?:/image)?|cases/[A-Za-z0-9_-]+))\Z"
 )
 WRITE_ROUTE = re.compile(
     r"/api/v1/(?:retail/simulate|risks/[0-9]+/(?:investigations|replan)|"
     r"investigations/[A-Za-z0-9_-]+/feedback|feedback/[A-Za-z0-9_-]+/(?:confirm|revisions)|"
     r"workbenches/(?:transfer|expiry-rescue|procurement-brake)/(?:draft|calculate|save)|"
-    r"proposals/[A-Za-z0-9_-]+/(?:submit|approve|execute)|execution-tasks/[A-Za-z0-9_-]+/status)\Z"
+    r"proposals/[A-Za-z0-9_-]+/(?:submit|approve|execute)|execution-tasks/[A-Za-z0-9_-]+/status|"
+    r"hackathon/(?:facts/query|risks/assess|proposals/compare|proposals|"
+    r"proposals/[A-Za-z0-9_-]+/confirm|tasks/[A-Za-z0-9_-]+/(?:channel-actions|events)|"
+    r"replays/advance|agent-runs|materials/extract|materials/[A-Za-z0-9_-]+/confirm))\Z"
 )
 
 
@@ -193,11 +199,11 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
                 self.error(400, "INVALID_REQUEST", "Invalid Content-Length.")
                 return
             if len(lengths[0]) > 20:
-                self.error(413, "BODY_TOO_LARGE", "Request body exceeds 2 MiB.")
+                self.error(413, "BODY_TOO_LARGE", "Request body exceeds 6 MiB.")
                 return
             length = int(lengths[0])
             if length > MAX_BODY_BYTES:
-                self.error(413, "BODY_TOO_LARGE", "Request body exceeds 2 MiB.")
+                self.error(413, "BODY_TOO_LARGE", "Request body exceeds 6 MiB.")
                 return
             self.connection.settimeout(timeout)
             try:

@@ -333,6 +333,7 @@ class ExecutionService:
         if kind not in ID_FIELDS:
             raise ValueError("Unsupported receipt kind")
         record = {**deepcopy(raw), "is_demo": True, "external_write": False}
+        expected_task_version = record.pop("task_version", None)
         if record.get("sku_id"):
             base_unit = state["base_units"].get(record["sku_id"])
             if base_unit is None or any(record.get(field) is not None and record[field] != base_unit for field in ("base_unit", "unit")):
@@ -357,6 +358,9 @@ class ExecutionService:
             if previous["fingerprint"] != digest:
                 raise BusinessConflict("event_identity_conflict", "事件编号对应的内容已变化")
             return None, event_key
+        if task and expected_task_version is not None:
+            if type(expected_task_version) is not int or expected_task_version != task["version"]:
+                raise BusinessConflict("version_conflict", "任务版本已变化，请重新读取", task["version"])
         clock = domain.timestamp(clock_at)
         if not record.get("known_at") or domain.timestamp(record["known_at"]) > clock:
             raise BusinessConflict("future_receipt", "回执尚未到达当前业务时钟")
@@ -394,6 +398,16 @@ class ExecutionService:
     def record_business_events(self, request):
         def record(tx, facts):
             context = facts["context"]
+            event_times = [item.get("record", {}).get("known_at") for item in request["events"]]
+            event_times = [value for value in event_times if isinstance(value, str)]
+            if event_times:
+                latest_known = max(event_times, key=domain.timestamp)
+                if domain.timestamp(latest_known) > domain.timestamp(context["as_of"]):
+                    if self.clock_advancer is None:
+                        raise BusinessConflict("future_receipt", "回执晚于当前业务时钟，无法安全写入")
+                    advanced = self.clock_advancer(tx, context, latest_known)
+                    context = advanced["context"]
+                    facts = self._query(context)
             state = self._hydrate(tx, facts)
             events, duplicates = [], []
             for item in request["events"]:
@@ -429,6 +443,9 @@ class ExecutionService:
             task = next((t for t in state["tasks"] if t["id"] == request["task_id"]), None)
             if not task or task["cancelled"] or task["exception_flags"]:
                 raise BusinessConflict("unapproved_action", "需要有效的已确认执行任务")
+            expected_task_version = request.get("task_version")
+            if expected_task_version is not None and (type(expected_task_version) is not int or expected_task_version != task["version"]):
+                raise BusinessConflict("version_conflict", "任务版本已变化，请重新读取", task["version"])
             channel, status = request["channel"], request["status"]
             if request["proposal_id"] != task["proposal_id"] or request["proposal_version"] != task["proposal_version"]:
                 raise BusinessConflict("version_conflict", "渠道动作的批准版本不一致")

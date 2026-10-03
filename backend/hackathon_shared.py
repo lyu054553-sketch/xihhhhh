@@ -1,20 +1,20 @@
 """Shared public types and dependency-injection seams for hackathon modules.
 
-This module intentionally imports no feature module.  Modules 1--4 can depend
+This module intentionally imports no feature module. Modules 1--4 can depend
 on these protocols without importing each other or creating a second store.
-The HTTP routes described in ``docs/PARALLEL_CONTRACT.md`` are planned until
-the integration phase registers the feature services.
+The HTTP integration router installs all feature services against the
+application's existing Store.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from sqlite3 import Connection
-from typing import Any, ContextManager, Literal, Optional, Protocol, TypedDict
+from typing import Any, ContextManager, Literal, NotRequired, Optional, Protocol, TypedDict
 
 
 CONTRACT_VERSION = "hackathon.v1"
-CONTRACT_STATUS = "ready_for_parallel"
+CONTRACT_STATUS = "integration_wired"
 DEFAULT_DECISION_AT = "2026-10-03T09:30:00+08:00"
 DEFAULT_DATA_VERSION = "retail-v2.1"
 
@@ -75,6 +75,7 @@ class FactQueryResult(TypedDict):
     routes: list[dict[str, Any]]
     policies: list[dict[str, Any]]
     payables: list[dict[str, Any]]
+    reference_data: NotRequired[dict[str, Any]]
     missing_fields: list[str]
     warnings: list[str]
 
@@ -121,6 +122,7 @@ class CandidateAction(TypedDict):
     calculation: dict[str, Any]
     assumptions: list[str]
     missing_fields: list[str]
+    inventory_changes: list[dict[str, Any]]
 
 
 class ProposalComparison(TypedDict):
@@ -134,7 +136,9 @@ class ProposalComparison(TypedDict):
     horizon_end: str
     baseline_id: str
     candidates: list[CandidateAction]
+    candidate_groups: list[dict[str, Any]]
     selected_candidate_id: Optional[str]
+    fact_notices: list[str]
 
 
 class ExtractedField(TypedDict):
@@ -151,6 +155,7 @@ class ExtractionDraft(TypedDict):
     draft_id: str
     material_id: str
     tenant_id: str
+    context: NotRequired[FactContext]
     scenario_id: Optional[str]
     fact_version: int
     kind: Literal["purchase_intent", "return_terms"]

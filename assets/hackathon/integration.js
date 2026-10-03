@@ -79,11 +79,49 @@
     return { ...context };
   }
 
-  function getApiClient(tenantId) {
+  function getApiClient(tenantId, actorId) {
     if (!window.HackathonApiClient) throw new Error("未加载 Hackathon 共享 API 客户端。");
     const key = tenantId || "demo";
-    if (!apiClients.has(key)) apiClients.set(key, window.HackathonApiClient.createApiClient({ tenantId: key }));
-    return apiClients.get(key);
+    const actor = actorId || "";
+    const cacheKey = `${key}\u0000${actor}`;
+    if (!apiClients.has(cacheKey)) apiClients.set(cacheKey, window.HackathonApiClient.createApiClient({ tenantId: key, actorId: actor || null }));
+    return apiClients.get(cacheKey);
+  }
+
+  function mapContextFromApi(result, base) {
+    const source = result && result.context || {};
+    const selection = result && result.selection || {};
+    const target = selection.target || {};
+    return normalizeContext({
+      ...base,
+      tenantId: source.tenant_id,
+      scenarioId: source.scenario_id,
+      branchId: source.branch_id,
+      snapshotId: source.snapshot_id,
+      asOf: source.as_of,
+      dataVersion: source.data_version,
+      factVersion: source.fact_version,
+      isDemo: source.is_demo,
+      sourceRefs: source.source_refs,
+      missingFields: source.missing_fields,
+      storeId: base.storeId || target.store_id,
+      skuId: base.skuId || target.sku_id,
+      lotId: base.lotId || target.lot_id,
+      horizonStart: base.horizonStart || (source.as_of || "").slice(0, 10),
+      horizonEnd: base.horizonEnd || selection.evaluation_end,
+      actorId: base.actorId || (source.is_demo === true ? "manager-demo" : null),
+    });
+  }
+
+  async function resolveModuleContext(base) {
+    const api = getApiClient(base.tenantId, base.actorId);
+    const scenarioId = base.scenarioId || "S01";
+    const branchId = base.branchId || (scenarioId === "S01" ? "transfer_80" : null);
+    if (!branchId) throw new Error("当前场景需要明确 branchId，无法安全读取事实。");
+    const response = await api.getContext({ scenario_id: scenarioId, branch_id: branchId });
+    const resolved = mapContextFromApi(response, { ...base, scenarioId, branchId });
+    mergeContext(resolved);
+    return resolved;
   }
 
   function navigate(route, nextContext) {
@@ -116,7 +154,7 @@
 
   async function loadDecisionModule() {
     if (!decisionModulePromise) {
-      decisionModulePromise = import(new URL("decision/decision-workbench.mjs", ASSET_BASE).href);
+      decisionModulePromise = import(new URL("decision/decision-workbench.mjs?v=20261004-context-fix", ASSET_BASE).href);
     }
     return decisionModulePromise;
   }
@@ -128,7 +166,7 @@
       const api = window.HackathonApiClient.createApiClient({ mode: "fixture", fixtures: fixtureModule.createDecisionPreviewFixtures() });
       return decision.mount(host, { api, context: mountContext, navigate });
     }
-    return decision.mount(host, { api: getApiClient(mountContext.tenantId), context: mountContext, navigate });
+    return decision.mount(host, { api: getApiClient(mountContext.tenantId, mountContext.actorId), context: mountContext, navigate });
   }
 
   function mountFollowup(host, mountContext) {
@@ -137,7 +175,7 @@
     }
     const options = PREVIEW
       ? { preview: { enabled: true }, context: mountContext, navigate }
-      : { api: getApiClient(mountContext.tenantId), context: mountContext, navigate };
+      : { api: getApiClient(mountContext.tenantId, mountContext.actorId), context: mountContext, navigate };
     return window.HackathonFollowup.mount(host, options);
   }
 
@@ -153,9 +191,10 @@
     const host = hostFor(route);
     if (!host) return;
     host.replaceChildren();
-    const mountContext = { ...context };
     const mountContextGeneration = contextGeneration;
     try {
+      const mountContext = PREVIEW ? { ...context } : await resolveModuleContext({ ...context });
+      if (generation !== routeGeneration || window.location.hash.slice(1) !== route) return;
       const instance = route === "decision-entry"
         ? await mountDecision(host, mountContext)
         : mountFollowup(host, mountContext);

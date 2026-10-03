@@ -1003,6 +1003,8 @@ def compare_options(facts, request=None):
     routes = _rows(facts, "routes", from_store_id=target["store_id"])
     if request.get("target_store_id"):
         routes = [r for r in routes if r["to_store_id"] == request["target_store_id"]]
+    if request.get("route_id"):
+        routes = [r for r in routes if r.get("route_id") == request["route_id"]]
     for route in routes:
         candidates.append(_transfer(facts, request, target, start, end, route, baseline))
     if request.get("target_store_id") and not routes:

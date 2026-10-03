@@ -56,6 +56,7 @@
       contractVersion: CONTRACT_VERSION,
       request,
 
+      getContext: (params = {}) => request(`/hackathon/context${queryString(params)}`),
       queryFacts: (body) => request("/hackathon/facts/query", { method: "POST", body }),
       assessRisks: (body) => request("/hackathon/risks/assess", { method: "POST", body }),
       compareProposals: (body) => request("/hackathon/proposals/compare", { method: "POST", body }),
@@ -93,7 +94,10 @@
         `/hackathon/materials/${encodeURIComponent(draftId)}/confirm`,
         { method: "POST", body, idempotencyKey },
       ),
-      startAgentRun: (body) => request("/hackathon/agent-runs", { method: "POST", body }),
+      getMaterialDraft: (draftId) => request(`/hackathon/materials/drafts/${encodeURIComponent(draftId)}`),
+      getMaterial: (materialId) => request(`/hackathon/materials/${encodeURIComponent(materialId)}`),
+      getMaterialImage: (materialId) => request(`/hackathon/materials/${encodeURIComponent(materialId)}/image`, { responseType: "blob" }),
+      startAgentRun: (body, idempotencyKey) => request("/hackathon/agent-runs", { method: "POST", body, idempotencyKey }),
       getAgentRun: (runId, afterSequence = 0) => request(
         `/hackathon/agent-runs/${encodeURIComponent(runId)}${queryString({ after_sequence: afterSequence })}`,
       ),
@@ -136,6 +140,7 @@
     const baseUrl = options.baseUrl === undefined ? DEFAULT_BASE_URL : options.baseUrl;
     const fetchImpl = options.fetch || global.fetch;
     const tenantId = options.tenantId || null;
+    const actorId = options.actorId || null;
     if (typeof fetchImpl !== "function") throw new TypeError("Fetch API is unavailable");
 
     const request = async (path, requestOptions = {}) => {
@@ -153,10 +158,15 @@
       const init = { method, headers, credentials: "same-origin" };
       if (requestOptions.body !== undefined) {
         if (typeof FormData !== "undefined" && requestOptions.body instanceof FormData) {
+          if (actorId && !requestOptions.body.has("actor_id")) requestOptions.body.append("actor_id", actorId);
           init.body = requestOptions.body;
         } else {
           headers["Content-Type"] = headers["Content-Type"] || "application/json";
-          init.body = JSON.stringify(requestOptions.body);
+          const body = requestOptions.body && typeof requestOptions.body === "object"
+            && requestOptions.body.context && !requestOptions.body.actor_id && actorId
+            ? { ...requestOptions.body, actor_id: actorId }
+            : requestOptions.body;
+          init.body = JSON.stringify(body);
         }
       }
 
@@ -172,6 +182,8 @@
         });
       }
 
+      if (!response.ok && requestOptions.responseType === "blob") throw errorFromResponse(response.status, null);
+      if (requestOptions.responseType === "blob") return response.blob();
       let payload = null;
       if (response.status !== 204) {
         const text = await response.text();

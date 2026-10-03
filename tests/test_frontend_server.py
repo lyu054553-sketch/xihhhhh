@@ -168,14 +168,42 @@ class FrontendServerTests(unittest.TestCase):
         frontend = self.frontend(upstream)
         for suffix in ("/retail/overview?period=7&store_id=STORE-001", "/retail/simulation-options", "/risks/1",
                        "/risks", "/workbenches/transfer?risk_id=1", "/proposals", "/proposals/p-1/versions",
-                       "/execution-tasks", "/data-center", "/work-items", "/cases"):
+                       "/execution-tasks", "/data-center", "/work-items", "/cases",
+                       "/hackathon/context?scenario_id=S01&branch_id=transfer_80", "/hackathon/proposals",
+                       "/hackathon/overview", "/hackathon/tasks", "/hackathon/tasks/task-1",
+                       "/hackathon/accounting", "/hackathon/agent-runs/run-1",
+                       "/hackathon/materials/drafts/draft-1", "/hackathon/materials/material-1",
+                       "/hackathon/materials/material-1/image", "/hackathon/cases/task-1"):
             status, _, _ = self.request(frontend, "/api/v1" + suffix, headers={"X-Tenant-Id": "isolated"})
             self.assertEqual(status, 200)
             path, body, headers = upstream.requests[-1]
             self.assertEqual(path, "/gateway/api/v1" + suffix)
             self.assertEqual(body, b"")
             self.assertEqual(headers["X-Tenant-Id"], "isolated")
-        self.assertEqual(upstream.methods, ["GET"] * 11)
+        self.assertEqual(upstream.methods, ["GET"] * 22)
+
+    def test_hackathon_write_routes_and_multipart_payload_are_forwarded(self):
+        upstream = self.upstream(payload=b'{"contract_version":"hackathon.v1"}')
+        frontend = self.frontend(upstream)
+        paths = (
+            "/hackathon/facts/query", "/hackathon/risks/assess", "/hackathon/proposals/compare",
+            "/hackathon/proposals", "/hackathon/proposals/p-1/confirm", "/hackathon/tasks/t-1/channel-actions",
+            "/hackathon/tasks/t-1/events", "/hackathon/replays/advance", "/hackathon/agent-runs",
+            "/hackathon/materials/extract", "/hackathon/materials/d-1/confirm",
+        )
+        for suffix in paths:
+            body = b"--test-boundary\r\nContent-Disposition: form-data; name=\"context\"\r\n\r\n{}\r\n--test-boundary--\r\n" if suffix.endswith("/materials/extract") else b"{}"
+            content_type = "multipart/form-data; boundary=test-boundary" if suffix.endswith("/materials/extract") else "application/json"
+            status, payload, _ = self.request(frontend, "/api/v1" + suffix, "POST", body,
+                {"Content-Type": content_type, "X-Tenant-Id": "hackathon-demo", "Idempotency-Key": "action-1"})
+            self.assertEqual(status, 200)
+            self.assertEqual(payload, upstream.payload)
+            path, received, headers = upstream.requests[-1]
+            self.assertEqual(path, "/gateway/api/v1" + suffix)
+            self.assertEqual(received, body)
+            self.assertEqual(headers["X-Tenant-Id"], "hackathon-demo")
+            self.assertEqual(headers["Idempotency-Key"], "action-1")
+        self.assertEqual(upstream.methods, ["POST"] * len(paths))
 
     def test_upstream_errors_and_redirects_are_preserved_without_retry(self):
         upstream = self.upstream()

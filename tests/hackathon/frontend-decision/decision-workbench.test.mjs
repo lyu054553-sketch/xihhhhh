@@ -31,7 +31,7 @@ test("input validation catches required fields and bounds only", () => {
 
 test("confirmation requires a fresh allowed comparison and feasible selected candidate", () => {
   const comparison = { comparison_id: "CMP-1", confirmation_allowed: true };
-  const strategy = { id: "CAND-1", feasibility: "feasible" };
+  const strategy = { id: "CAND-1", feasibility: "feasible", can_execute: true };
   assert.equal(canConfirm({ dirty: false, busy: false, comparison, selectedStrategy: strategy, status: "ready" }), true);
   assert.equal(canConfirm({ dirty: true, busy: false, comparison, selectedStrategy: strategy, status: "ready" }), false);
   assert.equal(canConfirm({ dirty: false, busy: false, comparison, selectedStrategy: strategy, status: "version_conflict" }), false);
@@ -51,7 +51,7 @@ test("comparison mapping displays service values without deriving net cash", () 
     candidates: [{
       candidate_id: "CAND-1", action_type: "transfer", feasible: true, exclusion_reasons: [],
       store_id: "ST-1", target_store_id: "ST-2", sku_id: "SKU-1", lot_id: "LOT-1", quantity: 3, base_unit: "盒",
-      calculation: { planned_qty: 3, expected_sold_qty: null, ending_qty: 3, execution_cost_cny: 5, gross_profit_cny: null, expected_cash_in_cny: null, actual_cash_in_cny: null, cash_flow: [], calculation_version: "calc-1" },
+      calculation: { planned_qty: 3, expected_sold_qty: null, ending_qty: 3, execution_cost_cny: 5, gross_profit_cny: null, expected_cash_in_cny: null, actual_cash_in_cny: null, cash_flow: [], calculation_version: "calc-1", execution_plan: { actions: [{ type: "transfer" }] } },
       assumptions: [], missing_fields: [],
     }],
   });

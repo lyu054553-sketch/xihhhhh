@@ -61,7 +61,8 @@ export function canConfirm({ dirty, busy, comparison, selectedStrategy, status }
     comparison.confirmation_allowed === true &&
     Boolean(comparison.comparison_id) &&
     Boolean(selectedStrategy?.id) &&
-    selectedStrategy?.feasibility === "feasible",
+    selectedStrategy?.feasibility === "feasible" &&
+    selectedStrategy?.can_execute === true,
   );
 }
 
@@ -239,6 +240,8 @@ export function mapCandidate(candidate, storeOptions = []) {
   const storeName = (id) => storeOptions.find((store) => String(store.id) === String(id))?.label || id;
   const feasible = candidate.feasible === true && !safeList(candidate.missing_fields).length;
   const feasibility = feasible ? "feasible" : safeList(candidate.missing_fields).length ? "needs_confirmation" : "blocked";
+  const plan = candidate.calculation?.execution_plan || {};
+  const executableActions = safeList(plan.actions).length;
   return {
     id: candidate.candidate_id,
     candidate_id: candidate.candidate_id,
@@ -247,6 +250,7 @@ export function mapCandidate(candidate, storeOptions = []) {
       ? `调拨至${storeName(candidate.target_store_id)}`
       : ACTION_LABELS[candidate.action_type] || candidate.action_type,
     feasibility,
+    can_execute: executableActions > 0,
     feasibility_label: feasible ? "可确认候选" : feasibility === "blocked" ? "暂不可用" : "需要补充确认",
     blocking_reasons: safeList(candidate.exclusion_reasons),
     missing_fields: safeList(candidate.missing_fields),
@@ -266,6 +270,7 @@ export function mapCandidate(candidate, storeOptions = []) {
     target_store_id: candidate.target_store_id,
     sku_id: candidate.sku_id,
     lot_id: candidate.lot_id,
+    execution_plan: plan,
   };
 }
 
@@ -279,7 +284,7 @@ export function mapComparison(response, storeOptions = []) {
     horizon_start: response?.horizon_start || null,
     horizon_end: response?.horizon_end || null,
     calculation_id: response?.comparison_id || null,
-    confirmation_allowed: candidates.some((candidate) => candidate.feasibility === "feasible"),
+    confirmation_allowed: candidates.some((candidate) => candidate.feasibility === "feasible" && candidate.can_execute),
     selected_strategy_id: response?.selected_candidate_id || null,
     strategies: candidates,
     summary: response?.objective || "方案比较来自当前已知事实和显式假设。",
@@ -304,7 +309,14 @@ function areaWorkspace(area, facts, riskAssessment, context, input = {}) {
   const destinationInventory = inventories.find((item) => item.store_id === route.target_store_id && item.sku_id === (input.product_id || context.skuId) && item.stock_state === "on_hand") || null;
   const sceneTitle = areaById(area).title;
   const startDate = (context.asOf || "").slice(0, 10);
-  const mappedContextOptions = { products, stores, lots };
+  const people = uniqueOptions(facts?.reference_data?.tables?.people, "person_id", "display_name");
+  const personRows = safeList(facts?.reference_data?.tables?.people);
+  const mappedPeople = people.map((person) => ({
+    ...person,
+    store_id: personRows.find((row) => row.person_id === person.id)?.store_id || null,
+    role: personRows.find((row) => row.person_id === person.id)?.role || null,
+  }));
+  const mappedContextOptions = { products, stores, lots, people: mappedPeople };
   const defaultInput = {
     product_id: input.product_id || context.skuId || products[0]?.id || "",
     store_id: input.store_id || context.storeId || stores[0]?.id || "",
@@ -438,13 +450,26 @@ function createDecisionApiAdapter(client) {
       latest.pendingProposalVersion = saved.proposal_version;
       latest.pendingProposalId = saved.proposal_id;
       const expectedFactVersion = latest.workspace?.fact_version ?? context.factVersion;
+      const people = safeList(latest.workspace?.context_options?.people);
+      const dueDate = latest.compareRequest?.horizon_end || latest.workspace?.input?.horizon_end || context.horizonEnd;
+      if (!dueDate) throw Object.assign(new Error("当前比较缺少执行截止日期，无法安全创建任务"), { code: "missing_business_data" });
+      const dueAt = `${dueDate}T18:00:00+08:00`;
+      const assignments = safeList(saved.action_lines).map((line) => {
+        const preferredStore = line.target_store_id || line.store_id;
+        const person = people.find((item) => item.store_id && item.store_id === preferredStore)
+          || people.find((item) => line.action_type === "procurement" && item.role === "purchaser")
+          || people.find((item) => item.role === "administrator");
+        if (!person) throw Object.assign(new Error(`缺少 ${preferredStore || line.action_type} 对应的执行负责人`), { code: "missing_business_data" });
+        return { action_line_id: line.action_line_id, assignee_id: person.id, due_at: dueAt };
+      });
+      if (!assignments.length) throw Object.assign(new Error("此候选没有可执行的动作行，不能创建执行任务"), { code: "infeasible_proposal" });
       const confirmed = await client.confirmProposal(saved.proposal_id, {
         expected_proposal_version: saved.proposal_version,
         expected_fact_version: expectedFactVersion,
         expected_snapshot_id: saved.snapshot_id || context.snapshotId,
         actor_id: context.actorId,
         candidate_id: strategy_id,
-        task_assignments: [],
+        task_assignments: assignments,
       }, `${idempotency_key}:confirm`);
       return { ...confirmed, saved_proposal: saved };
     },
@@ -452,6 +477,7 @@ function createDecisionApiAdapter(client) {
       const kind = context.area === "procurement" ? "purchase_intent" : "return_terms";
       const input = {
         context: normalizeFactContext(context),
+        actor_id: context.actorId,
         kind,
         text: material.text || undefined,
         source_name: material.filename || "粘贴材料",
@@ -461,7 +487,10 @@ function createDecisionApiAdapter(client) {
       const request = { ...input };
       if (!material.image) delete request.file;
       const draft = await client.extractMaterial(request, generateIdempotencyKey());
-      const usableDraftId = draft?.status === "failed" ? null : draft?.draft_id || null;
+      // The service persists a failed extraction draft too. Keep its ID so a
+      // human can review and confirm manually entered fields against the exact
+      // uploaded material; never call that manual entry an AI extraction.
+      const usableDraftId = draft?.draft_id || null;
       latest.materialDraftId = usableDraftId;
       const fieldValues = Object.fromEntries(Object.entries(draft?.fields || {}).map(([key, field]) => [key, field?.value ?? null]));
       return {
@@ -490,10 +519,13 @@ function createDecisionApiAdapter(client) {
       };
       if (!client || typeof client.confirmMaterial !== "function") throw Object.assign(new Error("共享 API 客户端缺少 confirmMaterial 方法"), { code: "api_not_connected" });
       const result = await client.confirmMaterial(draftId, body, idempotency_key);
+      if (result?.context) {
+        latest.context = result.context;
+      }
       return { ...result, input_patch: null, message: "材料事实已确认；请重新计算方案。" };
     },
     async startAgentRun({ context, goal }) {
-      const result = await client.startAgentRun({ context: normalizeFactContext(context), goal, feedback_material_ids: [] });
+      const result = await client.startAgentRun({ context: normalizeFactContext(context), goal, feedback_material_ids: [], actor_id: context.actorId }, generateIdempotencyKey());
       return result;
     },
     getAgentRun({ runId, afterSequence = 0 } = {}) { return client.getAgentRun(runId, afterSequence); },
@@ -1021,7 +1053,10 @@ export function mountDecisionWorkbench({ root, api, navigation, context = {} } =
     state.agentBusy = false;
     paint();
     try {
-      const workspace = await callApi("fetchDecisionWorkspace", { ...state.context, area: state.area }, requestControllers.workspace.signal);
+      const workspace = await callApi("fetchDecisionWorkspace", {
+        context: { ...state.context, area: state.area },
+        area: state.area,
+      }, requestControllers.workspace.signal);
       if (destroyed || currentRequest !== requestIds.workspace) return;
       if (!workspace || workspace.status === "empty" || workspace.status === "no_result") {
         state.status = "empty";
@@ -1174,10 +1209,18 @@ export function mountDecisionWorkbench({ root, api, navigation, context = {} } =
       state.material.error = result?.message || "字段已确认。旧计算已失效，请重新计算。";
       state.material.confirmed = true;
       state.dirty = true;
-      if (result?.fact_version != null) {
-        state.context.factVersion = result.fact_version;
-        state.factVersion = result.fact_version;
-        emit("hackathon:context-change", { patch: { factVersion: result.fact_version } });
+      const updatedFactVersion = result?.context?.fact_version ?? result?.fact_version;
+      if (updatedFactVersion != null) {
+        state.context.factVersion = updatedFactVersion;
+        state.factVersion = updatedFactVersion;
+        emit("hackathon:context-change", { patch: {
+          factVersion: updatedFactVersion,
+          ...(result?.context?.snapshot_id ? { snapshotId: result.context.snapshot_id } : {}),
+          ...(result?.context?.as_of ? { asOf: result.context.as_of } : {}),
+          ...(result?.context?.data_version ? { dataVersion: result.context.data_version } : {}),
+          ...(result?.context?.source_refs ? { sourceRefs: result.context.source_refs } : {}),
+          ...(result?.context?.missing_fields ? { missingFields: result.context.missing_fields } : {}),
+        } });
       }
       paint();
     } catch (error) {
@@ -1211,8 +1254,18 @@ export function mountDecisionWorkbench({ root, api, navigation, context = {} } =
       const proposalVersion = result?.proposal_version ?? saved.proposal_version ?? null;
       const taskIds = safeList(result?.task_ids || result?.tasks).map((item) => typeof item === "string" ? item : item.task_id).filter(Boolean);
       const followupContext = { ...state.context, proposalId, proposalVersion, approvalId: result?.approval_id || null, taskIds };
+      if (result?.context) {
+        followupContext.snapshotId = result.context.snapshot_id ?? followupContext.snapshotId;
+        followupContext.asOf = result.context.as_of ?? followupContext.asOf;
+        followupContext.dataVersion = result.context.data_version ?? followupContext.dataVersion;
+        followupContext.factVersion = result.context.fact_version ?? followupContext.factVersion;
+        followupContext.isDemo = result.context.is_demo ?? followupContext.isDemo;
+        followupContext.sourceRefs = result.context.source_refs ?? followupContext.sourceRefs;
+        followupContext.missingFields = result.context.missing_fields ?? followupContext.missingFields;
+      }
       state.context = followupContext;
       state.status = "confirmed";
+      emit("hackathon:context-change", { patch: followupContext });
       emit("hackathon:proposal-confirmed", {
         context: followupContext,
         approvalId: result?.approval_id || null,
