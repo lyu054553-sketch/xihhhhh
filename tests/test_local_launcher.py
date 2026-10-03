@@ -113,7 +113,7 @@ class LocalLauncherTests(unittest.TestCase):
                 path = Path(options["env"]["INVENTORY_AGENT_DB"])
                 paths.append(path)
                 self.assertTrue(path.is_file())
-                self.assertNotEqual(path, self.daily)
+                self.assertFalse(path.samefile(self.daily), "Demo session must use a different database file")
                 self.assertEqual(options["env"]["INVENTORY_AGENT_MODE"], "demo")
                 self.assertEqual(options["creationflags"], subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
                 risks = self.request(session.base, "/risks")["items"]
@@ -135,7 +135,7 @@ class LocalLauncherTests(unittest.TestCase):
         for _ in range(2):
             with self.running(self.options(demo_session=False)) as session:
                 _, options = session.processes[0]
-                self.assertEqual(Path(options["env"]["INVENTORY_AGENT_DB"]), self.daily)
+                self.assertTrue(Path(options["env"]["INVENTORY_AGENT_DB"]).samefile(self.daily))
                 self.assertEqual(options["env"]["INVENTORY_AGENT_MODE"], "real")
                 self.assertEqual(self.request(session.base, "/risks")["items"], [])
             self.assertTrue(self.daily.is_file())
