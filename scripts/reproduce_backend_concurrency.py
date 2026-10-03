@@ -64,7 +64,7 @@ def reproduce(workers, rounds):
                 deadline = time.monotonic() + 15
                 while not ready.exists():
                     if child.poll() is not None or time.monotonic() >= deadline:
-                        raise RuntimeError("Temporary backend could not start")
+                        raise RuntimeError("Temporary backend could not start: " + log.read_text(encoding="utf-8"))
                     time.sleep(.05)
                 base = f"http://127.0.0.1:{ready.read_text(encoding='ascii')}"
                 while True:
@@ -77,16 +77,22 @@ def reproduce(workers, rounds):
                             raise
                         time.sleep(.05)
 
+                expected = {}
+
                 def read(path):
                     try:
                         with urlopen(base + "/api/v1" + path, timeout=10) as response:
-                            response.read()
+                            payload = json.load(response)
+                            if path not in expected:
+                                expected[path] = payload
+                            if payload != expected[path]:
+                                return path, "inconsistent-payload"
                             return path, response.status
                     except HTTPError as error:
                         error.close()
                         return path, error.code
-                    except OSError:
-                        return path, "transport-error"
+                    except (ValueError, OSError):
+                        return path, "transport-or-json-error"
 
                 sequential = [read(path) for path in PATHS * 15]
                 with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -99,12 +105,16 @@ def reproduce(workers, rounds):
                         child.wait(timeout=5)
                     except (OSError, subprocess.TimeoutExpired):
                         child.terminate()
-                        child.wait(timeout=5)
+                        try:
+                            child.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            child.kill()
+                            child.wait(timeout=5)
                 child.stdin.close()
         errors = log.read_text(encoding="utf-8")
         return {"api_version": version, "python": sys.version.split()[0], "sqlite": sqlite3.sqlite_version,
                 "database": "fresh temporary demo database", "reset_requests": 0, "write_requests": 0,
-                "workers": workers, "sequential": summarize(sequential), "concurrent": summarize(concurrent),
+                "workers": workers, "payload_check": "each response equals its serial baseline", "sequential": summarize(sequential), "concurrent": summarize(concurrent),
                 "error_examples": sorted({line for line in errors.splitlines()
                                           if line.startswith(("TypeError:", "sqlite3.", "KeyError:"))})}
 
