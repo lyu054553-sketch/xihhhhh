@@ -25,6 +25,8 @@ PUBLIC_DOCS = {
     "docs/API_CONTRACT_V0_3_DRAFT.md", "docs/FRONTEND_INTEGRATION.md",
     "docs/DEMO_RUNBOOK.md", "docs/DEMO_SLIDES.html", "docs/DEMO_SLIDES.pptx",
     "docs/VALIDATION_RESULT.md", "docs/ZHU_DELIVERY.md", "docs/FRONTEND_BLUEPRINT.md",
+    "docs/ZHU_NEXT_ITERATION.md", "docs/USER_VALIDATION.md", "docs/COMPETITION_CHECKLIST.md",
+    "docs/BACKEND_CONCURRENCY_FIX.md",
     "docs/demo-recording/live-flow.webm", "docs/demo-recording/live-flow.png",
 }
 ASSET_SUFFIXES = {".js", ".mjs", ".css", ".woff2", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".ico", ".txt"}

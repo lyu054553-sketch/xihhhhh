@@ -57,7 +57,7 @@ account.balance、inventory.cost、purchase_commitments.amount 分别来自账�
 
 旧f25bbe1后端在Python 3.13.2 / SQLite 3.45.3上，并发读取 `/proposals`、`/execution-tasks`、`/work-items` 曾出现HTTP 500，包括null JSON和sqlite3.InterfaceError。魏的3cc6c4a在Store内部用同一可重入锁保护共享连接的完整操作，19794ca已合并该修复，API字段与语义保持不变。朱保留现有并发调用，没有增加串行化或重试。
 
-在zmj合入后复验：JavaScript112/112、Python153/153（含浏览器33/33）通过；独立临时库串行45/45与9线程并发150/150全部成功，各接口JSON与串行基准一致，没有reset或写接口参与复现。原今日待办及调拨流程失败用例均通过。详细环境、历史失败和最新证据见[验证记录](VALIDATION_RESULT.md)与魏的[修复说明](BACKEND_CONCURRENCY_FIX.md)。
+在zmj本轮继续回归：JavaScript138/138、Python163/163（含浏览器43/43）通过；独立临时库串行45/45与9线程并发150/150全部成功，各接口JSON与串行基准一致，没有reset或写接口参与复现。原今日待办及调拨流程失败用例均通过。详细环境、历史失败和最新证据见[验证记录](VALIDATION_RESULT.md)与魏的[修复说明](BACKEND_CONCURRENCY_FIX.md)。
 
 在仓库根目录执行：
 
@@ -79,8 +79,14 @@ account.balance、inventory.cost、purchase_commitments.amount 分别来自账�
 
 三个工作台的未保存编辑现在按模块和商品隔离，只保留可编辑字段的差异。返回商品时重新读取后端事实，再恢复选择；接收门店失效时要求重新选择，同一字段被他人修改时明确提示。只有 `/workbenches/{module}/draft` 返回关联正确、可编辑输入一致的回执，才清除对应本地编辑。输入保存与方案版本保存仍是两步；隐藏商品的未保存编辑也会阻止本页审批及导出旧方案。浏览器刷新保护无法替代后端版本前置条件，跨客户端覆盖及过期审批仍由魏在事务内解决。
 
+今日待办复用现有三个读取接口，在当前分类内按业务名称和编号搜索。任务的商品与门店只取精确匹配proposal_id/proposal_version的保存输入，不使用新版方案替旧任务补事实。已完成旧任务不会遮住新版本已审批方案的跟进入口；当前后端对已生成任务的风险重新保存时会生成新的方案ID，该真实路径也纳入浏览器验证。
+
+人工回执编辑按任务ID保留在当前页面内存，切换页面或读取失败不丢弃。保存前通过GET /execution-tasks重新核对任务、关联版本、状态及receipt_ref，变更时保留输入并停止提交；POST /execution-tasks/{id}/status返回同一任务、方案版本和已提交字段后才清除对应编辑。新任务不会默认选成待发出。received/completed须填写回执号，已有回执不能通过空值清空，因为当前后端null语义为保留原值。这些规则沿用实际接口；读取与写入之间仍有并发窗口，任务状态更新也需要魏提供事务内版本条件，不能把前端预检描述为原子冲突保护。
+
 统一验收入口为 `python scripts/run_acceptance.py`，逐项保存日志、浏览器证据及 `summary.json`；一项失败仍继续检查其余项，最终返回非零。GitHub Actions 为 `zmj` 配置 Windows/Linux 两个平台执行，远端实际运行结果须单独核对，不能把工作流文件存在视为验收通过。
 
 朱新增的 `sample-data/evaluation/` 是离线评测资料，不是运行接口Schema；待AI契约冻结后双方确认映射与判分。真实访谈、成本及“人工＋GPT”对照结果目前未采集。
+
+新增能力和协作顺序见[下一轮工作清单](ZHU_NEXT_ITERATION.md)。本轮搜索、回执保留与导航不新增模型请求；后续费用展示只接入真实计量，不用固定估值替代。
 
 优先用一条“风险核对 → 调拨测算 → 保存 → 审批 → 任务 → 人工回执”复核版本失效与并发。真实数据、权限、模型和 ERP 逐项接入后分别记录证据，避免用页面测试通过数代替业务收益或模型效果。
