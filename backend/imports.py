@@ -1,10 +1,25 @@
 """Frozen inventory-file format; validation never invents missing facts."""
 from decimal import Decimal, InvalidOperation
+import hashlib
+import json
 
 from .domain import money
 
 REQUIRED_INVENTORY_FIELDS = {"sku", "store", "inventory_qty", "unit", "unit_cost"}
 MAX_QUANTITY = 2**31 - 1
+
+
+def inventory_fingerprint(tenant_id, rows, as_of_date):
+    """Semantic identity: row/key order is irrelevant, money stays exact."""
+    canonical = []
+    for row in sorted(rows, key=lambda item: (item["store_id"], item["sku"])):
+        item = dict(row)
+        for field in ("unit_cost", "cost_amount", "sales_cost_30"):
+            item[field] = format(money(item[field]), ".2f") if item[field] is not None else None
+        canonical.append(item)
+    payload = {"tenant_id": tenant_id, "rows": canonical, "as_of_date": as_of_date}
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True,
+                                    separators=(",", ":"), allow_nan=False).encode()).hexdigest()
 
 
 def inventory_rows(rows):

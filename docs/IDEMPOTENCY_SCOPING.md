@@ -1,5 +1,7 @@
 # 幂等键作用域修复说明
 
+> 本文保留原幂等作用域修复的历史记录，54 项结果及下文“本批未完成”只对应当时批次，不代表当前代码。后续已增加事务、版本冲突检查和 32 并发防重验证，见 [后端交付](backend/DELIVERY_20261003.md) 与 [审查修复](backend/REVIEW_FIXES_20261003.md)。可信身份仍未实现；A0 身份契约在单独的 codex/a0-auth-boundary 分支，不在 lanyangyang 当前源码包内。
+
 ## 问题
 
 审批、执行任务的幂等键由客户端通过 `Idempotency-Key` 请求头提供，而表上的 `UNIQUE` 约束是全局的，
@@ -31,7 +33,7 @@
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt httpx
-.venv/bin/python -m unittest discover -s tests
+.venv/bin/python -m unittest discover -s tests -t .
 ```
 
 系统 Python 若未装 `fastapi`、`openpyxl`，`test_retail`、`test_workbenches` 会因导入失败报错，与本次改动无关。

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import hashlib
 import sqlite3
 import uuid
 from decimal import Decimal, InvalidOperation
@@ -18,7 +17,7 @@ from .domain import (TEACHER_BASELINE_VERSION, evidence_label, evidence_level, m
 from .demo_data import TRANSFER_NETWORK_STORES
 from .errors import BusinessConflict
 from .serialization import dumps
-from .imports import MAX_QUANTITY
+from .imports import MAX_QUANTITY, inventory_fingerprint, inventory_rows
 
 
 SCHEMA = """
@@ -726,7 +725,7 @@ class Store:
         data = payload.get("input") or base
         if module == "transfer":
             qty = int(data.get("quantity") if payload.get("input") else payload["actions"][0]["quantity"])
-            maximum = max(0, min(int(base["source_on_hand"]), risk["inventory_qty"]) - base["source_safety"])
+            maximum = max(0, risk["inventory_qty"] - base["source_safety"])
             allocations = [("lot:" + base["lot_id"], qty, maximum)]
             target = next((row for row in TRANSFER_NETWORK_STORES if row[2] == data["target_store_id"]), None)
             if not target:
@@ -815,6 +814,78 @@ class Store:
             row["input"] = json.loads(row.pop("input_json"))
             row["calculation"] = json.loads(row.pop("calculation_json")) if row.get("calculation_json") else None
         return row
+
+    @_transactional
+    def planning_drafts(self, tenant_id: str, expected_snapshot_id=None):
+        """Consistent advisory view of fresh actions and remaining resources.
+
+        Approval still rechecks every reservation inside its own transaction.
+        Committed actions are excluded, but their allocations remain occupied.
+        """
+        latest = self.real_inventory_snapshot(tenant_id)
+        if expected_snapshot_id:
+            active = latest or self.one("SELECT id FROM snapshots WHERE tenant_id=? ORDER BY created_at DESC LIMIT 1", (tenant_id,))
+            if not active or active["id"] != expected_snapshot_id:
+                raise BusinessConflict("stale_snapshot", "规划期间快照已变化，请重新模拟")
+        reservations = self.rows("SELECT * FROM inventory_reservations WHERE tenant_id=?", (tenant_id,))
+        occupied = {}
+        for reservation in reservations:
+            key = (reservation["snapshot_id"], reservation["resource_key"])
+            occupied[key] = occupied.get(key, 0) + reservation["quantity"]
+        legacy = self.rows("SELECT p.id FROM proposals p WHERE p.tenant_id=? AND p.status IN ('approved','execution_task_created') AND NOT EXISTS (SELECT 1 FROM inventory_reservations r WHERE r.tenant_id=p.tenant_id AND r.proposal_id=p.id AND r.proposal_version=p.current_version)", (tenant_id,))
+        for row in legacy:
+            proposal = self.proposal(row["id"], tenant_id)
+            for resource, quantity, _ in self._reservation_allocations(proposal):
+                key = (proposal["snapshot_id"], resource)
+                occupied[key] = occupied.get(key, 0) + quantity
+        eligible = []
+        for row in self.rows("SELECT * FROM workbench_drafts WHERE tenant_id=? AND status IN ('calculated','saved')", (tenant_id,)):
+            risk = self.risk(row["risk_id"], tenant_id)
+            if not risk or (latest and risk["snapshot_id"] != latest["id"]):
+                continue
+            data = json.loads(row["input_json"])
+            calculation = json.loads(row["calculation_json"]) if row["calculation_json"] else None
+            if not calculation or not calculation.get("valid"):
+                continue
+            proposal = self.proposal(row["proposal_id"], tenant_id) if row["proposal_id"] else None
+            if row["proposal_id"]:
+                if (not proposal or not proposal["version"]
+                        or proposal["status"] not in ("draft", "pending_approval")
+                        or proposal["version"]["status"] not in ("draft", "pending_approval")
+                        or self.one("SELECT id FROM execution_tasks WHERE tenant_id=? AND proposal_id=? AND proposal_version=?", (tenant_id, proposal["id"], proposal["current_version"]))):
+                    continue
+                payload = proposal["version"]["payload"]
+                basis = payload.get("basis") or {}
+                if (proposal["fact_version"] != risk["current_fact_version"]
+                        or proposal["snapshot_id"] != risk["snapshot_id"]
+                        or basis.get("proposal_version") != proposal["current_version"]
+                        or basis.get("fact_version") != risk["current_fact_version"]
+                        or basis.get("snapshot_id") != risk["snapshot_id"]
+                        or basis.get("risk_id") != risk["id"]
+                        or payload.get("input") != data
+                        or payload.get("calculation") != calculation):
+                    continue
+            try:
+                canonical = self.workbench_input(row["module_type"], risk["id"], data, tenant_id)
+                if json.loads(dumps(canonical)) != data:
+                    continue
+                allocation_source = proposal or {
+                    "risk_id": risk["id"], "tenant_id": tenant_id,
+                    "version": {"payload": {"proposal_type": row["module_type"], "input": data}},
+                }
+                resources = []
+                for resource, quantity, maximum in self._reservation_allocations(allocation_source):
+                    remaining = max(0, maximum - occupied.get((risk["snapshot_id"], resource), 0))
+                    resources.append({"key": resource, "quantity": quantity, "remaining": remaining})
+                if any(item["quantity"] > item["remaining"] for item in resources):
+                    continue
+            except ValueError:
+                continue
+            row.update(resources=resources, snapshot_id=risk["snapshot_id"],
+                       fact_version=risk["current_fact_version"],
+                       proposal_version=proposal["current_version"] if proposal else None)
+            eligible.append(row)
+        return eligible
 
     def default_workbench_input(self, module_type: str, risk_id: Optional[int] = None) -> Dict[str, Any]:
         if module_type == "expiry-rescue":
@@ -1007,16 +1078,35 @@ class Store:
 
     @_transactional
     def import_inventory(self, filename, rows, as_of_date, actor_id="demo-user", tenant_id="demo", duplicates=0):
-        digest = hashlib.sha256(dumps({"tenant_id": tenant_id, "rows": rows, "as_of_date": as_of_date}).encode()).hexdigest()
+        digest = inventory_fingerprint(tenant_id, rows, as_of_date)
         snapshot_id = "file-inventory-" + digest
-        existing = self.one("SELECT id FROM real_inventory_snapshots WHERE id=? AND tenant_id=?", (snapshot_id, tenant_id))
+        existing = self.one("SELECT * FROM real_inventory_snapshots WHERE id=? AND tenant_id=?", (snapshot_id, tenant_id))
+        if not existing:
+            # Old fingerprints depended on CSV order. Compare immutable source
+            # lines, never effective risks that may have confirmed corrections.
+            for previous in self.rows("SELECT r.* FROM real_inventory_snapshots r JOIN snapshots s ON s.id=r.id AND s.tenant_id=r.tenant_id WHERE r.tenant_id=? AND r.as_of_date IS ? AND r.record_count=? AND s.kind='inventory_file' ORDER BY r.created_at DESC, r.id DESC", (tenant_id, as_of_date, len(rows))):
+                metadata = json.loads(previous["metadata_json"])
+                semantic = metadata.get("semantic_sha256")
+                if not semantic:
+                    source = self.rows("SELECT sku, org_code AS store_id, org_name AS store, product_name AS product, unit, inventory_qty, latest_cost AS unit_cost, sales_30, sales_90, sales_cost_30, stat_class, purchase_status FROM real_inventory_lines WHERE snapshot_id=? AND tenant_id=?", (previous["id"], tenant_id))
+                    normalized, errors, _ = inventory_rows(source)
+                    if errors or len(normalized) != len(rows):
+                        continue
+                    semantic = inventory_fingerprint(tenant_id, normalized, previous["as_of_date"])
+                if semantic == digest:
+                    existing = previous
+                    snapshot_id = previous["id"]
+                    metadata.update(semantic_sha256=digest, fingerprint_version=2)
+                    for table in ("snapshots", "real_inventory_snapshots"):
+                        self.conn.execute(f"UPDATE {table} SET metadata_json=? WHERE id=? AND tenant_id=?", (dumps(metadata), snapshot_id, tenant_id))
+                    break
         if not existing:
             now = now_iso()
             for old_risk in self.rows("SELECT id FROM risks WHERE tenant_id=?", (tenant_id,)):
                 self._invalidate_risk_proposals(old_risk["id"], tenant_id)
             self.conn.execute("UPDATE workbench_drafts SET status='needs_recalculation', calculation_json=NULL, version=version+1 WHERE tenant_id=?", (tenant_id,))
             total = sum((row["cost_amount"] for row in rows), money(0))
-            metadata = {"source_filename": filename, "content_sha256": digest, "as_of_date_basis": "用户指定" if as_of_date else "unknown", "teacher_baseline_version": TEACHER_BASELINE_VERSION, "quality": {"raw_rows": len(rows)+duplicates, "deduplicated_rows": duplicates}, "missing_fields": ["accounts", "purchase_orders", "expiry_batches", "replenishment_rules"]}
+            metadata = {"source_filename": filename, "content_sha256": digest, "semantic_sha256": digest, "fingerprint_version": 2, "as_of_date_basis": "用户指定" if as_of_date else "unknown", "teacher_baseline_version": TEACHER_BASELINE_VERSION, "quality": {"raw_rows": len(rows)+duplicates, "deduplicated_rows": duplicates}, "missing_fields": ["accounts", "purchase_orders", "expiry_batches", "replenishment_rules"]}
             baselines = [teacher_baseline({**row, "inventory_amount": row["cost_amount"]}) for row in rows]
             metadata["teacher_baseline_missing_fields"] = sorted({field for baseline in baselines for field in baseline["missing_fields"]})
             metadata["teacher_baseline_incomplete_rows"] = sum(bool(baseline["missing_fields"]) for baseline in baselines)
@@ -1032,7 +1122,8 @@ class Store:
                               teacher_near_stockout=int(baseline["near_stockout"]) if baseline["near_stockout"] is not None else None)
                 self.conn.execute("INSERT INTO real_inventory_lines("+",".join(values)+") VALUES("+",".join("?" for _ in values)+")", tuple(values.values()))
             self.audit("snapshot", snapshot_id, "inventory_imported", {"rows": len(rows), "sha256": digest}, tenant_id, actor_id)
-        summary = {"rows": len(rows), "data_kind": "inventory", "snapshot_id": snapshot_id, "content_sha256": digest, "deduplicated_rows": duplicates, "replayed": bool(existing), "as_of_date": as_of_date, "next_step": "正式快照已保存，库存诊断已使用该数据；缺少采购与效期事实时不生成动作"}
+        original_digest = json.loads(existing["metadata_json"]).get("content_sha256", digest) if existing else digest
+        summary = {"rows": len(rows), "data_kind": "inventory", "snapshot_id": snapshot_id, "content_sha256": original_digest, "semantic_sha256": digest, "fingerprint_version": 2, "deduplicated_rows": duplicates, "replayed": bool(existing), "as_of_date": as_of_date, "next_step": "正式快照已保存，库存诊断已使用该数据；缺少采购与效期事实时不生成动作"}
         return self.add_data_import(filename, "erp_file", "imported", summary, [], actor_id, tenant_id)
 
     @_transactional

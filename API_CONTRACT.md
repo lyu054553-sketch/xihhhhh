@@ -1,6 +1,6 @@
 # 货不压钱｜连锁零售库存资金 Agent API Contract
 
-版本：v1.3（版本检查、库存文件接入与人工回执）
+版本：v1.4（导入语义去重、有效库存预留与未来动作现金窗口）
 日期：2026-10-03  
 前端负责人：朱；后端及计算负责人：魏  
 仓库：lyu054553-sketch/xihhhhh，协作分支：lanyangyang
@@ -157,6 +157,19 @@ approve 与 execute 会在数据库事务内检查同一批次库存、收货容
 
 ## 6. 会话式现金流模拟
 
+### 6.1 后端工作台候选模拟（旧入口）
+
+POST /api/v1/scenarios/simulate 接收 target、horizon_days（1—365）及原有 constraints、excluded_action_ids。这是未来新动作建议接口，不是历史执行收益回放。它与下面的 /retail/simulate 独立。
+
+- 以当前租户的有效库存快照 as_of_date 为窗口首日，末日为首日＋horizon_days−1，含起止日。付款在窗口之外时，本窗口节省为 0；日期未知时收益为 null，不能充当 0 或确定节省。缺少有效快照日期返回 HTTP 409、detail.code=missing_planning_date。
+- 采购候选按输入的原付款日期、新付款日期和请求窗口重新调用计算器并计算窗口现金差额，不沿用保存时的 cutoff_date 结果，也不修改草稿或方案。延期付款的效益仅在原付款进入窗口、新付款未进入窗口时出现。
+- 只取计算有效、当前事实／快照及方案版本匹配的草稿。关联已审批、已生成执行任务、失效或待重算方案的草稿不再作为新动作。未保存的修改不能借用旧方案身份。
+- 审批和任务的既有资源占用继续保留；候选及组合均不能超过扣除占用后的库存、收货容量或采购行数量。旧数据库里没有占用行的已审批／已生成任务方案也纳入核算。模拟只读，审批时仍在事务内重新检查。
+- selected[] 新增 snapshot_id、fact_version、proposal_version、resources（key、quantity、remaining）。未保存候选的 proposal_version 为 null。cash_basis 提供 planning_mode=future_actions、as_of_date、window_start、window_end 和真实 snapshot_id；baseline_id 为 future-actions:<snapshot_id>，表示新动作的现金差额基准，不是已完成收益或账户现金余额。
+- 调拨、效期仍缺少收款日期和销售预测时，收益保持未知。求解仍是确定性建议；共享资源不足会阻断组合，不宣称最优解。
+
+### 6.2 零售采购模拟（当前页面入口）
+
 先 GET /api/v1/retail/simulation-options 获取：
 
     {
@@ -254,7 +267,7 @@ SKU-001,门店一,S-001,示例商品,箱,100,12.50,10,30,125,C,在采
 
 库存键为门店 ID＋SKU，同键完全一致的行去重；同键内容冲突或同 SKU 单位冲突，整个文件失败，保留已有快照。返回 errors[].row 与 message，数据行从第 2 行起计。格式／行校验失败返回 HTTP 200、status=failed，前端不能只看 HTTP 状态判断导入成功。成功为 status=imported，summary 含 snapshot_id、content_sha256、rows、deduplicated_rows、replayed。
 
-成功导入在一个事务里保存正式快照、明细、可核查风险、批次和审计；同租户、日期、规范化行内容的重复文件复用原快照，不重复库存。新快照取代旧快照参与库存总览与老师口径计算，旧未执行方案失效；历史快照不被覆写，重复旧文件不会自动恢复它为当前快照。源文件时点未指定时保持 as_of_date=null，不以上传时间冒充业务时点。
+成功导入在一个事务里保存正式快照、明细、可核查风险、批次和审计；同租户、日期、规范化行内容的重复文件复用原快照，不重复库存。行顺序、字段顺序及文件名不影响语义身份；金额以精确两位小数字符串生成指纹。返回 summary.semantic_sha256 与 fingerprint_version=2；已有旧指纹快照仍保留原 snapshot_id 和 content_sha256，通过不可变源明细识别重复文件，不重建风险、不覆盖人工确认事实。新快照取代旧快照参与库存总览与老师口径计算，旧未执行方案失效；历史快照不被覆写，重复旧文件不会自动恢复它为当前快照。源文件时点未指定时保持 as_of_date=null，不以上传时间冒充业务时点。
 
 老师口径缺少 sales_30、sales_90、sales_cost_30、stat_class 中任何输入时，teacher_baseline.status=blocked，缺项可查；已有确定库存金额仍能展示。真实队列优先使用已导入数据；核查中的人工数值覆盖只影响当前事实与详情计算，库存总览与候选选取仍以原始快照为依据，需新文件更新总览。账户、付款计划、效期、配送规则不在本次格式中，保持未知；不生成虚构调拨、采购或现金预测。真实 work-items 显示候选核查事项，负责人和截止时间未接入时为 null。
 

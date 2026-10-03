@@ -7,7 +7,7 @@ import csv
 import io
 import json
 import os
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 from decimal import Decimal, ROUND_CEILING
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -46,7 +46,7 @@ store = Store(DB_PATH)
 if os.environ.get("INVENTORY_AGENT_MODE", "demo") != "real":
     store.seed_demo()
 
-app = FastAPI(title="货不压钱｜连锁零售库存资金 Agent API", version="1.3.0")
+app = FastAPI(title="货不压钱｜连锁零售库存资金 Agent API", version="1.4.0")
 
 
 class InvestigationInput(BaseModel):
@@ -458,10 +458,13 @@ def _workbench_payload(module_type: str, tenant: str, risk_id: Optional[int] = N
     return payload
 
 
-def _candidate_actions(tenant: str, excluded: List[str], store_keywords: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+def _candidate_actions(tenant: str, excluded: List[str], store_keywords: Optional[List[str]] = None, window=None, snapshot_id=None) -> List[Dict[str, Any]]:
     """从当前已计算的真实工作台草稿取候选；不再内置情景模拟样例。"""
     output: List[Dict[str, Any]] = []
-    rows = store.rows("SELECT * FROM workbench_drafts WHERE tenant_id=? AND status IN ('calculated','saved')", (tenant,))
+    try:
+        rows = store.planning_drafts(tenant, expected_snapshot_id=snapshot_id)
+    except BusinessConflict as exc:
+        _service_error(exc)
     for row in rows:
         risk = store.risk(int(row["risk_id"]), tenant)
         if store_keywords and (not risk or not any(keyword in str(risk.get("store") or "") for keyword in store_keywords)):
@@ -472,6 +475,9 @@ def _candidate_actions(tenant: str, excluded: List[str], store_keywords: Optiona
         action_id = row["id"]
         if action_id in excluded:
             continue
+        input_data = json.loads(row["input_json"])
+        if window and row["module_type"] == "procurement-brake":
+            calculation = _procurement_in_window(input_data, *window)
         cash = calculation.get("cash") or {}
         effect = money(cash.get("estimated_net_cash_improvement"))
         known = money(cash.get("known_cash_effect"))
@@ -487,10 +493,41 @@ def _candidate_actions(tenant: str, excluded: List[str], store_keywords: Optiona
             "cash_complete": cash.get("completeness") == "complete",
             "missing_fields": cash.get("missing_fields") or [],
             "allocation": allocation,
-            "input": json.loads(row["input_json"]),
+            "input": input_data,
             "proposal_id": row.get("proposal_id"),
+            "proposal_version": row["proposal_version"],
+            "snapshot_id": row["snapshot_id"],
+            "fact_version": row["fact_version"],
+            "resources": row["resources"],
         })
     return output
+
+
+def _procurement_in_window(input_data, start, end):
+    """Recompute the dated payment delta; do not change business formulas."""
+    calculation = calculate_procurement_brake({**input_data, "cutoff_date": end.isoformat()})
+    try:
+        baseline = date.fromisoformat(input_data["payment_date"])
+        scenario = (date.fromisoformat(input_data["new_payment_date"])
+                    if input_data["action"] == "delay_payment" else baseline)
+    except (ValueError, KeyError, TypeError):
+        calculation["cash"].update(estimated_net_cash_improvement=None, known_cash_effect=None,
+                                    completeness="unavailable", missing_fields=["payment_dates"])
+        return calculation
+    baseline_in_window = start <= baseline <= end
+    scenario_in_window = (start <= scenario <= end
+                          and input_data["action"] not in ("reduce", "cancel"))
+    # A dated delta can be negative (e.g. moving a future payment into this
+    # window); it must not become invented savings or be silently netted away.
+    amount = calculation["payment"]["adjusted_amount"]
+    delta = money(amount * (int(baseline_in_window) - int(scenario_in_window)))
+    calculation["payment"].update(baseline_in_window=baseline_in_window,
+                                  scenario_in_window=scenario_in_window,
+                                  deferred_payment_pressure=(amount if input_data["action"] == "delay_payment"
+                                                             and scenario > end else None))
+    calculation["cash"].update(estimated_net_cash_improvement=delta, known_cash_effect=delta,
+                                completeness="complete", missing_fields=[])
+    return calculation
 
 
 def _validate_candidate_bundle(candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -514,7 +551,17 @@ def _validate_candidate_bundle(candidates: List[Dict[str, Any]]) -> Dict[str, An
             amount = int(input_data.get("inventory_qty") or 0)
         available[lot_id] = min(available.get(lot_id, amount), amount) if lot_id in available else amount
         actions.append(action)
-    return validate_action_bundle(actions, available_by_lot=available, allowed_routes=routes)
+    result = validate_action_bundle(actions, available_by_lot=available, allowed_routes=routes)
+    used, remaining = {}, {}
+    for item in candidates:
+        for resource in item.get("resources", []):
+            key = (item["snapshot_id"], resource["key"])
+            used[key] = used.get(key, 0) + resource["quantity"]
+            remaining[key] = min(remaining.get(key, resource["remaining"]), resource["remaining"])
+    if any(quantity > remaining[key] for key, quantity in used.items()):
+        result["valid"] = False
+        result["errors"].append("组合超过扣除既有占用后的库存、收货容量或采购数量")
+    return result
 
 
 def _approval_summary(proposal: Dict[str, Any], risk: Optional[Dict[str, Any]], tenant: str) -> Dict[str, str]:
@@ -867,7 +914,20 @@ def execute_proposal(proposal_id: str, payload: VersionInput, x_tenant_id: Optio
 @numeric_response
 def simulate(payload: SimulationInput, x_tenant_id: Optional[str] = Header(default=None)) -> Dict[str, Any]:
     tenant = tenant_from_header(x_tenant_id)
-    candidates = _candidate_actions(tenant, payload.excluded_action_ids, payload.constraints.get("region_store_keywords"))
+    snapshot = store.real_inventory_snapshot(tenant)
+    if snapshot:
+        as_of = snapshot.get("as_of_date")
+        snapshot_id = snapshot["id"]
+    else:
+        snapshot = store.one("SELECT * FROM snapshots WHERE tenant_id=? ORDER BY created_at DESC LIMIT 1", (tenant,))
+        as_of = json.loads(snapshot["metadata_json"]).get("as_of_date") if snapshot else None
+        snapshot_id = snapshot["id"] if snapshot else None
+    try:
+        start = date.fromisoformat(as_of)
+        end = start + timedelta(days=payload.horizon_days - 1)
+    except (TypeError, ValueError, OverflowError):
+        raise HTTPException(409, {"code": "missing_planning_date", "message": "缺少有效快照日期，不能确定现金规划窗口"})
+    candidates = _candidate_actions(tenant, payload.excluded_action_ids, payload.constraints.get("region_store_keywords"), (start, end), snapshot_id)
     constraint_text = str(payload.constraints.get("text", ""))
     if "不要降价" in constraint_text or "不促销" in constraint_text:
         candidates = [item for item in candidates if item["module_type"] != "expiry-rescue"]
@@ -884,7 +944,20 @@ def simulate(payload: SimulationInput, x_tenant_id: Optional[str] = Header(defau
     result["constraints"] = payload.constraints
     result["bundle_validation"] = bundle
     calculable_candidates = [item for item in candidates if (money(item.get("cash_effect")) or Decimal("0")) > 0]
-    result["cash_basis"] = {"baseline_id": "baseline-demo-v1", "snapshot_id": "snapshot-demo-v1", "completeness": "partial" if calculable_candidates else "unavailable", "missing_fields": ([] if calculable_candidates else (["calculated_workbench_candidates"] if not candidates else ["cash_effect_for_current_candidates"])) + (bundle["errors"] if not bundle["valid"] else []), "assumptions": ["仅组合当前已计算且未排除的工作台草稿；同一草稿只计一次", "共享批次按占用量与允许调拨路线统一校验"]}
+    result["cash_basis"] = {
+        "baseline_id": "future-actions:" + snapshot_id, "snapshot_id": snapshot_id,
+        "planning_mode": "future_actions", "as_of_date": start.isoformat(),
+        "window_start": start.isoformat(), "window_end": end.isoformat(),
+        "completeness": ("complete" if candidates and all(item["cash_complete"] for item in candidates)
+                         else "partial" if calculable_candidates else "unavailable"),
+        "missing_fields": sorted({field for item in candidates for field in item["missing_fields"]})
+                          + ([] if candidates else ["calculated_workbench_candidates"])
+                          + (bundle["errors"] if not bundle["valid"] else []),
+        "assumptions": ["窗口含起止日，从快照日期起计算请求天数；采购现金按付款日期重新计算",
+                        "仅建议当前事实和方案版本有效的新动作；已审批和已生成任务的动作不重复计入",
+                        "库存、收货容量和采购额度先扣除既有占用，再校验组合；审批时再次校验",
+                        "未提供收款日期和销售预测的调拨、效期动作保持现金收益未知"],
+    }
     return result
 
 
