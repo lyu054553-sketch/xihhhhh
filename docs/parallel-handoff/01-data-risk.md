@@ -123,4 +123,23 @@ reference_data = {
 .\.venv\Scripts\python.exe -m unittest tests.hackathon.test_data_loader tests.hackathon.test_data_risk tests.hackathon.test_data_service
 ```
 
-本轮结果：39 项测试全部通过，耗时 45.364 秒；CLI `--help` 也已验证。公共路由注册、前端接线和正式共享类型文件由总集成管理，本模块未越界修改；真实 ERP 接入与多账户真实流水尚未验证。
+上一轮结果：39 项测试全部通过，耗时 45.364 秒；CLI `--help` 也已验证。公共路由注册、前端接线和正式共享类型文件由总集成管理，本模块未越界修改；真实 ERP 接入与多账户真实流水尚未验证。
+
+## 2026-10-04：跟进 dcb9036 新经营总览契约
+
+新增 `RetailFactService.get_overview({context}, *, tx=None)`，返回 `{contract_version, context, overview:{account, inventory, purchase_commitments, stores}, metadata}`。读取复用当前 Store 事务与事实版本；模块 4 在同一事务补充待确认方案和门店任务链接。新增纯投影 `overview.py` 不保存第二份账户或库存。
+
+- 账户余额来自当前场景账户及公共现金表，只统计当前时点已发生的流水；兼容日期精度和带时区时点，同日未来时间也不提前计入。金额或发生日期缺失时余额为 null，报告具体流水缺项。核销不重复增加余额。
+- 库存按当前事实数量×成本计入，含在途；预占不额外增加库存。风险复用 `scenario_risks`，重叠风险只计一次。名录中没有业务事实的门店保持 null；总额明确只覆盖该场景已接入范围，metadata 提供门店覆盖数。
+- 缺成本不会抹掉已有滞销、临期结论；成本相关金额与汇总返回 null，`cost_missing_fields` 标明 `unit_cost_cny`；公共风险项也保留缺项，兼容风险表写 SQL NULL。规则版本为 `scenario-risk-v1.1`。
+- 待付统计采用 `[as_of_date, as_of_date+30天)`，应付单优先于同一采购单或行，避免重复。作废应付不遮掉有效采购义务；已付款、未确认意向不加入未来待付。缺金额／付款日时总数和金额未知，另提供已知金额。
+- `turnover_days` 明确是“当前库存成本÷近30日净销售成本×30”；历史不完整、净成本不为正时为 null，不以预计销售替代实际历史。
+
+新增验证 `tests.hackathon.test_data_overview`，覆盖经营四项口径、50 家名录与 6 家接入范围、S02 重叠、S10 未知、现金时点与事务回滚、采购去重与时间边界、缺成本。另在风险测试增加 4 项成本缺失回归。总集成须为 FactService Protocol 增加 get_overview 并注册 HTTP 路由；本任务没有修改公共文件。
+
+最终验证：数据 49、计算 63、AI 51、执行 47，共 210 项全部通过（`python -m unittest discover -s tests/hackathon -p "test_*.py" -q`，262.336 秒）。原有后端 53 项回归全部通过（`python -m unittest discover -s tests/backend -p "test_*.py" -q`，24.888 秒）。全部使用隔离临时数据库，未调用真实模型或外部消息渠道。
+
+合并验证另记录给任务 0/5/6：`dcb9036` 已于 `5deb452` 合入 zmj，主页面保留 zmj 的模块化外壳，并挂载上游两套新组件。两个新模块的挂载、卸载、重新进入，以及完整场景上下文传入均通过隔离浏览器检查。合并不意味着 HTTP 接线完成。
+
+- 上游新增前端单测 16 项中 13 项通过，跟进页的回执、渠道和原子确认 3 项因预期请求没有产生而失败（`tests/hackathon/frontend-followup/followup.test.cjs:181/223/250`）。测试使用的 context 缺少新版必需的部分字段；请对应任务核对完整上下文和写入前置条件，不能用移除版本校验解决。
+- 原 v1.2 浏览器验证中总览与移动导航通过；调拨流程在 `/workbenches/transfer/draft` 返回 422，`expected_version` 必填而旧 `app.js` 未传，导致后续 calculate 未发起。该调用在合并前已是旧字段形态；公共 API 和原业务前端分别由任务 0/5 协调版本参数，队友模块未越界放宽校验。

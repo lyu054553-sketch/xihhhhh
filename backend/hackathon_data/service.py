@@ -11,6 +11,7 @@ from backend.hackathon_shared import CONTRACT_VERSION
 from backend.serialization import dumps, json_value
 from .loader import load_scenario, parse_clock
 from .risk import scenario_risks
+from .overview import build_overview
 
 
 SCHEMA = (
@@ -102,7 +103,8 @@ class RetailFactService:
                         "row_counts": {name: len(rows) for name, rows in facts["tables"].items()}, "missing_fields": context["missing_fields"]}
             snapshot = "hf-" + hashlib.sha256((scope + facts["snapshot_id"]).encode()).hexdigest()[:28]
             missing = sorted({inventory_key(item["store_id"], item["sku_id"], item["lot_id"]) + "." + field
-                              for item in scenario_risks(facts)["items"] for kind in ("slow", "near_expiry") for field in item[kind]["missing_fields"]})
+                              for item in scenario_risks(facts)["items"] for field in
+                              item["slow"]["missing_fields"] + item["near_expiry"]["missing_fields"] + item["cost_missing_fields"]})
             context = {"tenant_id": tenant_id, "scenario_id": facts["scenario_id"], "branch_id": facts["branch_id"],
                        "snapshot_id": snapshot, "as_of": facts["clock_at"], "data_version": facts["dataset_id"],
                        "fact_version": 1, "is_demo": True,
@@ -175,28 +177,51 @@ class RetailFactService:
             row["external_reserved_qty"] = row["reserved_qty"]
             row["reserved_qty"] = _number(row["reserved_qty"]) + held.get(inventory_key(row["store_id"], row["sku_id"], row["lot_id"]) + "|" + row["stock_state"], 0)
         accounts = facts["tables"].get("accounts", [])
-        cash_rows = tx.execute("SELECT amount,direction,source FROM cash_events WHERE tenant_id=? AND scenario_id=?", (current["tenant_id"], current["snapshot_id"])).fetchall()
+        cash_rows = tx.execute("SELECT id,amount,direction,source,event_date FROM cash_events WHERE tenant_id=? AND scenario_id=?", (current["tenant_id"], current["snapshot_id"])).fetchall()
         by_account = {row["account_id"]: [] for row in accounts}
+        clock = parse_clock(current["as_of"])
         for cash in cash_rows:
+            if cash["event_date"] is not None:
+                occurred = cash["event_date"]
+                # The shared ledger accepts day-precision imports and precise
+                # execution receipts. Compare each at its declared precision.
+                future = date.fromisoformat(occurred) > clock.date() if len(occurred) == 10 else parse_clock(occurred) > clock
+                if future:
+                    continue
             source = cash["source"]
             account_id = source.split(":", 1)[1] if source.startswith("hackathon_execution:") else accounts[0]["account_id"] if len(accounts) == 1 else None
             if account_id not in by_account:
                 raise ValueError("Cash projection requires a known, unambiguous account")
             by_account[account_id].append(cash)
         for account in accounts:
-            balance = _number(account["available_balance"])
+            missing = []
+            balance = None if account["available_balance"] is None else _number(account["available_balance"], "available_balance", signed=True)
+            if balance is None:
+                missing.append("accounts." + account["account_id"] + ".available_balance")
             for cash in by_account[account["account_id"]]:
                 if cash["direction"] not in {"in", "out"}:
                     raise ValueError("Invalid cash direction")
-                if cash["amount"] is not None:
-                    balance += _number(cash["amount"]) * (1 if cash["direction"] == "in" else -1)
+                for field in ("amount", "event_date"):
+                    if cash[field] is None:
+                        missing.append("cash_events." + cash["id"] + "." + field)
+                amount = _number(cash["amount"]) if cash["amount"] is not None else None
+                if amount is None or cash["event_date"] is None:
+                    balance = None
+                elif balance is not None:
+                    balance += amount * (1 if cash["direction"] == "in" else -1)
             account["available_balance"] = balance
+            account["missing_fields"] = missing
             account["snapshot_at"] = current["as_of"]
         return scope, current, state, facts
 
     def read_facts(self, context, *, tx=None):
         with nullcontext(tx) if tx is not None else self.store.transaction() as active:
             return json_value(self._read(active, context)[3])
+
+    def get_overview(self, request, *, tx=None):
+        with nullcontext(tx) if tx is not None else self.store.transaction() as active:
+            _, context, _, facts = self._read(active, request["context"])
+            return build_overview(facts, context)
 
     def advance_clock(self, tx, context, as_of, *, confirmed_override_ids=()):
         """Publish newly known reference records, never future replay actuals."""
@@ -299,15 +324,17 @@ class RetailFactService:
                 items.append({"risk_key": key, "risk_id": legacy.get(key),
                               "store_id": row["store_id"], "sku_id": row["sku_id"], "lot_id": row["lot_id"],
                               "risk_type": kind, "result": result, "quantity": row["quantity"], "base_unit": row["unit"],
-                              "amount_cny": row["inventory_cost"] if result == "risk" else None if result == "insufficient_data" else 0,
+                              "amount_cny": None if row["inventory_cost"] is None else row["inventory_cost"] if result == "risk" else None if result == "insufficient_data" else 0,
                               "coverage_days": row["slow"]["coverage_days"], "remaining_sellable_days": row["near_expiry"]["remaining_sellable_days"],
                               "evidence_refs": [{"source": "retail-v2", "record_id": row["inventory_id"], "known_at": context["as_of"], "is_demo": True}],
-                              "missing_fields": assessment["missing_fields"], "rule_version": next((str(policy["rule_version"]) for policy in facts["tables"]["risk_policies"] if policy["policy_id"] == row["policy_id"]), None),
+                              "missing_fields": assessment["missing_fields"] + row["cost_missing_fields"], "rule_version": next((str(policy["rule_version"]) for policy in facts["tables"]["risk_policies"] if policy["policy_id"] == row["policy_id"]), None),
                               "unsellable": assessment["status"] == "unsellable"})
                 missing.extend(assessment["missing_fields"])
             if row["risk_tags"] and stock_key not in counted:
                 counted.add(stock_key)
-                total += _number(row["inventory_cost"])
+                if row["inventory_cost"] is not None:
+                    total += _number(row["inventory_cost"])
+            missing.extend(stock_key + "." + field for field in row["cost_missing_fields"])
             incomplete |= row["risk_inventory_cost"] is None
         return json_value({"contract_version": CONTRACT_VERSION, "context": context, "calculation_version": assessed["calculation_version"],
                            "items": items, "attention_inventory_cost_cny": None if incomplete else total,
@@ -321,15 +348,16 @@ class RetailFactService:
 
     @staticmethod
     def _create_legacy_mapping(tx, scope, context, facts):
+        costs = {row["inventory_id"]: row.get("unit_cost") for row in facts["tables"]["inventory"]}
         for item in scenario_risks(facts)["items"]:
             cursor = tx.execute("""INSERT INTO risks(tenant_id,snapshot_id,sku,product,store,store_id,sales_30,
                 inventory_qty,unit_cost,tags_json,days_to_sell,risk_type,priority,observation,evidence_level,missing_fields_json,created_at)
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (context["tenant_id"], context["snapshot_id"], item["sku_id"], item["product_name"],
                 item["store_name"], item["store_id"], item["slow"]["sales_30"], item["quantity"],
-                str(next(row["unit_cost"] for row in facts["tables"]["inventory"] if row["inventory_id"] == item["inventory_id"])),
+                None if costs[item["inventory_id"]] is None else str(costs[item["inventory_id"]]),
                 dumps(item["risk_tags"]), item["near_expiry"]["remaining_sellable_days"], "临期" if "near_expiry" in item["risk_tags"] else "滞销",
                 "待核查", "retail-v2 场景批次兼容关联；业务事实以场景服务为准", "partial",
-                dumps(item["slow"]["missing_fields"] + item["near_expiry"]["missing_fields"]), context["as_of"]))
+                dumps(item["slow"]["missing_fields"] + item["near_expiry"]["missing_fields"] + item["cost_missing_fields"]), context["as_of"]))
             for kind in ("slow_moving", "near_expiry"):
                 key = risk_key(context["scenario_id"], item["store_id"], item["sku_id"], item["lot_id"], kind)
                 tx.execute("INSERT INTO hackathon_legacy_risk_map VALUES(?,?,?)", (scope, key, cursor.lastrowid))
