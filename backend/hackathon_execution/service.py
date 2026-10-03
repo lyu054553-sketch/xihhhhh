@@ -14,6 +14,7 @@ from ..errors import BusinessConflict
 from ..hackathon_shared import CONTRACT_VERSION, TransactionProvider, FactService, CalculationService
 from ..serialization import dumps, json_value
 from . import domain
+from . import reads
 
 
 SCHEMA = (
@@ -128,7 +129,7 @@ class ExecutionService:
     def save_proposal(self, request):
         def save(tx, facts):
             context = facts["context"]
-            comparison_request = {key: request[key] for key in ("context", "risk_keys", "objective", "horizon_start", "horizon_end", "assumption_ids", "inputs") if key in request}
+            comparison_request = {key: request[key] for key in ("context", "risk_keys", "objective", "horizon_start", "horizon_end", "assumption_ids", "inputs", "business_inputs") if key in request}
             risk_keys = request.get("risk_keys", [])
             if not risk_keys or len(risk_keys) != len(set(risk_keys)):
                 raise ValueError("A nonempty unique risk_keys list is required")
@@ -188,8 +189,13 @@ class ExecutionService:
                 action_calculations[action_lines[-1]["action_line_id"]] = public_child["calculation"] if public_child else {}
             payload = {"context": context, "comparison_request": comparison_request, "comparison_id": comparison["comparison_id"],
                        "candidate_id": request["candidate_id"], "candidate": selected, "baseline_id": comparison["baseline_id"],
-                       "evaluation_end": comparison["horizon_end"], "risk_key": risk_key, "created_by": request["actor_id"],
+                       "evaluation_end": comparison["horizon_end"], "risk_key": risk_key, "risk_keys": risk_keys, "created_by": request["actor_id"],
                        "action_lines": action_lines, "action_calculations": action_calculations}
+            first_action = actions[0] if actions else target
+            product = next((p for p in facts["reference_data"]["tables"]["products"] if p["sku_id"] == first_action["sku_id"]), {})
+            store = next((s for s in facts["reference_data"]["tables"]["stores"] if s["store_id"] == first_action["store_id"]), {})
+            payload["title"] = " · ".join((store.get("store_name", first_action["store_id"]),
+                product.get("product_name", first_action["sku_id"]), reads.ACTION_LABELS[selected.get("action_type", "combination")]))
             tx.execute("INSERT INTO proposal_versions VALUES(?,?,?,?,?,?,?)", (domain.identifier("pv"), proposal_id, version,
                        dumps(payload), "pending_approval", None, context["as_of"]))
             return {"context": context, "proposal_id": proposal_id, "proposal_version": version,
@@ -414,7 +420,7 @@ class ExecutionService:
             task = next((t for t in state["tasks"] if t["id"] == request["task_id"]), None)
             if not task or task["cancelled"] or not str(request.get("reason", "")).strip():
                 raise BusinessConflict("task_not_active", "需要有效任务和撤销原因")
-            task.update(cancelled=True, cancellation_reason=request["reason"], cancelled_by=request["actor_id"])
+            task.update(cancelled=True, cancellation_reason=request["reason"], cancelled_by=request["actor_id"], cancelled_at=context["as_of"])
             task["version"] += 1
             state["reservations"] = [r for r in state["reservations"] if r["task_id"] != task["id"]]
             self._persist_tasks(tx, context, state)
@@ -452,18 +458,35 @@ class ExecutionService:
             return {"context": context, **action}
         return self._command(request, "record_channel_action", record)
 
-    def _accounting(self, tx, context):
+    def _accounting(self, tx, context, request=None):
         facts = self._query(context)
         state = self._hydrate(tx, facts)
         projection = domain.project_execution(state)
         projection["tasks"] = [presentation(t) for t in state["tasks"]]
+        request = request or {}
+        projection["tasks"] = reads.select_tasks(projection["tasks"], request)
+        selected_ids = {task["task_id"] for task in projection["tasks"]}
+        filtered = bool(request.get("task_id") or request.get("proposal_id"))
         accounts = facts["reference_data"]["tables"].get("accounts", [])
-        projection["account_balance_cny"] = sum((domain.number(a["available_balance"]) for a in accounts), Decimal(0)) if accounts else None
+        projection["account_balance_cny"] = sum((domain.number(a["available_balance"]) for a in accounts), Decimal(0)) if accounts and all(a.get("available_balance") is not None for a in accounts) else None
         projection["actual_cash_in_cny"] = projection["cash_in"] if any(c["direction"] == "in" for c in state["cash_events"]) else None
-        projection["channels"] = [decode(r[0]) for r in tx.execute("SELECT payload_json FROM hackathon_channel_actions WHERE scope=? ORDER BY rowid", (scope(context),))]
-        projection["timeline"] = [{"event_id": r["event_key"], "kind": r["kind"], "record": decode(r["payload_json"])} for r in tx.execute("SELECT * FROM hackathon_execution_receipts WHERE scope=? ORDER BY rowid", (scope(context),))]
+        channels = [decode(r[0]) for r in tx.execute("SELECT payload_json FROM hackathon_channel_actions WHERE scope=? ORDER BY rowid", (scope(context),))]
+        projection["channels"] = [row for row in channels if not filtered or row["task_id"] in selected_ids]
+        entries = [(row, decode(row["payload_json"])) for row in tx.execute("SELECT * FROM hackathon_execution_receipts WHERE scope=? ORDER BY rowid", (scope(context),))]
+        projection["timeline"] = reads.receipt_timeline(state, entries, selected_ids if filtered else None)
         projection["payables"] = state["payables"]
-        projection["case_results"] = [self._case_accounting(state, task) for task in state["tasks"]]
+        projection["case_results"] = [self._case_accounting(state, task) for task in state["tasks"] if task["id"] in selected_ids]
+        if filtered:
+            # The account total and unrelated stock/payables belong to the overview,
+            # never to a proposal-scoped execution response.
+            for key in ("account_balance_cny", "inventory", "payables"):
+                projection.pop(key)
+            cash = list(reads.scoped_cash(state, selected_ids).values())
+            projection["cash_in"] = sum((c["amount"] for c in cash if c["direction"] == "in"), Decimal(0))
+            projection["cash_out"] = sum((c["amount"] for c in cash if c["direction"] == "out"), Decimal(0))
+            projection["net_cash_change"] = projection["cash_in"] - projection["cash_out"]
+            projection["actual_cash_in_cny"] = projection["cash_in"] if any(c["direction"] == "in" for c in cash) else None
+            projection["cash_scope"] = "selected_tasks"
         return json_value(projection)
 
     def _case_accounting(self, state, task):
@@ -478,7 +501,9 @@ class ExecutionService:
                       and p["store_id"] == action.get("target_store_id", action["store_id"])
                       and p["sku_id"] == action["sku_id"] and p["lot_id"] == action.get("lot_id")), Decimal(0)) if action.get("lot_id") else None
         owned_cash = [c for c in state["cash_events"] if c["cash_event_id"] in cash_ids and c["direction"] == "in"]
-        unmatched = sum((domain.number(c["amount"]) - sum((domain.number(a["allocated_amount"]) for a in state["cash_allocations"] if a["cash_event_id"] == c["cash_event_id"]), Decimal(0)) for c in owned_cash), Decimal(0))
+        remainders = [(c, domain.number(c["amount"]) - sum((domain.number(a["allocated_amount"]) for a in state["cash_allocations"] if a["cash_event_id"] == c["cash_event_id"]), Decimal(0))) for c in owned_cash]
+        # An unallocated remainder on a shared account receipt has no case owner.
+        unmatched = None if any(amount and c.get("task_id") != task["id"] for c, amount in remainders) else sum((amount for _, amount in remainders), Decimal(0))
         return {"task_id": task["id"], "proposal_id": task["proposal_id"], "proposal_version": task["proposal_version"],
                 "planned_qty": task["plan"]["allocated_qty"], "shipped_qty": progress.get("shipped_qty", 0),
                 "received_qty": progress.get("received_qty", 0), "remaining_unexecuted_qty": values["remaining_execution_qty"],
@@ -492,22 +517,146 @@ class ExecutionService:
                 "cash_event_ids": sorted(cash_ids), "allocation_ids": [a["allocation_id"] for a in allocations],
                 "event_refs": [r["event_id"] for r in state["receipts"] if r.get("task_id") == task["id"]] + [s["sale_id"] for s in sales],
                 "execution_status": raw_status(task), "accounting_note": task["accounting_status"],
-                "missing_fields": [] if owned_cash else ["actual_cash_in_cny"], "is_demo": True, "external_write": False}
+                "missing_fields": (["actual_cash_in_cny"] if not owned_cash else []) + (["unmatched_cash_cny"] if owned_cash and unmatched is None else []),
+                "is_demo": True, "external_write": False}
 
     def get_accounting(self, request):
         with self.database.transaction() as tx:
-            result = self._accounting(tx, request["context"])
-            if request.get("task_id") or request.get("proposal_id"):
-                tasks = [t for t in result["tasks"] if (not request.get("task_id") or t["task_id"] == request["task_id"])
-                         and (not request.get("proposal_id") or t["proposal_id"] == request["proposal_id"])]
-                if not tasks:
-                    raise ValueError("Unknown task or proposal in this context")
-                result["tasks"] = tasks
-                if request.get("task_id"):
-                    case = next(c for c in result["case_results"] if c["task_id"] == request["task_id"])
-                    return {"contract_version": CONTRACT_VERSION, "context": request["context"], **case}
-                result["case_results"] = [c for c in result["case_results"] if c["proposal_id"] == request["proposal_id"]]
+            result = self._accounting(tx, request["context"], request)
+            if request.get("task_id"):
+                case = result["case_results"][0]
+                return {"contract_version": CONTRACT_VERSION, "context": request["context"], **case}
             return {"contract_version": CONTRACT_VERSION, "context": request["context"], **result}
+
+    def _proposals(self, tx, context, request):
+        status = request.get("status")
+        if status is not None and status not in {"pending_approval", "execution_task_created"}:
+            raise ValueError("Unsupported proposal status")
+        rows = tx.execute("SELECT * FROM proposals WHERE tenant_id=? AND snapshot_id=? ORDER BY created_at,id",
+                          (context["tenant_id"], context["snapshot_id"])).fetchall()
+        proposals = []
+        for row in rows:
+            if request.get("proposal_id") and row["id"] != request["proposal_id"] or status and row["status"] != status:
+                continue
+            version = tx.execute("SELECT * FROM proposal_versions WHERE proposal_id=? AND version=?",
+                                 (row["id"], row["current_version"])).fetchone()
+            payload = decode(version["payload_json"])
+            if "comparison_request" not in payload:
+                continue  # Existing legacy records are handled by their original service.
+            proposals.append(reads.proposal_view(row, version, payload, context))
+        if request.get("proposal_id") and not proposals:
+            raise ValueError("Unknown proposal in this context")
+        if "proposal_version" in request:
+            expected = request["proposal_version"]
+            if not request.get("proposal_id") or type(expected) is not int or expected < 1:
+                raise ValueError("A proposal_id and positive proposal_version are required")
+            if proposals[0]["proposal_version"] != expected:
+                raise BusinessConflict("version_conflict", "请求的方案版本已变化")
+        return proposals
+
+    def list_proposals(self, request):
+        with self.database.transaction() as tx:
+            context = self._query(request["context"])["context"]
+            proposals = self._proposals(tx, context, request)
+            return json_value({"contract_version": CONTRACT_VERSION, "context": context,
+                               "proposals": proposals, "metadata": reads.metadata(context)})
+
+    def list_tasks(self, request):
+        with self.database.transaction() as tx:
+            context = self._query(request["context"])["context"]
+            result = self._accounting(tx, context, request)
+            tasks = result["tasks"]
+            if request.get("status"):
+                if request["status"] not in {"draft_pending_external_execution", "pending_dispatch", "in_transit",
+                                              "awaiting_receipt", "received", "completed", "exception"}:
+                    raise ValueError("Unsupported task status")
+                tasks = [task for task in tasks if task["status"] == request["status"]]
+            proposals = {p["proposal_id"]: p for p in self._proposals(tx, context, {})}
+            for task in tasks:
+                proposal = proposals[task["proposal_id"]]
+                task.update(case_id=proposal["case_id"], title=proposal["title"], action_type=proposal["action_type"],
+                            proposal=proposal, context=context)
+            return json_value({"contract_version": CONTRACT_VERSION, "context": context, "tasks": tasks,
+                               "metadata": reads.metadata(context)})
+
+    def get_task(self, request):
+        if not request.get("task_id"):
+            raise ValueError("task_id is required")
+        with self.database.transaction() as tx:
+            result = self.list_tasks(request)
+            if not result["tasks"]:
+                raise ValueError("Unknown task in this context")
+            details = self._accounting(tx, result["context"], request)
+            return {"contract_version": CONTRACT_VERSION, "context": result["context"], "task": result["tasks"][0],
+                    "accounting": details["case_results"][0], "channels": details["channels"],
+                    "timeline": details["timeline"], "metadata": result["metadata"]}
+
+    def get_case(self, request):
+        proposal_id = request.get("proposal_id", request.get("case_id"))
+        if not proposal_id or request.get("case_id", proposal_id) != proposal_id:
+            raise ValueError("case_id must identify the requested proposal")
+        with self.database.transaction() as tx:
+            context = self._query(request["context"])["context"]
+            selected = {**request, "proposal_id": proposal_id}
+            proposal = self._proposals(tx, context, selected)[0]
+            row = tx.execute("SELECT * FROM proposals WHERE id=? AND tenant_id=? AND snapshot_id=?",
+                             (proposal_id, context["tenant_id"], context["snapshot_id"])).fetchone()
+            versions = [reads.proposal_view(row, version, decode(version["payload_json"]), context)
+                        for version in tx.execute("SELECT * FROM proposal_versions WHERE proposal_id=? ORDER BY version", (proposal_id,))]
+            events = [{"event_id": "proposal:" + proposal_id + ":" + str(version["proposal_version"]),
+                       "kind": "proposal_saved", "occurred_at": version["updated_at"], "known_at": version["updated_at"],
+                       "proposal_id": proposal_id, "proposal_version": version["proposal_version"],
+                       "actor_id": version["created_by"], "source": "proposal_versions", "label": "保存方案", "is_actual": True, "is_demo": True, "external_write": False}
+                      for version in versions]
+            for approval in tx.execute("SELECT * FROM approvals WHERE tenant_id=? AND proposal_id=? ORDER BY created_at,id", (context["tenant_id"], proposal_id)):
+                events.append({"event_id": approval["id"], "kind": "proposal_confirmed", "occurred_at": approval["created_at"],
+                               "known_at": approval["created_at"], "proposal_id": proposal_id, "proposal_version": approval["proposal_version"],
+                               "actor_id": approval["actor_id"], "source": "approvals", "label": "确认并安排执行", "is_actual": True, "is_demo": True, "external_write": False})
+            has_tasks = tx.execute("SELECT 1 FROM execution_tasks WHERE tenant_id=? AND proposal_id=? LIMIT 1", (context["tenant_id"], proposal_id)).fetchone()
+            if request.get("task_id") and not has_tasks:
+                raise ValueError("Unknown task in this proposal")
+            accounting = self._accounting(tx, context, selected) if has_tasks else None
+            channels = accounting["channels"] if accounting else []
+            for channel in channels:
+                for index, item in enumerate(channel["history"]):
+                    events.append({"event_id": channel["action_id"] + ":" + str(index), "kind": "channel_action", "channel": channel["channel"],
+                                   "status": item["status"], "occurred_at": item["at"], "known_at": item["at"], "actor_id": item["actor_id"],
+                                   "task_id": channel["task_id"], "source": channel["source"], "label": "渠道状态记录", "is_actual": True, "is_demo": True, "external_write": False})
+            for task in accounting["tasks"] if accounting else []:
+                if task["cancelled"]:
+                    events.append({"event_id": task["task_id"] + ":cancelled", "kind": "execution_cancelled",
+                                   "occurred_at": task.get("cancelled_at"), "known_at": task.get("cancelled_at"),
+                                   "task_id": task["task_id"], "actor_id": task["cancelled_by"], "reason": task["cancellation_reason"],
+                                   "source": "execution_tasks", "label": "撤销未执行任务", "is_actual": True, "is_demo": True, "external_write": False,
+                                   "missing_fields": [] if task.get("cancelled_at") else ["cancelled_at"]})
+            events.extend(accounting["timeline"] if accounting else [])
+            priority = {"proposal_saved": 0, "proposal_confirmed": 1, "channel_action": 2}
+            events.sort(key=lambda item: (item["occurred_at"] or "", item["known_at"] or "", priority.get(item["kind"], 3), item["event_id"]))
+            case = {"case_id": proposal_id, "title": proposal["title"], "proposal": proposal, "versions": versions,
+                    "tasks": accounting["tasks"] if accounting else [], "events": events, "channels": channels,
+                    "accounting": accounting, "is_demo": context["is_demo"], "external_write": False}
+            return json_value({"contract_version": CONTRACT_VERSION, "context": context, "case": case, "metadata": reads.metadata(context)})
+
+    def get_overview(self, request):
+        with self.database.transaction() as tx:
+            # Data owns account, stock, risk and confirmed-payment calculations.
+            result = deepcopy(self.facts.get_overview({"context": request["context"]}, tx=tx))
+            context = result["context"]
+            pending = self._proposals(tx, context, {"status": "pending_approval"})
+            result["overview"]["pending_approvals"] = reads.pending_summary(pending)
+            tasks = self.list_tasks({"context": context})["tasks"]
+            task_links = [{key: task[key] for key in ("task_id", "case_id", "proposal_id", "proposal_version", "title", "status", "display_status", "next_action")}
+                          for task in tasks]
+            result["overview"]["task_links"] = task_links
+            for store in result["overview"]["stores"]:
+                drafts = [proposal for proposal in pending if any(line["store_id"] == store["store_id"] or line["target_store_id"] == store["store_id"] for line in proposal["action_lines"])]
+                active = [task for task in tasks if task["display_status"] != "completed" and any(
+                    action["store_id"] == store["store_id"] or action.get("target_store_id") == store["store_id"] for action in task["plan"]["actions"])]
+                selected = drafts[0] if drafts else active[0] if active else None
+                store.update(work_item_id=selected.get("proposal_id") if drafts else selected.get("task_id") if selected else None,
+                             work_item_label=selected["title"] if selected else None,
+                             pending_label=f"{len(drafts)} 项待确认 / {len(active)} 项跟进" if selected else "暂无待办")
+            return json_value(result)
 
     def advance_replay(self, request):
         from .replay import advance
