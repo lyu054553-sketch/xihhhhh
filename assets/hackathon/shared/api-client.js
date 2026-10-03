@@ -59,19 +59,39 @@
       queryFacts: (body) => request("/hackathon/facts/query", { method: "POST", body }),
       assessRisks: (body) => request("/hackathon/risks/assess", { method: "POST", body }),
       compareProposals: (body) => request("/hackathon/proposals/compare", { method: "POST", body }),
-      extractMaterial: (input) => {
-        if (input && input.file) {
+      extractMaterial: (input, idempotencyKey) => {
+        const source = input || {};
+        const context = source.context || {
+          tenant_id: source.tenant_id,
+          scenario_id: source.scenario_id,
+          branch_id: source.branch_id,
+          snapshot_id: source.snapshot_id,
+          as_of: source.as_of,
+          data_version: source.data_version,
+          fact_version: source.fact_version,
+          is_demo: source.is_demo,
+          source_refs: source.source_refs,
+          missing_fields: source.missing_fields,
+        };
+        if (source.file) {
           const form = new FormData();
-          form.append("kind", input.kind || "purchase_intent");
-          if (input.text) form.append("text", input.text);
-          form.append("file", input.file, input.file.name || "material");
-          return request("/hackathon/materials/extract", { method: "POST", body: form });
+          form.append("context", JSON.stringify(context));
+          Object.entries(source).forEach(([key, value]) => {
+            if (["context", "file"].includes(key) || value === undefined || value === null) return;
+            form.append(key, typeof value === "string" ? value : JSON.stringify(value));
+          });
+          form.append("file", source.file, source.file.name || "material");
+          return request("/hackathon/materials/extract", { method: "POST", body: form, idempotencyKey });
         }
-        return request("/hackathon/materials/extract", { method: "POST", body: input || {} });
+        return request("/hackathon/materials/extract", {
+          method: "POST",
+          body: { ...source, context },
+          idempotencyKey,
+        });
       },
-      confirmMaterial: (draftId, body) => request(
+      confirmMaterial: (draftId, body, idempotencyKey) => request(
         `/hackathon/materials/${encodeURIComponent(draftId)}/confirm`,
-        { method: "POST", body },
+        { method: "POST", body, idempotencyKey },
       ),
       startAgentRun: (body) => request("/hackathon/agent-runs", { method: "POST", body }),
       getAgentRun: (runId, afterSequence = 0) => request(
@@ -85,7 +105,9 @@
         `/hackathon/proposals/${encodeURIComponent(proposalId)}/confirm`,
         { method: "POST", body, idempotencyKey },
       ),
+      listProposals: (params = {}) => request(`/hackathon/proposals${queryString(params)}`),
       listTasks: (params = {}) => request(`/hackathon/tasks${queryString(params)}`),
+      getOverview: (params = {}) => request(`/hackathon/overview${queryString(params)}`),
       getTask: (taskId) => request(`/hackathon/tasks/${encodeURIComponent(taskId)}`),
       recordChannelAction: (taskId, body, idempotencyKey) => request(
         `/hackathon/tasks/${encodeURIComponent(taskId)}/channel-actions`,

@@ -217,6 +217,8 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 候选 `calculation` 必含 `planned_qty/expected_sold_qty/ending_qty/execution_cost_cny/gross_profit_cny/expected_cash_in_cny/actual_cash_in_cny/cash_flow[]/calculation_version`；各数量带 `base_unit`，现金行带 `direction/amount_cny/expected_at/status/source_ref`。实际值尚无凭据时为 `null`。比较响应另含 `calculation_version` 与 `policy_version`，每个候选的 `assumptions[]` 和 `missing_fields[]` 不可省略。`comparison_id` 和 `candidate_id` 是输入、上下文与计算版本的稳定内容 ID：同一 facts／请求的重复计算可复现 ID；事实、政策、假设或结果改变则 ID 改变。它们不是方案号，也不能代替写操作版本检查。
 
+调拨和其他会改变库存位置的候选还必须返回 `inventory_changes[]`。每行按门店、商品、批次列出服务计算的 `quantity_before/quantity_after/quantity_delta/base_unit/source_ref`；`quantity_before` 与 `quantity_after` 描述执行该动作前后的即时库存，不代表预测周期末库存。前端不得自行用调拨量对库存加减；未知数量保留 `null`。没有位置变化的动作返回空数组。
+
 **POST `/api/v1/hackathon/proposals/compare`（计划）**请求：
 
 ```json
@@ -226,9 +228,28 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
   "objective": "在10月25日前降低同批库存占用并评估回款",
   "horizon_start": "2026-10-03",
   "horizon_end": "2026-10-25",
-  "assumption_ids": []
+  "assumption_ids": [],
+  "business_inputs": {
+    "transfer": {
+      "origin_store_id": "ST-001", "target_store_id": "ST-002",
+      "sku_id": "SKU-001", "lot_id": "LOT-001-001",
+      "quantity": 80, "base_unit": "盒", "route_id": "ROUTE-ST001-ST002",
+      "route_fee_cny": 24
+    }
+  }
 }
 ```
+
+`business_inputs` 是可选的动作级输入，只传用户当前确认或明确调整的值；服务仍须重新读取事实、校验约束并计算，不信任前端提交的金额或库存结果。未提供的动作输入由服务按已知事实处理，缺少必要事实时返回 `missing_fields`。允许的子结构如下：
+
+| key | 输入字段 | 约束 |
+|---|---|---|
+| `transfer` | `origin_store_id`、`target_store_id`、`sku_id`、`lot_id`、`quantity`、`base_unit`、`route_id`、`route_fee_cny` | 数量和单位必须匹配同一事实；路线费用是报价／用户输入，服务需验证来源并决定是否可行，不是前端计算的执行结果。 |
+| `promotion` | `products[] {sku_id, quantity_per_bundle, base_unit}`、`price_stages[] {label, price_cny, start_date, end_date_exclusive}` | 每阶段日期为半开区间；价格、组合及底价约束由服务校验并重算。 |
+| `return` | `supplier_id`、`sku_id`、`lot_id`、`quantity`、`base_unit`、`settlement_method`、`fee_cny` | `settlement_method` 为 `refund/exchange/offset`；用户输入不等于供应商接受或实际结算。 |
+| `procurement` | `supplier_id`、`purchase_order_id`、`sku_id`、`quantity`、`base_unit`、`unit_cost_cny`、`expected_arrival_date`、`payment_date` | 未确认订单仍是意向；服务结合现货、预留、在途与付款事实重算。 |
+
+省略的字段与 `null` 含义不同：省略表示本次没有提供该输入；`null` 表示明确保留未知。数量必须带 `base_unit`。前端只能展示服务返回的可行性、库存变化和金额。
 
 ```json
 {
@@ -242,7 +263,7 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
   "horizon_start": "2026-10-03", "horizon_end": "2026-10-25", "baseline_id": "S01:SNAP-20261003-BASE:2026-10-25",
   "candidates": [
     {"candidate_id": "CAND-FIXTURE-KEEP", "action_type": "keep", "feasible": true, "exclusion_reasons": [], "store_id": "ST-001", "target_store_id": null, "sku_id": "SKU-001", "lot_id": "LOT-001-001", "quantity": 120, "base_unit": "盒", "calculation": {"planned_qty": 120, "expected_sold_qty": 40, "ending_qty": 80, "execution_cost_cny": 0, "gross_profit_cny": 800, "expected_cash_in_cny": 4000, "actual_cash_in_cny": null, "cash_flow": [{"direction": "in", "amount_cny": 4000, "expected_at": "2026-10-25", "status": "forecast", "source_ref": "scenario-demand-base"}], "calculation_version": "comparison-v1"}, "assumptions": ["scenario-demand-base"], "missing_fields": []},
-    {"candidate_id": "CAND-FIXTURE-TRANSFER", "action_type": "transfer", "feasible": true, "exclusion_reasons": [], "store_id": "ST-001", "target_store_id": "ST-002", "sku_id": "SKU-001", "lot_id": "LOT-001-001", "quantity": 80, "base_unit": "盒", "calculation": {"planned_qty": 80, "expected_sold_qty": 64, "ending_qty": 16, "execution_cost_cny": 24, "gross_profit_cny": 1280, "expected_cash_in_cny": 6400, "actual_cash_in_cny": null, "cash_flow": [{"direction": "in", "amount_cny": 6400, "expected_at": "2026-10-25", "status": "forecast", "source_ref": "S01 demand range"}], "calculation_version": "comparison-v1"}, "assumptions": ["S01 demand range"], "missing_fields": []},
+    {"candidate_id": "CAND-FIXTURE-TRANSFER", "action_type": "transfer", "feasible": true, "exclusion_reasons": [], "store_id": "ST-001", "target_store_id": "ST-002", "sku_id": "SKU-001", "lot_id": "LOT-001-001", "quantity": 80, "base_unit": "盒", "calculation": {"planned_qty": 80, "expected_sold_qty": 64, "ending_qty": 16, "execution_cost_cny": 24, "gross_profit_cny": 1280, "expected_cash_in_cny": 6400, "actual_cash_in_cny": null, "cash_flow": [{"direction": "in", "amount_cny": 6400, "expected_at": "2026-10-25", "status": "forecast", "source_ref": "S01 demand range"}], "calculation_version": "comparison-v1"}, "inventory_changes": [{"store_id": "ST-001", "sku_id": "SKU-001", "lot_id": "LOT-001-001", "quantity_before": 120, "quantity_after": 40, "quantity_delta": -80, "base_unit": "盒", "source_ref": "02_库存与90天经营事实.xlsx#INV-001"}, {"store_id": "ST-002", "sku_id": "SKU-001", "lot_id": "LOT-001-001", "quantity_before": 10, "quantity_after": 90, "quantity_delta": 80, "base_unit": "盒", "source_ref": "02_库存与90天经营事实.xlsx#INV-002"}], "assumptions": ["S01 demand range"], "missing_fields": []},
     {"candidate_id": "CAND-FIXTURE-RETURN", "action_type": "return", "feasible": false, "exclusion_reasons": ["本场景未提供已确认退供条款"], "store_id": "ST-001", "target_store_id": null, "sku_id": "SKU-001", "lot_id": "LOT-001-001", "quantity": null, "base_unit": "盒", "calculation": {"planned_qty": null, "expected_sold_qty": null, "ending_qty": null, "execution_cost_cny": null, "gross_profit_cny": null, "expected_cash_in_cny": null, "actual_cash_in_cny": null, "cash_flow": [], "calculation_version": "comparison-v1"}, "assumptions": [], "missing_fields": ["return_terms.confirmed_at"]}
   ],
   "selected_candidate_id": null
@@ -250,6 +271,31 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 ```
 
 该 fixture 仅展示字段，不预设线上计算值。服务必须由本次查询和输入计算；改数量、需求、价格、运费、效期或库存会产生新 `comparison_id` 和结果版本。
+
+### 待确认方案列表
+
+**GET `/api/v1/hackathon/proposals?scenario_id=...&branch_id=...&status=pending_approval`（计划）**返回当前上下文中的方案记录，不把待审批草稿与已批准执行任务混在一起。列表响应为 `{contract_version, proposals[], metadata}`；每行至少含 `proposal_id/proposal_version/status/context/candidate_id/action_type/title/risk_keys/action_lines/created_at/updated_at/missing_fields`。筛选 `status=pending_approval` 时仅返回待确认项；空列表返回 `proposals: []`。金额和数量仍来自保存时的服务端候选快照，不在列表路由重算或补值。
+
+### 经营总览汇总
+
+**GET `/api/v1/hackathon/overview?scenario_id=...&branch_id=...&snapshot_id=...&as_of=...`（计划）**以当前同一业务快照返回首页四张指标卡和门店库存资金表；不会通过任务列表拼算账户、库存或采购付款金额。响应中 `metadata` 提供 `is_demo/source/as_of_date/as_of/data_version/fact_version/source_refs/missing_fields`；`overview` 字段如下：
+
+```json
+{
+  "account": {"balance": null, "status": "unknown", "source": "账户快照未接入"},
+  "inventory": {"cost": null, "risk_cost": null, "source": "库存快照待聚合"},
+  "purchase_commitments": {"amount": null, "count": null, "horizon_days": 30, "status": "unknown", "source": "付款计划未接入"},
+  "pending_approvals": {"count": 0, "amount": null, "known_amount": null, "missing_count": 0},
+  "stores": [{
+    "store_id": "ST-001", "store_name": "示例门店", "inventory_cost": null,
+    "risk_cost": null, "turnover_days": null, "primary_risk": null,
+    "work_item_id": null, "work_item_label": null, "pending_label": "未知",
+    "missing_fields": ["inventory_cost", "risk_cost"]
+  }]
+}
+```
+
+`account.balance` 是可用资金；`inventory.cost` 是库存成本占用；`inventory.risk_cost` 是待关注库存成本；`purchase_commitments.amount` 只统计快照日后 30 天内已确认的付款计划。未知金额为 `null`，不得跨字段推算。待审批 `amount` 只在所有相关方案均有可用数量和成本时给出；否则给 `null` 并以 `known_amount/missing_count` 报告已知部分和缺项。门店表的 `turnover_days`、风险和待办链接均按服务返回值显示；缺项保留未知。该汇总使用与方案、任务列表相同的 tenant、场景和快照隔离边界。
 
 ### 持久化选定候选
 
@@ -289,22 +335,20 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 ```json
 {
-  "tenant_id": "demo",
-  "scenario_id": "S07",
-  "fact_version": 1,
+  "context": {"tenant_id": "demo", "scenario_id": "S07", "branch_id": null, "snapshot_id": "SNAP-20261003-BASE", "as_of": "2026-10-03T09:30:00+08:00", "data_version": "retail-v2.1", "fact_version": 1, "is_demo": true, "source_refs": [], "missing_fields": []},
   "kind": "purchase_intent",
   "text": "庆春店拟订酸奶夹心饼干100袋，单价5元/袋，预计10月10日到货。",
   "source_name": "负责人粘贴的采购意向"
 }
 ```
 
+图片请求使用 multipart，`context` 字段为上述完整上下文的 JSON 字符串，`kind/source_name/text` 与图片文件分别作为普通表单字段；上传请求同样携带 `Idempotency-Key`。共享客户端负责 JSON 和 multipart 两种编码，不由组件绕过客户端自行组装请求。
+
 ```json
 {
   "fixture_only": true,
   "contract_version": "hackathon.v1",
-  "tenant_id": "demo",
-  "scenario_id": "S07",
-  "fact_version": 1,
+  "context": {"tenant_id": "demo", "scenario_id": "S07", "branch_id": null, "snapshot_id": "SNAP-20261003-BASE", "as_of": "2026-10-03T09:30:00+08:00", "data_version": "retail-v2.1", "fact_version": 1, "is_demo": true, "source_refs": [], "missing_fields": []},
   "draft_id": "DRAFT-FIXTURE-001",
   "material_id": "MAT-FIXTURE-001",
   "kind": "purchase_intent",
@@ -328,7 +372,7 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 }
 ```
 
-人工确认 **POST `/api/v1/hackathon/materials/{draft_id}/confirm`（计划）**需要 `expected_fact_version`、操作者和经人工修改的 `fields`。采购意向确认只发布采购意向事实，不表示供应商已确认订单；退供合同条款确认不表示供应商接受本次退货。响应包含 `status="confirmed"`、`fact_version`、确认字段、原始 `material_id` 与证据引用。事实版本冲突返回 409，需重新读取后确认；同确认幂等键重放原结果。模型提取失败保留材料和可编辑人工入口，不能输出 `confirmed` 草稿。
+人工确认 **POST `/api/v1/hackathon/materials/{draft_id}/confirm`（计划）**需要 `expected_fact_version`、操作者和经人工修改的 `fields`，并携带 `Idempotency-Key`。采购意向确认只发布采购意向事实，不表示供应商已确认订单；退供合同条款确认不表示供应商接受本次退货。响应包含 `status="confirmed"`、`fact_version`、确认字段、原始 `material_id` 与证据引用。事实版本冲突返回 409，需重新读取后确认；同确认幂等键重放原结果。模型提取失败保留材料和可编辑人工入口，不能输出 `confirmed` 草稿。
 
 ```json
 {
@@ -520,9 +564,9 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 ## 12. 前端 API 与组件生命周期
 
-共享适配器为 `window.HackathonApiClient.createApiClient({ baseUrl, tenantId })`，默认真实 HTTP 模式，base URL 为同源 `/api/v1`；可调用 `.queryFacts/.assessRisks/.compareProposals/.saveProposal/.extractMaterial/.confirmMaterial/.startAgentRun/.getAgentRun/.confirmProposal/.listTasks/.getTask/.recordChannelAction/.recordBusinessEvents/.advanceReplay/.getAccounting/.getCase`。所有错误抛出 `ApiError(status, code, message, detail, payload)`。断网、409、422 不返回成功对象，不自动重试写操作。
+共享适配器为 `window.HackathonApiClient.createApiClient({ baseUrl, tenantId })`，默认真实 HTTP 模式，base URL 为同源 `/api/v1`；可调用 `.queryFacts/.assessRisks/.compareProposals/.saveProposal/.extractMaterial/.confirmMaterial/.startAgentRun/.getAgentRun/.confirmProposal/.listProposals/.listTasks/.getOverview/.getTask/.recordChannelAction/.recordBusinessEvents/.advanceReplay/.getAccounting/.getCase`。`extractMaterial(input, idempotencyKey)` 对 JSON／multipart 共用完整 `context`；`confirmMaterial(draftId, body, idempotencyKey)` 附带幂等键。`listProposals(params)` 读取待确认方案，`getOverview(params)` 读取首页聚合。所有错误抛出 `ApiError(status, code, message, detail, payload)`。断网、409、422 不返回成功对象，不自动重试写操作。
 
-开发 fixture 必须显式调用 `createApiClient({mode:"fixture", fixtures})` 或 `createFixtureClient(fixtures)`；按完整 `"METHOD /path?query"` 键逐项提供响应。缺 fixture 返回 `fixture_missing`；HTTP 实例不接受 fixtures，也不会错误回退。组件可通过 `api.mode === "fixture"` 显示开发预览态。确认、回放等 fixture 写入只在本地预览实例中返回 fixture 内容，不代表持久化。
+开发 fixture 必须显式调用 `createApiClient({mode:"fixture", fixtures})` 或 `createFixtureClient(fixtures)`；按完整 `"METHOD /path?query"` 键逐项提供响应。缺 fixture 返回 `fixture_missing`；HTTP 实例不接受 fixtures，也不会错误回退。组件可通过 `api.mode === "fixture"` 显示开发预览态。当前两份模块预览禁用确认、材料写入、渠道动作和 Agent 启动；这些预览不以 fixture 响应模拟写入成功。
 
 任务 5 导出 `window.HackathonDecision.mount(container, options)`；任务 6 导出 `window.HackathonFollowup.mount(container, options)`。`options` 统一为：
 
@@ -533,11 +577,18 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
   context: {
     tenantId: "demo", scenarioId: "S01", branchId: "transfer_80",
     snapshotId: "SNAP-20261003-BASE", asOf: "2026-10-03T09:30:00+08:00",
-    factVersion: 1, riskId: null, storeId: "ST-001", skuId: "SKU-001",
-    lotId: "LOT-001-001", proposalId: null, taskId: null
+    dataVersion: "retail-v2.1", factVersion: 1, isDemo: true,
+    sourceRefs: [], missingFields: [], area: "transfer",
+    horizonStart: "2026-10-03", horizonEnd: "2026-10-25", assumptionIds: [],
+    riskId: null, storeId: "ST-001",
+    skuId: "SKU-001", lotId: "LOT-001-001", actorId: "manager-demo",
+    proposalId: null, proposalVersion: null, taskId: null,
+    businessInputs: {}
   }
 }
 ```
+
+两个组件使用相同的 camelCase 宿主上下文和 `api/navigate/context` 挂载参数。API payload 继续使用 snake_case。可选的 `businessInputs` 使用第 7 节按动作分组的结构。宿主执行写操作时必须提供 `actorId`；继续已有方案时提供当前方案 ID／版本。这些值属于请求上下文，不是已认证身份。宿主还须提供 `dataVersion/isDemo`，组件不推断数据新鲜度或演示状态。
 
 `mount` 返回 `{ destroy(), updateContext(nextContext) }`。容器由宿主页面拥有，组件只增删自己的子树；样式限定本组件根节点，卸载时移除全部监听器、定时器、AbortController 和订阅。组件不得直接访问全局 app 状态、另起 API 连接、用 `localStorage` 保存业务真相，或在确认后要求第二次审批。index.html、旧 render 和 hash 导航由第二阶段接线。
 
@@ -546,11 +597,13 @@ const api = window.HackathonApiClient.createApiClient({ tenantId: "demo" });
 const mounted = window.HackathonDecision.mount(document.querySelector("#decision-root"), {
   api,
   navigate: (route, context) => window.dispatchEvent(new CustomEvent("app:navigate", { detail: { route, context } })),
-  context: { tenantId: "demo", scenarioId: "S01", branchId: "transfer_80", snapshotId: "SNAP-20261003-BASE", asOf: "2026-10-03T09:30:00+08:00", factVersion: 1, riskId: null, storeId: "ST-001", skuId: "SKU-001", lotId: "LOT-001-001", proposalId: null, taskId: null },
+  context: { tenantId: "demo", scenarioId: "S01", branchId: "transfer_80", snapshotId: "SNAP-20261003-BASE", asOf: "2026-10-03T09:30:00+08:00", dataVersion: "retail-v2.1", factVersion: 1, isDemo: true, sourceRefs: [], missingFields: [], area: "transfer", horizonStart: "2026-10-03", horizonEnd: "2026-10-25", assumptionIds: [], riskId: null, storeId: "ST-001", skuId: "SKU-001", lotId: "LOT-001-001", actorId: "manager-demo", proposalId: null, proposalVersion: null, taskId: null, businessInputs: {} },
 });
 // On route change or when the host replaces this view:
 mounted.destroy();
 ```
+
+跟进组件使用 `listTasks(contextQuery) + listProposals({...contextQuery, status: "pending_approval"}) + getOverview(overviewQuery)` 分开加载执行任务、待确认方案与经营聚合；列表项互不替代。`GET /hackathon/overview` 的未知值以 `null` 展示，不能从任务事件或 fixture 推算后端汇总。
 
 组件在容器上 dispatch 以下可冒泡 `CustomEvent`，`detail` 至少带 `context`：
 

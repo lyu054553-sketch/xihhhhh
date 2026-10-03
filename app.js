@@ -17,11 +17,17 @@ const api = createApiClient({baseUrl:location.protocol==='file:'?null:$('meta[na
 const post = (path,body={},headers={}) => api(path,{method:'POST',body:JSON.stringify(body),headers});
 const money = contract.formatYuan;
 const number = contract.formatNumber;
+const HACKATHON_ROUTES = new Set(['decision-entry','execution-followup']);
+// The new workflow has its own versioned scenario context; legacy overview
+// snapshots cannot stand in for an imported hackathon scenario.
+window.RetailHackathonHost = Object.freeze({getContext:()=>({...window.RETAIL_HACKATHON_CONTEXT})});
 const TITLES = {overview:'经营总览',today:'今日待办',slow_moving:'滞销诊断',transfer:'跨店调拨','expiry-rescue':'近效期处置','procurement-brake':'采购刹车',cashflow_simulation:'采购情景模拟',data:'数据与接口'};
 const WORKBENCHES = new Set(['transfer','expiry-rescue','procurement-brake']);
+Object.assign(TITLES,{'decision-entry':'方案决策','execution-followup':'审批与执行跟进'});
 const RISK_WORKBENCH = {'调拨':'transfer','促销':'expiry-rescue','采购刹车':'procurement-brake'};
 const DESCRIPTIONS = {overview:'先看需要关注的门店，再进入具体商品核对证据。',today:'待审批、审批后跟进与已完成分开呈现，状态以最新服务响应为准。',slow_moving:'销售差异是观察事实，原因假设需要门店反馈和人工核对。',transfer:'核对门店库存、运输费用和可售时间；内部调拨不产生现金到账。','expiry-rescue':'核对批次剩余数量与处置分配，促销投放量不代表确定销量。','procurement-brake':'库存、在途、未执行采购和付款压力分开核对。',cashflow_simulation:'当前仅测算减少可调整采购数量；确认范围与比例后再计算。',data:'样例可复现，版本、数据来源和缺项均可核对。'};
 const views = new Map(Object.keys(TITLES).map(route=>[route,{route,data:null,error:null,pending:false,busy:false,sequence:0,notice:'',riskId:null,dirty:false,input:null,preview:null,proposal:null,tab:'pending',filter:{period:'7',store_id:'all'},simulation:{horizon_days:'14',reduction_pct:'20',store_id:'all',category:'',request_text:''}}]));
+Object.assign(DESCRIPTIONS,{'decision-entry':'核对材料和证据，比较同一批商品的处置方案。','execution-followup':'核对方案版本、执行回执和实际资金结果。'});
 const feedbackSessions = new Map();
 const workbenchEdits = createWorkbenchEdits();
 const taskReceipts = createTaskReceipts();
@@ -58,6 +64,12 @@ function render(view=views.get(active)) {
   if(!current(view)) return;
   $('#page-title').textContent=TITLES[active]; $('#page-description').textContent=DESCRIPTIONS[active];
   $$('#app-nav a').forEach(a=>{if(a.hash===`#${active}`) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current');});
+  const hackathon=HACKATHON_ROUTES.has(active);
+  $('#page-content').hidden=hackathon;
+  $('#connection-status').hidden=hackathon;
+  $('#page-status').hidden=hackathon;
+  $$('.hackathon-module-view').forEach(host=>{host.hidden=host.dataset.view!==active;});
+  if(hackathon) return;
   $('#connection-status').innerHTML=provenance(view);
   $('#page-status').innerHTML=view.error?panel('请求未完成',errorMarkup(view.error)+button('reload','刷新核对当前状态',view.busy),'is-error'):view.pending?panel('正在读取服务数据','<p>保持当前范围，等待实际返回结果。</p>','is-loading'):view.busy?panel('正在提交','<p>等待服务确认；离开页面不会撤销已提交的请求。</p>','is-loading'):view.notice?panel('当前状态',`<p>${e(view.notice)}</p>`):'';
   const content=$('#page-content');
@@ -67,6 +79,7 @@ function render(view=views.get(active)) {
   if(mutation || view.pending) $$('fieldset, button, #queue-search',content).forEach(el=>{el.disabled=true;});
 }
 async function loadView(view) {
+  if(HACKATHON_ROUTES.has(view.route)) return;
   if(view.busy) return;
   view.controller?.abort(); const controller=new AbortController(); view.controller=controller;
   const sequence=++view.sequence; view.pending=true; view.error=null; render(view);
@@ -105,6 +118,7 @@ async function act(view,work) {
 function navigate() {
   const route=location.hash.slice(1).split('?')[0]; active=Object.hasOwn(TITLES,route)?route:'overview'; nav(false);
   const view=views.get(active); render(view); if(!view.data && !view.pending) void loadView(view);
+  window.dispatchEvent(new CustomEvent('retail:route-change',{detail:{route:active}}));
 }
 
 function overviewMarkup(view) {

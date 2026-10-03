@@ -9,6 +9,8 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preload" href="assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="assets/hackathon/decision/decision-workbench.css">
+    <link rel="stylesheet" href="assets/hackathon/followup/followup.css">
     <script type="module" src="app.js"></script>
   </head>
   <body>
@@ -27,6 +29,9 @@
           <a href="#procurement-brake"><span class="material-symbols-rounded" aria-hidden="true">front_hand</span>采购刹车</a>
           <a href="#cashflow_simulation"><span class="material-symbols-rounded" aria-hidden="true">finance_mode</span>采购情景模拟</a>
           <a href="#data"><span class="material-symbols-rounded" aria-hidden="true">database</span>数据与接口</a>
+          <p class="nav-label nav-label-secondary">方案与执行</p>
+          <a href="#decision-entry"><span class="material-symbols-rounded" aria-hidden="true">rule</span>方案决策</a>
+          <a href="#execution-followup"><span class="material-symbols-rounded" aria-hidden="true">receipt_long</span>审批与执行跟进</a>
         </nav>
         <div class="sidebar-note"><span class="badge">规则计算 · 人工确认</span><p>当前模型适配层尚未接入。<br>测算、审批和执行回执分别记录。</p></div>
       </aside>
@@ -38,10 +43,21 @@
           <div id="connection-status" class="status-panel" role="status"></div>
           <div id="page-status" aria-live="polite" aria-atomic="true"></div>
           <section id="page-content" aria-labelledby="page-title"></section>
+          <section class="module-view hackathon-module-view" data-view="decision-entry" aria-label="方案决策" hidden>
+            <p data-hackathon-preview-note role="note" hidden>开发预览 · 合成 fixture 数据，材料写入和 Agent 操作不会作为真实接口成功。</p>
+            <div id="hackathon-decision-host"></div>
+          </section>
+          <section class="module-view hackathon-module-view" data-view="execution-followup" aria-label="审批与执行跟进" hidden>
+            <p data-hackathon-preview-note role="note" hidden>开发预览 · 审批、回执、渠道和业务事件写入均已禁用。</p>
+            <div id="hackathon-followup-host"></div>
+          </section>
           <footer class="workspace-footer">金额按人民币元展示；库存占用、少采购和现金到账分别核对。当前仅记录本地任务与人工回执。</footer>
         </main>
       </div>
     </div>
     <div id="toast" class="toast" role="status" hidden></div>
+    <script defer src="assets/hackathon/shared/api-client.js"></script>
+    <script defer src="assets/hackathon/followup/followup.js"></script>
+    <script defer src="assets/hackathon/integration.js"></script>
   </body>
 </html>
