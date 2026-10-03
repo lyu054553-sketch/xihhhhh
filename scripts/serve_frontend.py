@@ -165,20 +165,22 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
 
         do_HEAD = do_GET
 
-        def do_POST(self):
-            path = self.path_or_error()
-            if path is None:
-                return
-            if not WRITE_ROUTE.fullmatch(path):
-                self.error(404, "NOT_FOUND", "This API route is not supported by the frontend.")
-                return
-            if self.headers.get("Transfer-Encoding"):
+        def read_request_body(self, *, required=True):
+            """Consume a bounded, fixed-length body before deciding its route.
+
+            Closing a socket with a valid request body still arriving can reset
+            the connection before the client receives a rejection. Invalid or
+            oversized framing is rejected immediately, without unbounded reads.
+            """
+            if self.headers.get_all("Transfer-Encoding"):
                 self.error(400, "INVALID_REQUEST", "Chunked request bodies are not accepted.")
                 return
             lengths = self.headers.get_all("Content-Length", [])
             if not lengths:
-                self.error(411, "LENGTH_REQUIRED", "Content-Length is required.")
-                return
+                if required:
+                    self.error(411, "LENGTH_REQUIRED", "Content-Length is required.")
+                    return
+                return b""
             if len(lengths) != 1 or not re.fullmatch(r"[0-9]+", lengths[0]):
                 self.error(400, "INVALID_REQUEST", "Invalid Content-Length.")
                 return
@@ -195,10 +197,33 @@ def serve(root: Path | str = ROOT, api_base: str | None = None,
             except (TimeoutError, socket.timeout):
                 self.error(408, "REQUEST_TIMEOUT", "Timed out reading the request body.")
                 return
+            except ConnectionError:
+                # A disconnected client cannot receive an error response.
+                return
             if len(body) != length:
                 self.error(400, "INVALID_REQUEST", "Incomplete request body.")
                 return
+            return body
+
+        def do_POST(self):
+            body = self.read_request_body()
+            if body is None:
+                return
+            path = self.path_or_error()
+            if path is None:
+                return
+            if not WRITE_ROUTE.fullmatch(path):
+                self.error(404, "NOT_FOUND", "This API route is not supported by the frontend.")
+                return
             self.forward(path, body)
+
+        def reject_write_method(self):
+            if self.read_request_body(required=False) is not None:
+                self.error(501, "METHOD_NOT_IMPLEMENTED", "This write method is not supported by the frontend.")
+
+        do_PUT = reject_write_method
+        do_PATCH = reject_write_method
+        do_DELETE = reject_write_method
 
         def forward(self, path, body=None):
             if upstream is None:

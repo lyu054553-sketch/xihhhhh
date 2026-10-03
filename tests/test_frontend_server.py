@@ -7,6 +7,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import http.client
 import json
 from pathlib import Path
+from queue import Queue
+import socket
 import tempfile
 from threading import Thread
 import time
@@ -200,6 +202,56 @@ class FrontendServerTests(unittest.TestCase):
         self.assertEqual(self.request(frontend, "/api/v1/retail/overview", "HEAD")[0], 405)
         self.assertEqual(upstream.requests, [])
 
+    def test_rejected_writes_consume_segmented_body_before_responding(self):
+        upstream = self.upstream()
+        cases = [("POST", "/api/v1/agent-runs/run-001/decisions", 404),
+                 ("POST", "/assets/%2e%2e/backend/api.py", 400),
+                 *[(method, "/api/v1/retail/simulate", 501) for method in ("PUT", "PATCH", "DELETE")]]
+        for method, path, expected in cases:
+            with self.subTest(method=method, path=path):
+                frontend = self.frontend(upstream)
+                handler = frontend.RequestHandlerClass
+                events = Queue()
+                original_setup, original_response = handler.setup, handler.send_response
+
+                class ObservedReader:
+                    def __init__(self, stream):
+                        self.stream = stream
+
+                    def read(self, length):
+                        events.put(("body-read", length))
+                        return self.stream.read(length)
+
+                    def __getattr__(self, name):
+                        return getattr(self.stream, name)
+
+                def setup(instance):
+                    original_setup(instance)
+                    instance.rfile = ObservedReader(instance.rfile)
+
+                def send_response(instance, code, message=None):
+                    events.put(("response", code))
+                    original_response(instance, code, message)
+
+                handler.setup, handler.send_response = setup, send_response
+                body = b'{"split":"body"}'
+                connection = http.client.HTTPConnection("127.0.0.1", frontend.server_port, timeout=2)
+                try:
+                    connection.putrequest(method, path)
+                    connection.putheader("Content-Length", str(len(body)))
+                    # The body read, observed without replacing its socket, is
+                    # the handshake for sending the rest. No sleeps or retries.
+                    connection.endheaders(body[:1])
+                    self.assertEqual(events.get(timeout=2), ("body-read", len(body)))
+                    connection.send(body[1:])
+                    response = connection.getresponse()
+                    self.assertEqual(response.status, expected)
+                    self.assertTrue(response.read())
+                    self.assertEqual(events.get(timeout=2), ("response", expected))
+                finally:
+                    connection.close()
+        self.assertEqual(upstream.requests, [])
+
     def test_request_limit_is_enforced_before_forwarding(self):
         upstream = self.upstream()
         frontend = self.frontend(upstream)
@@ -208,6 +260,78 @@ class FrontendServerTests(unittest.TestCase):
         self.assertEqual(status, 413)
         self.assertEqual(json.loads(body)["error"]["code"], "BODY_TOO_LARGE")
         self.assertEqual(upstream.requests, [])
+
+    def test_write_framing_limits_apply_before_route_or_method_rejection(self):
+        upstream = self.upstream()
+        frontend = self.frontend(upstream)
+        cases = [([], 411), ([("Content-Length", "-1")], 400),
+                 ([("Content-Length", "2"), ("Content-Length", "2")], 400),
+                 ([("Content-Length", "2, 2")], 400),
+                 ([("Transfer-Encoding", "chunked"), ("Content-Length", "0")], 400),
+                 ([("Transfer-Encoding", "")], 400),
+                 ([("Content-Length", str(MAX_BODY_BYTES + 1))], 413)]
+        for method in ("POST", "PUT", "PATCH", "DELETE"):
+            for headers, expected in cases:
+                if method != "POST" and not headers:
+                    expected = 501  # These unsupported methods need no body.
+                with self.subTest(method=method, headers=headers):
+                    connection = http.client.HTTPConnection("127.0.0.1", frontend.server_port, timeout=2)
+                    try:
+                        connection.putrequest(method, "/api/v1/agent-runs")
+                        for key, value in headers:
+                            connection.putheader(key, value)
+                        connection.endheaders()
+                        response = connection.getresponse()
+                        self.assertEqual(response.status, expected)
+                        self.assertIn("error", json.loads(response.read()))
+                    finally:
+                        connection.close()
+        self.assertEqual(upstream.requests, [])
+
+    def test_incomplete_bodies_are_rejected_before_forwarding_or_method_dispatch(self):
+        upstream = self.upstream()
+        frontend = self.frontend(upstream)
+        for method in ("POST", "PUT", "PATCH", "DELETE"):
+            with self.subTest(method=method):
+                connection = http.client.HTTPConnection("127.0.0.1", frontend.server_port, timeout=2)
+                try:
+                    connection.putrequest(method, "/api/v1/retail/simulate")
+                    connection.putheader("Content-Length", "10")
+                    connection.endheaders(b"{}")
+                    connection.sock.shutdown(socket.SHUT_WR)
+                    response = connection.getresponse()
+                    self.assertEqual(response.status, 400)
+                    self.assertEqual(json.loads(response.read())["error"]["message"], "Incomplete request body.")
+                finally:
+                    connection.close()
+        self.assertEqual(upstream.requests, [])
+
+    def test_body_timeout_remains_bounded_on_rejected_writes(self):
+        upstream = self.upstream()
+        frontend = self.frontend(upstream, timeout=.05)
+        for method in ("POST", "PUT", "PATCH", "DELETE"):
+            with self.subTest(method=method):
+                connection = http.client.HTTPConnection("127.0.0.1", frontend.server_port, timeout=2)
+                try:
+                    connection.putrequest(method, "/api/v1/agent-runs")
+                    connection.putheader("Content-Length", "2")
+                    connection.endheaders()
+                    response = connection.getresponse()
+                    self.assertEqual(response.status, 408)
+                    self.assertEqual(json.loads(response.read())["error"]["code"], "REQUEST_TIMEOUT")
+                finally:
+                    connection.close()
+        self.assertEqual(upstream.requests, [])
+
+    def test_valid_zero_and_maximum_length_bodies_are_preserved(self):
+        upstream = self.upstream()
+        frontend = self.frontend(upstream)
+        for body in (b"", b"x" * MAX_BODY_BYTES):
+            with self.subTest(length=len(body)):
+                status, _, _ = self.request(frontend, "/api/v1/retail/simulate", "POST", body)
+                self.assertEqual(status, 200)
+                self.assertEqual(upstream.requests[-1][1], body)
+        self.assertEqual(len(upstream.requests), 2)
 
     def test_invalid_request_framing_is_rejected(self):
         frontend = self.frontend()
