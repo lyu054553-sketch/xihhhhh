@@ -6,7 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from backend.hackathon_data.loader import parse_clock
 
 
-CALCULATION_VERSION = "scenario-risk-v1"
+CALCULATION_VERSION = "scenario-risk-v1.1"
 
 
 def _number(value):
@@ -14,7 +14,13 @@ def _number(value):
 
 
 def _rounded(value):
-    return float(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    return None if value is None else float(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+def _cost_total(items):
+    """A missing valuation cannot become zero or a silently partial total."""
+    values = [item["inventory_cost"] for item in items]
+    return None if any(value is None for value in values) else _rounded(sum((_number(value) for value in values), Decimal(0)))
 
 
 def _policy(facts, store_id, sku_id, today, policy_id=None):
@@ -132,7 +138,8 @@ def scenario_risks(facts):
             expiry = _expiry(row["sellable_until"], today, policy)
             quantity = _number(row["quantity"])
             sellable = quantity - _number(row["blocked_qty"]) - _number(row["reserved_qty"])
-            cost = quantity * _number(row["unit_cost"])
+            cost = quantity * _number(row["unit_cost"]) if row.get("unit_cost") is not None else None
+            cost_missing = ["unit_cost_cny"] if cost is None else []
             tags = []
             if slow["status"] == "risk":
                 tags.append("slow")
@@ -154,7 +161,8 @@ def scenario_risks(facts):
                           "product_name": products[sku_id]["product_name"], "unit": products[sku_id]["base_unit"],
                           "lot_id": row["lot_id"], "quantity": _rounded(quantity), "sellable_qty": _rounded(sellable),
                           "inventory_cost": _rounded(cost),
-                          "risk_inventory_cost": _rounded(cost) if tags else None if unknown else 0.0,
+                          "risk_inventory_cost": None if cost is None else _rounded(cost) if tags else None if unknown else 0.0,
+                          "cost_missing_fields": cost_missing,
                           "slow": dict(slow), "near_expiry": expiry, "risk_tags": tags,
                           "predicted_unsold_qty": _rounded(unsold) if unsold is not None else None,
                           "prediction_basis": "按有效可售日净销量及先到期先出估算；不代表未来实际销售",
@@ -165,9 +173,11 @@ def scenario_risks(facts):
     return {"snapshot_id": facts["snapshot_id"], "scenario_id": facts["scenario_id"],
             "branch_id": facts["branch_id"], "clock_at": facts["clock_at"], "is_demo": facts["is_demo"],
             "calculation_version": CALCULATION_VERSION, "items": items,
-            "summary": {"inventory_cost": _rounded(sum((_number(item["inventory_cost"]) for item in items), Decimal(0))),
-                        "known_risk_inventory_cost": _rounded(sum((_number(item["inventory_cost"]) for item in risk_items), Decimal(0))),
-                        "unknown_risk_inventory_cost": _rounded(sum((_number(item["inventory_cost"]) for item in unknown_items), Decimal(0))),
+            "summary": {"inventory_cost": _cost_total(items),
+                        "known_risk_inventory_cost": _cost_total(risk_items),
+                        "unknown_risk_inventory_cost": _cost_total(unknown_items),
+                        "missing_fields": sorted({f"{item['store_id']}|{item['sku_id']}|{item['lot_id']}.{field}"
+                                                  for item in items for field in item["cost_missing_fields"]}),
                         "risk_batch_count": len(risk_items), "unknown_batch_count": len(unknown_items),
                         "risk_cost_complete": not unknown_items,
                         "included_store_count": len({item["store_id"] for item in items}),
