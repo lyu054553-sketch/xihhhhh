@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>货不压钱 · 前端模块预览</title>
+    <style>
+      :root { color-scheme: light; font-family: Inter, "SF Pro Display", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: #faf9f5; color: #14251f; }
+      header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 24px; background: #fffefd; border-bottom: 1px solid #e6ebe6; }
+      h1 { margin: 0; font-size: 16px; font-weight: 700; }
+      p { margin: 4px 0 0; color: #758078; font-size: 12px; }
+      nav { display: flex; gap: 8px; }
+      button { border: 1px solid #cbe2d2; border-radius: 7px; padding: 8px 14px; background: #fffefd; color: #405348; font: inherit; cursor: pointer; }
+      button[aria-selected="true"] { border-color: #176b50; background: #176b50; color: #fff; }
+      main { height: calc(100vh - 71px); min-height: 520px; }
+      iframe { display: block; width: 100%; height: 100%; border: 0; background: #faf9f5; }
+      [hidden] { display: none !important; }
+      @media (max-width: 640px) { header { align-items: flex-start; flex-direction: column; gap: 12px; padding: 14px; } main { height: calc(100vh - 112px); } nav { width: 100%; } button { flex: 1; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>货不压钱 · 前端模块预览</h1>
+      <p>嵌入原版导航与主题；本地 fixture 仅用于预览，写入操作不会提交。</p>
+      </div>
+      <nav aria-label="选择预览模块">
+        <button type="button" data-preview="decision" aria-selected="true">决策工作台</button>
+        <button type="button" data-preview="followup" aria-selected="false">工作台与执行跟进</button>
+      </nav>
+    </header>
+    <main>
+      <iframe title="决策工作台原版样式预览" data-preview-frame="decision" src="../../index.html?hackathonPreview=1#decision-entry"></iframe>
+      <iframe title="审批与执行跟进原版样式预览" data-preview-frame="followup" src="../../index.html?hackathonPreview=1#execution-followup" hidden></iframe>
+    </main>
+    <script>
+      document.querySelectorAll('[data-preview]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const selected = button.dataset.preview;
+          document.querySelectorAll('[data-preview]').forEach((item) => item.setAttribute('aria-selected', String(item === button)));
+          document.querySelectorAll('[data-preview-frame]').forEach((frame) => { frame.hidden = frame.dataset.previewFrame !== selected; });
+        });
+      });
+    </script>
+  </body>
+</html>

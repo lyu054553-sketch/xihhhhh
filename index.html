@@ -13,6 +13,9 @@
     <link rel="stylesheet" href="retail-app.css?v=20261003-right-back-links" />
     <link rel="stylesheet" href="retail-workbenches.css?v=20261003-right-back-links" />
     <link rel="stylesheet" href="retail-simulation.css?v=20261003-navigation" />
+    <link rel="stylesheet" href="assets/hackathon/decision/decision-workbench.css?v=20261004-integration" />
+    <link rel="stylesheet" href="assets/hackathon/followup/followup.css?v=20261004-integration" />
+    <link rel="stylesheet" href="assets/hackathon/integration.css?v=20261004-integration" />
   </head>
   <body class="retail-design">
     <div class="app-shell">
@@ -36,6 +39,12 @@
             <a href="#expiry-rescue" data-route="expiry-rescue"><span class="material-symbols-rounded" aria-hidden="true">timer</span><b>近效期处理</b><i id="expiry-nav-count">1</i></a>
             <a href="#procurement-brake" data-route="procurement-brake"><span class="material-symbols-rounded" aria-hidden="true">front_hand</span><b>采购刹车</b><i id="procurement-nav-count">1</i></a>
             <a href="#simulation" data-route="simulation"><span class="material-symbols-rounded" aria-hidden="true">finance_mode</span><b>现金流模拟</b></a>
+          </div>
+
+          <div class="nav-group">
+            <span class="nav-group-label">方案与执行</span>
+            <a href="#decision-entry" data-route="decision-entry"><span class="material-symbols-rounded" aria-hidden="true">rule</span><b>方案决策</b></a>
+            <a href="#execution-followup" data-route="execution-followup"><span class="material-symbols-rounded" aria-hidden="true">receipt_long</span><b>审批与执行跟进</b></a>
           </div>
 
           <div class="nav-group">
@@ -143,6 +152,16 @@
             <header class="module-header"><div><span class="agent-page-mark"><span class="material-symbols-rounded" aria-hidden="true">front_hand</span>采购 Agent</span><h1>采购刹车</h1><p>联动现有库存、在途采购和订单状态，阻止积压继续扩大。</p></div></header>
             <div class="summary-strip"><div><span>采购敞口</span><strong id="procurement-count">1</strong></div><div><span>相关库存成本</span><strong id="procurement-amount">¥0</strong></div><div><span>当前重点</span><strong class="summary-status">核对在途订单</strong></div></div>
             <section class="focused-surface agent-workbench"><div class="surface-toolbar"><div><h2>采购调整队列</h2><p>确认订单能否暂停、减量或延迟到货。</p></div><span>避免现金流出</span></div><div id="procurement-list" class="agent-case-list"></div></section>
+          </section>
+
+          <section class="module-view hackathon-module-view" data-view="decision-entry" aria-label="方案决策">
+            <p class="hackathon-host-preview-note" data-hackathon-preview-note role="note" hidden>开发预览 · 页面内容来自本地 fixture；确认、材料写入和 Agent 操作不会作为真实接口成功。</p>
+            <div id="hackathon-decision-host" class="hackathon-module-host"></div>
+          </section>
+
+          <section class="module-view hackathon-module-view" data-view="execution-followup" aria-label="审批与执行跟进">
+            <p class="hackathon-host-preview-note" data-hackathon-preview-note role="note" hidden>开发预览 · 页面内容来自本地 fixture；审批、回执、渠道和业务事件写入均已禁用。</p>
+            <div id="hackathon-followup-host" class="hackathon-module-host"></div>
           </section>
 
           <section class="module-view risk-module" data-view="risks">
@@ -383,5 +402,8 @@
     <script src="retail-workbenches.js?v=20261003-approval-followup"></script>
     <script src="retail-simulation.js?v=20261003-navigation"></script>
     <script src="app.js?v=20261003-approval-followup"></script>
+    <script src="assets/hackathon/shared/api-client.js?v=20261004-integration"></script>
+    <script src="assets/hackathon/followup/followup.js?v=20261004-integration"></script>
+    <script src="assets/hackathon/integration.js?v=20261004-integration"></script>
   </body>
 </html>

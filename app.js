@@ -139,8 +139,9 @@ const featuredCases = [
 ];
 
 const API_BASE = window.location.protocol === "file:" ? null : "/api/v1";
+const HACKATHON_PREVIEW = new URLSearchParams(window.location.search).get("hackathonPreview") === "1";
 const validRoutes = new Set([
-  "overview", "today", "slow-diagnosis", "transfer", "expiry-rescue", "procurement-brake",
+  "overview", "today", "slow-diagnosis", "transfer", "expiry-rescue", "procurement-brake", "decision-entry", "execution-followup",
   "risks", "tasks", "approvals", "execution", "simulation", "cases", "data", "settings",
 ]);
 const state = {
@@ -201,6 +202,39 @@ const REGIONS = {
   qiantang: { label: "钱塘区区域", stores: ["钱塘"] },
   fuyang: { label: "富阳区区域", stores: ["富阳"] },
 };
+
+function hackathonMountContext() {
+  const configured = window.RETAIL_HACKATHON_CONTEXT || {};
+  const dashboard = state.dashboard || {};
+  const dataCenter = state.dataCenter || {};
+  return {
+    tenantId: configured.tenantId || dashboard.tenant_id || "demo",
+    scenarioId: configured.scenarioId ?? null,
+    branchId: configured.branchId ?? null,
+    snapshotId: configured.snapshotId ?? dashboard.snapshot_id ?? dataCenter.snapshot_id ?? null,
+    asOf: configured.asOf ?? dashboard.as_of ?? dashboard.as_of_date ?? null,
+    dataVersion: configured.dataVersion ?? dashboard.data_version ?? dataCenter.data_version ?? null,
+    factVersion: configured.factVersion ?? dashboard.fact_version ?? null,
+    isDemo: configured.isDemo ?? (dataCenter.mode === "real_inventory_snapshot" ? false : true),
+    sourceRefs: Array.isArray(configured.sourceRefs) ? [...configured.sourceRefs] : [],
+    missingFields: Array.isArray(configured.missingFields) ? [...configured.missingFields] : [],
+    area: configured.area || "transfer",
+    horizonStart: configured.horizonStart ?? null,
+    horizonEnd: configured.horizonEnd ?? null,
+    assumptionIds: Array.isArray(configured.assumptionIds) ? [...configured.assumptionIds] : [],
+    riskId: configured.riskId ?? null,
+    storeId: configured.storeId ?? null,
+    skuId: configured.skuId ?? null,
+    lotId: configured.lotId ?? null,
+    actorId: configured.actorId ?? null,
+    proposalId: configured.proposalId ?? null,
+    proposalVersion: configured.proposalVersion ?? null,
+    taskId: configured.taskId ?? null,
+    businessInputs: configured.businessInputs && typeof configured.businessInputs === "object" ? { ...configured.businessInputs } : {},
+  };
+}
+
+window.RetailHackathonHost = Object.freeze({ getContext: hackathonMountContext });
 
 function scopedRisks() {
   const region = REGIONS[state.region] || REGIONS.all;
@@ -1168,6 +1202,13 @@ async function refreshCommonRecords() {
 }
 
 async function hydrate() {
+  if (HACKATHON_PREVIEW) {
+    state.dataCenter = { mode: "sample_replay" };
+    renderRiskList();
+    renderSupportPages();
+    renderCases([]);
+    return;
+  }
   try {
     const [dashboard, riskPayload, casePayload, items, proposals, tasks, data] = API_BASE
       ? await Promise.all([api("/dashboard"), api("/risks"), api("/cases"), api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center")])
@@ -1179,6 +1220,7 @@ async function hydrate() {
     state.diagnosisRisks = state.risks;
     state.diagnosisTotal = Number(riskPayload.filtered_total ?? riskPayload.total ?? state.risks.length);
     state.workItems = items.items || []; state.proposals = proposals.items || []; state.executionTasks = tasks.items || []; state.dataCenter = data;
+    window.RetailHackathonIntegration?.refreshContext?.();
     window.RetailApp?.renderOverview();
     if (!state.risks.some((risk) => Number(risk.id) === Number(state.selectedId))) state.selectedId = state.risks[0]?.id;
     renderRiskList();
@@ -1191,6 +1233,7 @@ async function hydrate() {
     }
   } catch (error) {
     state.risks = [...fallbackRisks]; state.riskTotal = state.risks.length;
+    window.RetailHackathonIntegration?.refreshContext?.();
     renderRiskList();
     renderSupportPages();
     renderSelectedDetail();
@@ -1297,6 +1340,7 @@ function renderRoute() {
   renderPageBack(route);
   const titles = {
     overview: "经营总览", today: "今日工作台", "slow-diagnosis": "滞销库存诊断", transfer: "跨门店智能调拨",
+    "decision-entry": "方案决策", "execution-followup": "审批与执行跟进",
     "expiry-rescue": "近效期现金抢救", "procurement-brake": "采购刹车", risks: "风险案件",
     tasks: "核查任务", approvals: "方案审批", execution: "执行追踪", simulation: "现金流模拟",
     cases: "案例库", data: "数据中心", settings: "系统设置",
@@ -1311,6 +1355,7 @@ function renderRoute() {
     else renderDiagnosis();
   }
   if (["today", "tasks", "approvals", "execution", "data"].includes(route)) refreshCommonRecords();
+  window.dispatchEvent(new CustomEvent("retail:route-change", { detail: { route } }));
 }
 
 function openAgent() {
