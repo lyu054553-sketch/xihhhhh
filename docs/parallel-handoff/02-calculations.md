@@ -17,9 +17,14 @@ comparison_request = {
     "horizon_end": "2026-10-25",
     "assumption_ids": [],
     "inputs": {
-        "quantity": 80,
-        "target_store_id": "ST-002",
         "sales_settlement_days": 0,
+    },
+    "business_inputs": {
+        "transfer": {
+            "origin_store_id": "ST-001", "target_store_id": "ST-002",
+            "sku_id": "SKU-001", "lot_id": "LOT-001-001",
+            "quantity": 80, "base_unit": "盒", "route_fee_cny": 24,
+        },
     },
 }
 result = calculator.compare(facts, comparison_request)
@@ -66,15 +71,23 @@ reference_data = {
 
 每项计算检查自己的依赖。其他门店的数据质量提示保留在响应 `fact_notices[]`，不会阻断已完整的本地方案；目标库存、商品配置、日历缺失仍不可确认。需要比较多店时，查询应包含全部相关门店供给／需求，不应仅查询源店然后假定目标无库存。
 
-### `request.inputs`
+### `request.business_inputs` 与兼容 `request.inputs`
 
-顶层保留正式 `context/risk_keys/objective/horizon_start/horizon_end/assumption_ids`。可变条件放在唯一 `inputs` 对象：
+已对齐最新 `00-integration-prep.md` 和公共契约：正式 `business_inputs.transfer/promotion/return/procurement` 直接进入各动作的计算参数，不写入事实、不污染留店基线，也不影响其他动作候选。`inputs` 保留既有内部调用协议与结算周期、组合等扩展：
 
 ```text
 store_id, sku_id, lot_id, quantity, target_store_id, transport_fee, eta_days,
 sales_settlement_days, promotion_id, stage_prices, settlement_mode, return_terms,
 purchase_intent, recommended_quantity, new_payment_date, combination
 ```
+
+- 同一动作不得同时使用新旧可变字段，即使值相同也明确拒绝。冲突范围：调拨的 `quantity/target_store_id/transport_fee/eta_days`；促销的 `quantity/promotion_id/stage_prices`；退供的 `quantity/settlement_mode/return_terms`；采购的 `purchase_intent/recommended_quantity/new_payment_date`。`sales_settlement_days` 仍可与所有动作输入共用。`business_inputs` 不与 `inputs.combination` 混用；组合子动作继续独立提供条件。
+- 省略字段时使用已知事实；显式 `null` 不回退事实，返回该动作的精确 `missing_fields` 路径，数量／金额保留未知，不产生可执行动作或库存变化。其他候选正常计算。数量必须同时提供商品的 `base_unit`，所有门店、商品、批次、供应商、路线均校验事实范围，拒绝浏览器夹带的供应商确认或库存计算结果。
+- 调拨 `route_fee_cny` 为本次用户报价；服务继续验证适用路线、单位、需求、安全量、容量、日历和效期。报价修改不是已支付费用，输入来源保留于候选 `details.input_source` 和假设。
+- 促销 `products[]/price_stages[]` 对齐已知活动、组合和阶段后重算组数、组件库存、成本、底价及毛利约束；价格变化不杜撰需求弹性。改变组合成分／比例或阶段日期、删除阶段时，不能借用原组合需求或省掉活动费用，返回 `promotion.products.business_rules_and_demand` 或 `promotion.price_stages.business_rules_and_demand`，待发布相应规则和需求事实后计算。阶段结束不包含在区间内。
+- 退供 `refund/exchange/offset` 分别映射退款、换货、抵款；`fee_cny` 是总执行报价，结合已知手续费拆出运费，不能低于手续费或违背供应商承担运费条款。用户输入不会生成 `supplier_confirmed/packaging_confirmed/acceptance_date`，这些条件缺失时仍不能确认执行。
+- 采购 `quantity` 与最新前端文案一致，表示**原采购意向数量**，并非用户指定后的建议数量。建议数量仍根据现货、在途、时序需求和安全库存重算；例如意向 120、服务仍可建议 60。金额按基础单位处理，已有整箱意向会先转换，再应用局部修改，避免把每箱成本当作每件成本。`quantity=0` 不被当作省略；若需求仍要求补货，结果会说明仍有采购需求。既有 `inputs.recommended_quantity=0` 的明确不下单路径保留，并继续校验缺货约束。
+- `purchase_order_id` 必须唯一匹配当前门店／商品的事实订单；已有订单变更仍列 `confirmed_order_change_permission_and_fee` 缺项，不能当作新的自由采购意向，也不会修改供应商确认或付款事实。无订单编号的采购输入仅是意向。
 
 `stage_prices` 按阶段 ID 指定价格。`return_terms` 是人工已确认条件／明确情景输入，支持 `supplier_confirmed/packaging_confirmed/acceptance_date/refund_ratio_pct/freight_fee/restocking_fee`；换货还需 `replacement_sku_id/replacement_lot_id/replacement_qty/replacement_unit_cost/cash_difference`；抵款还需 `payable_id/credit_apply_date`。采购字段为已确认意向 `store_id/sku_id/quantity/unit/unit_cost/expected_arrival_date/payment_date/supplier_id`。
 
@@ -87,6 +100,8 @@ purchase_intent, recommended_quantity, new_payment_date, combination
 ### 候选和金额
 
 正式枚举严格为 `keep/transfer/promotion/return/procurement`，只在服务边界将内部 `retain/purchase` 转换一次。返回全部正式必填字段、数量单位、现金时间表和版本。
+
+所有候选必含 `inventory_changes[]`，组合组也提供联合库存变化。按 `store_id + sku_id + lot_id` 返回即时 `quantity_before/quantity_after/quantity_delta/base_unit/source_ref`；调拨移出、移入数量守恒，不使用需求周期末预测量。S01 调出批次 `LOT-001-001` 在 ST-001 为 120→40，在 ST-002 为 0→80；ST-002 原有 10 属于另一个批次，不能写成同批 10→90。事实缺少数量时 before/after 为 null。促销上线、保留原状和采购意向均未立即移动实物库存，返回空数组；退供列出计划移出数量，不把未来换入批次当作已收到。计算仍是候选模拟，不代表已经执行。计算版本升级为 `retail-comparison-v2.2`，新字段也参与内容标识。
 
 候选 `calculation.execution_plan` 保存计算出的完整内部执行计划，包含 `type/strategy_id/feasibility/allocations/actions/allocated_qty` 等；供服务端重算比对后保存，绝不能信任浏览器回传的金额或行动。`feasibility` 为 `feasible/blocked/needs_confirmation`；公共 `feasible` 仅第一种为 true。
 
@@ -129,10 +144,12 @@ group = {
 验证命令：
 
 ```text
-python -m unittest tests.hackathon.test_calculations tests.hackathon.test_calculations_contract -q
+python -m unittest tests.hackathon.test_calculations tests.hackathon.test_calculations_contract tests.hackathon.test_calculations_business_inputs -q
 ```
 
 结果：49 项通过（35 项算法测试，14 项正式 DTO／实际 FactService 联测）。覆盖输入不变性、缺项、非法数值、边界日期、在途去重、运费变更、闭店、目标已有库存替代、阶段库存共享、结构化退供、换货／抵款、采购 60、延后付款、超额组合、稳定 ID、跨租户／版本／风险键拒绝，以及多采购意向明确选择、未选择的局部缺项、未知意向和覆盖已确认金额拒绝。真实 RetailFactService 在独立临时 SQLite 中生成 DTO，再由计算服务执行两次比较，验证正式模块一致性；未读取真实业务数据库。
+
+本轮额外 14 项动作输入测试覆盖：新旧冲突、动作局部作用域、输入不变性与稳定标识、同批次库存守恒、显式 null、门店／批次／单位／路线校验、促销价格与变更后的需求缺项、退供报价不伪造供应商接受、采购意向与建议量分离、订单权限缺项、整箱转基础单位及零数量。上述命令完整运行 63 项全部通过（原有 49 项、新增 14 项）。
 
 另以决策时点输入逐一调用 S01／S04／S05／S06／S07／S09／S10 的公共服务：全部正常返回候选；S10 缺需求预测时所有依赖候选不可确认并列缺项。S07 将观察期缩短为 `horizon_end="2026-10-10"` 会合法生成数量 0 的不下单建议；执行模块需支持明确的不下单确认，不能统一用正数量校验拒绝它。
 

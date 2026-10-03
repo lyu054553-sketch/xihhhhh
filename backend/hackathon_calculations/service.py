@@ -14,11 +14,12 @@ from ..domain import money, parse_date
 from ..hackathon_shared import CONTRACT_VERSION, FactQueryResult, ProposalComparison
 from ..serialization import json_value
 from .calculations import compare_options, simulate_cash
+from .inputs import action_inputs
 
 
-CALCULATION_VERSION = "retail-comparison-v2.1"
+CALCULATION_VERSION = "retail-comparison-v2.2"
 ACTION_TYPES = {"retain": "keep", "transfer": "transfer", "promotion": "promotion", "return": "return", "purchase": "procurement"}
-REQUEST_FIELDS = {"context", "risk_keys", "objective", "horizon_start", "horizon_end", "assumption_ids", "inputs"}
+REQUEST_FIELDS = {"context", "risk_keys", "objective", "horizon_start", "horizon_end", "assumption_ids", "inputs", "business_inputs"}
 INPUT_FIELDS = {"store_id", "sku_id", "lot_id", "quantity", "target_store_id", "transport_fee", "eta_days",
                 "sales_settlement_days", "route_id", "promotion_id", "stage_prices", "settlement_mode", "return_terms",
                 "purchase_intent", "recommended_quantity", "new_payment_date", "combination"}
@@ -107,7 +108,7 @@ def _canonical(facts):
 
 def _inputs(request, context, canonical):
     if set(request) - REQUEST_FIELDS:
-        raise ValueError("未知比较请求字段；可变业务条件统一放在 inputs 中")
+        raise ValueError("未知比较请求字段；可变条件放在 business_inputs 或兼容 inputs 中")
     inputs = deepcopy(_object(request.get("inputs", {}), "inputs"))
     if set(inputs) - INPUT_FIELDS:
         raise ValueError("inputs 包含未声明的计算字段")
@@ -148,6 +149,8 @@ def _inputs(request, context, canonical):
                 raise ValueError("组合动作必须使用正式 transfer/promotion/return/procurement 枚举")
             if spec["type"] == "procurement":
                 spec["type"] = "purchase"
+    if "business_inputs" in request:
+        inputs["action_inputs"] = action_inputs(request["business_inputs"], inputs, canonical, target)
     return inputs, target, start, end
 
 
@@ -206,6 +209,7 @@ class CalculationService:
                 group_id = _content_id("GROUP-", {"comparison_id": comparison_id, "calculation": raw, "members": members})
                 groups.append({"group_id": group_id, "member_candidate_ids": members, "feasible": raw["feasibility"] == "feasible",
                                "exclusion_reasons": raw["blocking_reasons"], "missing_fields": raw["missing_fields"],
+                               "inventory_changes": self._inventory_changes(raw, canonical),
                                "calculation": {"calculation_version": CALCULATION_VERSION, "execution_plan": deepcopy(raw),
                                                "planned_qty": None, "expected_sold_qty": None, "ending_qty": None,
                                                "base_unit": None, "execution_cost_cny": raw["execution_cost"],
@@ -235,44 +239,49 @@ class CalculationService:
 
     @staticmethod
     def _inventory_changes(raw, canonical):
-        """Return immediate stock deltas from the action plan, never forecasts."""
-        from decimal import Decimal
-
-        changes = []
+        """Project immediate, lot-specific physical movements from the plan."""
         tables = canonical["tables"]
         products = {row["sku_id"]: row for row in tables.get("products", [])}
         inventory = tables.get("inventory", [])
         listed = {(row.get("store_id"), row.get("sku_id")) for row in tables.get("store_products", [])}
-
-        def before_for(store_id, sku_id, lot_id):
-            row = next((item for item in inventory if item.get("store_id") == store_id
-                        and item.get("sku_id") == sku_id and item.get("lot_id") == lot_id
-                        and item.get("stock_state") == "on_hand"), None)
-            if row is not None:
-                value = row.get("quantity")
-                return (Decimal(str(value)) if value is not None else None), row.get("source_ref")
-            # A full store-product listing means the absent lot is a known zero;
-            # otherwise absence is unknown and must stay null.
-            if (store_id, sku_id) in listed:
-                return Decimal(0), None
-            return None, None
-
+        changes = {}
         for action in raw.get("actions", []):
-            if action.get("type") != "transfer":
+            if action.get("type") not in {"transfer", "return"}:
                 continue
             sku_id, lot_id = action.get("sku_id"), action.get("lot_id")
             quantity = Decimal(str(action["quantity"])) if action.get("quantity") is not None else None
-            unit = products.get(sku_id, {}).get("base_unit")
             source = action.get("source_store_id") or action.get("store_id")
-            target = action.get("target_store_id")
-            for store_id, direction in ((source, -1), (target, 1)):
-                before, source_ref = before_for(store_id, sku_id, lot_id)
-                delta = quantity * direction if quantity is not None else None
-                after = before + delta if before is not None and delta is not None else None
-                changes.append({"store_id": store_id, "sku_id": sku_id, "lot_id": lot_id,
-                                "quantity_before": before, "quantity_after": after,
-                                "quantity_delta": delta, "base_unit": unit, "source_ref": source_ref})
-        return changes
+            movements = [(source, -quantity if quantity is not None else None)]
+            if action["type"] == "transfer":
+                movements.append((action.get("target_store_id"), quantity))
+            for store, delta in movements:
+                key = (store, sku_id, lot_id)
+                prior = changes.get(key, Decimal(0))
+                changes[key] = (prior + delta) if prior is not None and delta is not None else None
+        output = []
+        for (store, sku, lot), delta in changes.items():
+            rows = [row for row in inventory if row["store_id"] == store and row["sku_id"] == sku
+                    and row["lot_id"] == lot and row["stock_state"] == "on_hand"]
+            if rows and all(row.get("quantity") is not None for row in rows):
+                before = sum((Decimal(str(row["quantity"])) for row in rows), Decimal(0))
+            elif not rows and (store, sku) in listed:
+                before = Decimal(0)
+            else:
+                before = None
+            refs = [row.get("source_ref") or row.get("inventory_id") for row in rows]
+            source_ref = refs[0] if len(refs) == 1 else {
+                "source": "inventory_snapshot", "record_id": canonical["snapshot_id"],
+                "inventory_refs": refs, "known_at": canonical["clock_at"], "is_demo": canonical["is_demo"]}
+            if not refs:
+                source_ref["store_id"] = store
+                source_ref["sku_id"] = sku
+                source_ref["lot_id"] = lot
+            output.append({"store_id": store, "sku_id": sku, "lot_id": lot,
+                           "quantity_before": before,
+                           "quantity_after": before + delta if before is not None and delta is not None else None,
+                           "quantity_delta": delta, "base_unit": products.get(sku, {}).get("base_unit"),
+                           "source_ref": deepcopy(source_ref)})
+        return output
 
     @staticmethod
     def _unavailable(missing):
@@ -351,7 +360,7 @@ class CalculationService:
                      "target_store_id": action.get("target_store_id", raw["details"].get("target_store_id")),
                      "sku_id": scope["sku_id"], "lot_id": None if kind == "purchase" else scope["lot_id"],
                      "quantity": planned, "base_unit": unit, "calculation": calculation,
+                     "inventory_changes": self._inventory_changes(raw, canonical),
                      "assumptions": deepcopy(raw["assumptions"]), "missing_fields": deepcopy(raw["missing_fields"])}
-        candidate["inventory_changes"] = self._inventory_changes(raw, canonical)
         candidate["candidate_id"] = _content_id("CAND-", {"comparison_id": comparison_id, "candidate": candidate})
         return candidate

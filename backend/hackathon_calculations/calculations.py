@@ -154,6 +154,16 @@ def _candidate(key, kind):
             "evidence_refs": [], "details": {}, "confidence_basis": "known_facts_and_explicit_demand_assumptions"}
 
 
+def _unresolved_input(kind, request, start, end):
+    """An explicit unknown cannot silently inherit a value from the snapshot."""
+    candidate = _candidate(kind, kind)
+    candidate.update(allocated_qty=None, execution_cost=None,
+                     missing_fields=list(request["input_missing_fields"]))
+    candidate["details"] = {"input_source": request.get("input_source"),
+                             "target_store_id": request.get("target_store_id")}
+    return _finish(candidate, start, end)
+
+
 def _finish(candidate, start, end, baseline_events=None):
     cash = simulate_cash(baseline_events or [], candidate["settlement_timeline"], start_date=start, end_date=end)
     candidate.update({k: cash["proposed"][k] for k in ("expected_cash_in", "expected_cash_out", "expected_net_cash")})
@@ -423,7 +433,7 @@ def calculate_promotion(facts, request=None):
     """Calculate a shared-inventory, multi-stage bundle under explicit demand cases."""
     request = request or {}
     target, start, end = _scope(facts, request)
-    stages = _rows(facts, "promotion_stages", store_id=target["store_id"])
+    stages = deepcopy(_rows(facts, "promotion_stages", store_id=target["store_id"]))
     if request.get("promotion_id"):
         stages = [s for s in stages if s.get("promotion_id") == request["promotion_id"]]
     result = _candidate("promotion", "promotion")
@@ -439,6 +449,42 @@ def calculate_promotion(facts, request=None):
         raise ValueError("促销组成缺失或商品重复")
     if target.get("sku_id") not in {p["sku_id"] for p in parts}:
         result["blocking_reasons"].append("所选商品不属于该促销组合")
+    supplied_parts = request.get("promotion_products")
+    if supplied_parts is not None:
+        existing = {(part["sku_id"], Decimal(str(part["qty_per_bundle"])), part["base_unit"]) for part in parts}
+        requested = {(part["sku_id"], Decimal(str(part["quantity_per_bundle"])), part["base_unit"]) for part in supplied_parts}
+        if requested != existing:
+            # A different bundle cannot borrow demand/floor-price facts for the
+            # old product composition. Ask for the specific missing rules.
+            result["allocated_qty"] = None
+            result["execution_cost"] = None
+            result["missing_fields"] = ["promotion.products.business_rules_and_demand"]
+            result["details"]["requested_products"] = deepcopy(supplied_parts)
+            return _finish(result, start, end)
+    supplied_stages = request.get("promotion_price_stages")
+    if supplied_stages is not None:
+        rules = {(stage["start_date"], stage["end_date_exclusive"]): stage for stage in stages}
+        if len(rules) != len(stages):
+            raise ValueError("促销事实含重复阶段日期")
+        supplied_periods = {(stage["start_date"], stage["end_date_exclusive"]) for stage in supplied_stages}
+        if supplied_periods != set(rules):
+            result.update(allocated_qty=None, execution_cost=None,
+                          missing_fields=["promotion.price_stages.business_rules_and_demand"])
+            result["details"]["requested_price_stages"] = deepcopy(supplied_stages)
+            return _finish(result, start, end)
+        chosen = []
+        for provided in supplied_stages:
+            period = (provided["start_date"], provided["end_date_exclusive"])
+            if _date(period[1], "end_date_exclusive") <= _date(period[0], "start_date"):
+                raise ValueError("促销阶段结束必须晚于开始，使用半开区间")
+            if period not in rules:
+                result["allocated_qty"] = None
+                result["execution_cost"] = None
+                result["missing_fields"] = ["promotion.price_stages.business_rules_and_demand"]
+                result["details"]["requested_price_stages"] = deepcopy(supplied_stages)
+                return _finish(result, start, end)
+            chosen.append({**rules[period], "bundle_price": provided["price_cny"], "label": provided.get("label")})
+        stages = sorted(chosen, key=lambda stage: stage["start_date"])
     prices = request.get("stage_prices", {})
     if not isinstance(prices, dict) or set(prices) - {s["stage_id"] for s in stages}:
         raise ValueError("stage_prices 必须引用当前活动的阶段")
@@ -621,6 +667,16 @@ def calculate_return(facts, request=None):
     freight = _number(confirmed.get("freight_fee", term.get("freight_fee_cny")), "freight_fee", optional=True)
     if term.get("freight_payer") == "supplier":
         freight = ZERO
+    if "return_total_fee" in request:
+        total_fee = _number(request["return_total_fee"], "return_total_fee")
+        if restocking is not None:
+            if total_fee < restocking:
+                result["blocking_reasons"].append("退供总费用小于已知手续费")
+            elif term.get("freight_payer") == "supplier" and total_fee != restocking:
+                result["blocking_reasons"].append("退供报价与供应商承担运费条款不一致")
+            else:
+                freight = total_fee - restocking
+        result["assumptions"].append("退供总费用为本次用户报价，尚不是供应商接受或已支付费用")
     if freight is None:
         result["missing_fields"].append("freight_fee")
     if restocking is None:
@@ -723,7 +779,18 @@ def calculate_purchase(facts, request=None):
         result["details"] = {"available_intent_ids": sorted(row["intent_id"] for row in intents)}
         return _finish(result, start, end)
     else:
-        intent = {**(intents[0] if intents else {}), **supplied}
+        base_intent = deepcopy(intents[0]) if intents else {}
+        if request.get("purchase_input_unit") and base_intent:
+            product = _product(facts, target["sku_id"])
+            if base_intent.get("unit") == product.get("purchase_unit") and base_intent["unit"] != product.get("base_unit"):
+                factor = _number(product.get("units_per_purchase_unit"), "units_per_purchase_unit", integer=True)
+                if factor <= 0:
+                    raise ValueError("采购单位换算必须大于零")
+                amount = _number(base_intent.get("quantity"), "quantity", optional=True, integer=True)
+                cost = _number(base_intent.get("unit_cost"), "unit_cost", optional=True)
+                base_intent.update(quantity=amount * factor if amount is not None else None,
+                                   unit_cost=cost / factor if cost is not None else None, unit=product["base_unit"])
+        intent = {**base_intent, **supplied}
     required = ("quantity", "unit", "unit_cost", "expected_arrival_date", "payment_date", "supplier_id")
     result["missing_fields"] = [f"purchase_intent.{key}" for key in required if intent.get(key) in (None, "")]
     if result["missing_fields"]:
@@ -1000,23 +1067,36 @@ def compare_options(facts, request=None):
     target, start, end = _scope(facts, request)
     baseline = _normal(facts, request, target, start, end)
     candidates = [baseline]
+    scoped = {kind: {**request, **request.get("action_inputs", {}).get(kind, {})}
+              for kind in ("transfer", "promotion", "return", "purchase")}
+    transfer = scoped["transfer"]
     routes = _rows(facts, "routes", from_store_id=target["store_id"])
-    if request.get("target_store_id"):
-        routes = [r for r in routes if r["to_store_id"] == request["target_store_id"]]
-    if request.get("route_id"):
-        routes = [r for r in routes if r.get("route_id") == request["route_id"]]
-    for route in routes:
-        candidates.append(_transfer(facts, request, target, start, end, route, baseline))
-    if request.get("target_store_id") and not routes:
-        candidate = _candidate(f"transfer:{request['target_store_id']}", "transfer")
-        candidate["missing_fields"] = ["applicable_transfer_route"]
-        candidates.append(_finish(candidate, start, end, baseline["settlement_timeline"]))
-    promotion = calculate_promotion(facts, request)
+    if transfer.get("target_store_id"):
+        routes = [r for r in routes if r["to_store_id"] == transfer["target_store_id"]]
+    if transfer.get("route_id"):
+        routes = [r for r in routes if r["route_id"] == transfer["route_id"]]
+    if transfer.get("input_missing_fields"):
+        candidates.append(_unresolved_input("transfer", transfer, start, end))
+    else:
+        for route in routes:
+            candidate = _transfer(facts, transfer, target, start, end, route, baseline)
+            if transfer.get("input_source"):
+                candidate["details"]["input_source"] = transfer["input_source"]
+                candidate["assumptions"].append("动作输入仅用于本候选；运费修改为用户报价，未被提升为已支付费用")
+            candidates.append(candidate)
+        if (transfer.get("target_store_id") or transfer.get("route_id")) and not routes:
+            candidate = _candidate(f"transfer:{transfer.get('target_store_id')}", "transfer")
+            candidate["missing_fields"] = ["applicable_transfer_route"]
+            candidates.append(_finish(candidate, start, end, baseline["settlement_timeline"]))
+    promotion = (_unresolved_input("promotion", scoped["promotion"], start, end) if scoped["promotion"].get("input_missing_fields")
+                 else calculate_promotion(facts, scoped["promotion"]))
     candidates.append(promotion)
-    returned = calculate_return(facts, request)
+    returned = (_unresolved_input("return", scoped["return"], start, end) if scoped["return"].get("input_missing_fields")
+                else calculate_return(facts, scoped["return"]))
     candidates.append(returned)
-    if _rows(facts, "purchase_intents", store_id=target["store_id"], sku_id=target["sku_id"]) or request.get("purchase_intent"):
-        candidates.append(calculate_purchase(facts, request))
+    if _rows(facts, "purchase_intents", store_id=target["store_id"], sku_id=target["sku_id"]) or scoped["purchase"].get("purchase_intent") or "purchase" in request.get("action_inputs", {}):
+        candidates.append(_unresolved_input("purchase", scoped["purchase"], start, end) if scoped["purchase"].get("input_missing_fields")
+                          else calculate_purchase(facts, scoped["purchase"]))
     baseline["incremental_net_cash_vs_baseline"] = ZERO if baseline["feasibility"] == "feasible" else None
     for candidate in (promotion, returned):
         if candidate["allocations"]:

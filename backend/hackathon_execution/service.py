@@ -128,7 +128,7 @@ class ExecutionService:
     def save_proposal(self, request):
         def save(tx, facts):
             context = facts["context"]
-            comparison_request = {key: request[key] for key in ("context", "risk_keys", "objective", "horizon_start", "horizon_end", "assumption_ids", "inputs") if key in request}
+            comparison_request = {key: request[key] for key in ("context", "risk_keys", "objective", "horizon_start", "horizon_end", "assumption_ids", "inputs", "business_inputs") if key in request}
             risk_keys = request.get("risk_keys", [])
             if not risk_keys or len(risk_keys) != len(set(risk_keys)):
                 raise ValueError("A nonempty unique risk_keys list is required")
