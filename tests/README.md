@@ -6,11 +6,13 @@
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python -m playwright install chromium
-node --test tests/test_frontend_api.mjs tests/test_retail_contract.mjs tests/test_dataset.mjs
-.\.venv\Scripts\python -m unittest tests.test_frontend_browser tests.test_frontend_server tests.test_sample_data -v
+node --test tests/*.mjs
+.\.venv\Scripts\python -m unittest tests.test_frontend_browser tests.test_frontend_server tests.test_sample_data tests.test_workflow_evaluation -v
 ~~~
 
 Node 验证通用请求、错误、v1.2 响应关联和金额、采购参数与输入包。当前协议为元金额、0—100百分比；没有 agent-runs、整数分或旧模拟决策接口。
+
+新增反馈表单测试覆盖否定、未知、人工更正、日期范围、原文关联和转义；导出测试覆盖版本/快照/事实关联、金额原值、缺项、CSV公式防护和三类工作台；业务摘要测试确保不在前端推算缺失结果。评测工具测试使用临时人工记录，验证配对、失败与放弃、成本缺测、证据要求及空模板，不代表真实用户实测或模型评测。
 
 test_frontend_browser 启动实际 FastAPI、独立临时数据库与本地前端代理，使用随机端口和新的浏览器上下文。主流程访问真实业务接口，覆盖工作台计算、保存、提交、审批、待执行任务、反馈核对、采购预览和模拟；不存在用响应夹具替代成功业务计算的步骤。测试每例重置的只是自己的临时数据库。
 

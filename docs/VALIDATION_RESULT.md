@@ -1,58 +1,53 @@
-# v1.2 联调验证记录
+# v1.2 前端工作流验证记录
 
-日期：2026-10-03。分支：zmj。接口基准：魏 lanyangyang 的 f25bbe1，根目录 API_CONTRACT.md 与 FastAPI 1.2.0。此前 v0.3 夹具测试及录像不再作为本轮验证证据。
+日期：2026-10-03。分支：zmj。接口及后端基准：魏 lanyangyang 的 f25bbe1，FastAPI 1.2.0。此记录对应在 1a729e0 之后新增的反馈核查、业务摘要、方案交接导出与评测工具。
 
-## 本轮证据范围
+## 本轮实际结果
 
-浏览器测试启动独立的实际 FastAPI 进程与临时 SQLite，再通过前端公开文件白名单代理访问。成功业务响应来自后端计算和数据库，测试没有使用旧统一运行接口夹具。模拟数据仍是合成种子，没有真实模型请求或外部 ERP 写入。
-
-本轮测试包含：
-
-- 经营总览、来源、元金额及门店数据。
-- 三个工作台的真实计算、无效约束、保存与方案状态。
-- 提交、人工审批、幂等键、待执行任务和人工回执。
-- 反馈原文、人工核对、事实确认及旧方案重算。
-- 模拟参数预览、确认后请求、修改失效、真实结果与 unavailable。
-- 代理路由与文件范围、请求头和查询透传、422 等错误保持。
-- 移动导航、合成输入哈希与数据库隔离。
-
-## 已记录的单项结果
-
-| 验证 | 实际结果 |
+| 验证 | 结果与范围 |
 | --- | --- |
-| JavaScript 请求、v1.2 契约与输入清单 | 44/44 通过 |
-| 后端与样例测试（acceptance、workbenches、teacher_baseline、retail、sample_data） | 62/62 通过，22.975 秒；其中样例14项与下行是同一组，不重复计数 |
-| tests.test_sample_data | 14 项通过，8.476 秒 |
-| sample-data/generate.py --check | 通过，与当前后端输入种子一致 |
-| 样例测试范围 | 50店输入引用、元/比例单位、CSV/JSON、哈希、重复生成、用户数据库隔离、零减量与全减量边界 |
-| HTML / PowerPoint | 8页生成完成，PowerPoint形状边界与讲稿通过；HTML在1440/390像素逐页无横向溢出 |
-| tests.test_frontend_server | 13/13 通过，9.844 秒 |
-| tests.test_frontend_browser 最后一次全量执行 | **20 项：19 通过，1 失败**，17.394 秒；退出码 1 |
-| 浏览器失败用例 | `test_calculated_but_unsaved_input_cannot_approve_the_older_proposal` 在今日待办读取阶段收到实际后端 HTTP 500，未获得可操作方案 |
-| 独立后端并发复现 | 全新临时库，无 reset、无写接口；串行 45/45 成功；9 线程并发 150 次中 85 次 HTTP 500，退出码 1 |
+| JavaScript 全套 | **95/95通过**；请求、契约、样例、反馈核对、交接导出及业务摘要 |
+| 样例与代理 | **27/27通过**：sample_data 14项、frontend_server 13项 |
+| 对照评测工具 | **20/20通过**；配对、缺测、失败、成本精度、证据要求及24条反馈参考结构 |
+| 真实后端浏览器全套 | **27项：26通过，1 error**；23.256秒，未通过全量验收 |
+| 失败用例 | test_action_queue_opens_the_returned_workbench_and_risk |
+| 实际HTTP错误 | 该用例读取 /proposals 与 /work-items 均返回500，今日待办标签因此未渲染 |
+| 数据生成 | sample-data/generate.py --check通过，原输入包仍与后端种子一致 |
+| 静态检查 | node --check app.js、git diff --check通过 |
+| 页面检查 | 已保存调拨工作台及反馈表单截图目视检查；390px反馈表单无页面水平溢出 |
 
-启动器检查与实际启动均已验证：本地首页与实际经营接口返回200，数据库和后端源码不能从公开前端访问；外部API模式、端口占用退出、自有进程关闭及无副作用的 -Check 通过。node --check app.js、样例生成校验及 git diff --check 通过。
+样例、代理和最初18项评测曾合并执行45项通过；评测补充2项后单独执行20项通过，上表不重复计数。最后仅将缺项名称归入共享中文标签表，导出与摘要相关31项已再次通过。
 
-完整复现命令见[测试说明](../tests/README.md)。不能把单项通过或一次完整实录表述为本轮全量验收已通过。backend/ 和根 API_CONTRACT.md 保持与魏的 f25bbe1 完全一致；本轮没有在前端补算或改写后端规则来消除失败。
+## 新增功能的验证方式
 
-## 后端并发阻塞的独立证据
+浏览器测试运行独立实际FastAPI进程、临时SQLite、随机本地端口及前端代理。成功业务结果来自后端，不用固定响应冒充计算。每例只重置自有临时数据库，不打开日常数据库。
 
-Python 3.13.2 / SQLite 3.45.3，FastAPI 版本 1.2.0。`/proposals`、`/work-items` 的日志包含风险 JSON 字段为 null 时的 TypeError，以及 `sqlite3.InterfaceError: bad parameter or other API misuse`。独立复现没有前一个浏览器测试、数据库重置或写请求，串行读取正常；问题仍需魏从数据库连接和线程访问层定位与修复。
+- 反馈核查：原文只读，默认未知不变成已确认事实；人工更正/排除、日期范围及证据按既有字段提交。切换风险后不带入另一门店原文；返回时恢复该风险的核查输入。修改原文后必须先生成新版本，修改核查内容后需重新勾选确认。
+- 业务摘要：三类工作台直接展示返回的库存变化、处置分配、付款压力与现金缺项；不根据输入重新计算结果，不从商品包装猜测单位。
+- 方案交接：实际后端保存后下载CSV与JSON，核对方案编号、版本、数量、状态和说明。下载过程没有业务POST；未保存修改、计算未保存、不完整种子方案及过期版本不能导出。
+- 读取期间版本变化：浏览器先读方案，测试暂停工作台GET；第二客户端向真实后端保存新版本，再放行真实GET。界面拒绝导出旧版本，没有替换成功响应。这是客户端核对，仍不等于服务端原子并发控制。
+- 原有流程：计算、保存、提交、审批、待执行任务、人工回执、跨页写入锁、采购预览与模拟、错误和空租户边界继续回归。
+- 离线评测：空CSV实际输出no_observations；缺测、未执行和失败保持可见。测试里的人工观测仅为工具校验，不是用户或模型实测成绩。
+
+## 仍阻塞稳定验收的后端问题
+
+本轮浏览器失败发生在第一例行动队列加载：当次reset已同步结束，尚未有前一例页面请求。并发GET记录到：
+
+- /proposals：api.py:806 → api.py:555 → store.py:309，sqlite3.InterfaceError: bad parameter or other API misuse。
+- /work-items：api.py:883，TypeError: 'NoneType' object is not subscriptable。
+
+上一轮独立复现使用全新临时库，没有reset、写接口或浏览器：串行45/45成功，9线程并发150次中85次HTTP500。次数随调度变化。证据指向后端共享数据库连接的并发访问路径，最终根因及修复需魏确认；前端未串行化读取、自动重试或跳过用例来掩盖失败。
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\reproduce_backend_concurrency.py
 ```
 
-前端保留并发读取并明确展示服务错误，没有通过串行化客户端、自动重试、跳过用例或静态业务结果让验收转绿。最小复现及处理建议见[前后端对接说明](FRONTEND_INTEGRATION.md#当前联调阻塞并发读取返回-http-500)。
+魏修复后需重跑独立复现及浏览器全套。前端单元测试通过、部分操作链成功和截图均不能代替完整验收。backend/、根API_CONTRACT.md及requirements.txt保持与f25bbe1一致。
 
-## 环境与复现
+## 复现环境与证据边界
 
-使用 Windows、Python 3.13.2、Node.js 24.14.0 与 Chromium 148。规范复现方式是在项目虚拟环境安装 requirements-dev.txt 和 Playwright Chromium。本轮浏览器测试临时通过 PYTHONPATH 使用本机全局 Python 3.13 的 Playwright；幻灯片使用全局 python-pptx 和已有 Chromium。不声称项目虚拟环境已经独立安装这些工具。
+Windows、Python 3.13.2、SQLite 3.45.3、Node.js 24.14.0、Chromium 148。本轮临时通过PYTHONPATH使用本机全局Playwright；规范环境应按[测试说明](../tests/README.md)安装requirements-dev.txt和Chromium。测试只关闭自身启动的服务。
 
-测试使用临时数据库与随机本地端口；只关闭自己启动的进程。样例导出为读取后端种子而单独创建并关闭临时数据库，不访问日常库存数据库。
+现有docs/demo-recording/live-flow.webm和PPT来自上一轮v1.2迁移，未冒充本轮新界面实录。录像使用实际后端、合成数据和合成人工回执，不表示真实模型、ERP操作或客户收益，也不是赛事要求的2—5分钟MP4成片。
 
-## 演示证据与限制
-
-本轮录像为 live-flow：真实浏览器 → 前端代理 → 本地实际后端 → 临时数据库。它记录了一次成功完成的流程；最后一次全量运行仍有上述并发失败。数据和人工回执均为合成；不能证明客户收益、模型理解、外部出库或采购调整。
-
-仍需单独验证：审批 expected_version 并发前置条件、编辑/计算未保存时旧方案失效、身份与权限、真实数据更新、模型质量/成本、真实执行与部分完成恢复。详见[对接说明](FRONTEND_INTEGRATION.md)。前端和本地流程通过不消除这些限制。
+本轮没有新增运行时依赖、模型请求或真实业务收益。真实AI结构、证据、token及费用记录、反馈历史、服务端expected_version、编辑与旧方案失效、权限及外部执行仍需魏提供并单独验收。详见[前后端对接说明](FRONTEND_INTEGRATION.md)、[用户验证](USER_VALIDATION.md)和[赛事检查表](COMPETITION_CHECKLIST.md)。

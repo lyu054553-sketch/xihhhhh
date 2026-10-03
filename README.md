@@ -4,7 +4,7 @@
 
 前端已按魏的 lanyangyang 分支接入实际 FastAPI 后端。经营总览、滞销核查、调拨、近效期、采购刹车、采购情景模拟和审批任务使用真实 HTTP 请求及确定性业务计算；页面不读取测试响应生成业务结果。数据来自虚构零食门店的内置种子，当前没有接入真实大模型或外部 ERP。
 
-主线是：经营总览 → 风险证据 → 工作台计算 → 保存方案 → 提交 → 人工审批 → 生成待执行草稿。采购情景先核对周期、门店、品类与减量比例，确认后才请求模拟。
+主线是：今日待办／经营总览 → 风险证据与门店反馈核对 → 工作台计算 → 保存方案 → 人工审批 → 执行跟进与回执。已保存的方案可导出交接表，交给现有流程处理。采购情景先核对周期、门店、品类与减量比例，确认后才请求模拟。
 
 ## 启动
 
@@ -34,7 +34,9 @@ python -m venv .venv
 
 - 经营总览区分账户余额、库存成本、待关注库存成本和未来采购付款；缺少真实资料时保留 null，显示“未接入／待补充”。
 - 工作台初值来自后端；输入变化后需重新计算、保存新方案。无效计算不能保存或审批。
-- 门店反馈保存原文，当前生成的是规则草稿。用户必须逐项核对并确认，不能把草稿原因当成模型判断。
+- 门店反馈保存原文，用业务表单更正、采信、排除或保留待核实情况；支持补充现况与证据，不需要编辑 JSON。当前生成的是规则草稿，未核实的原因、日期和处理情况不会自动确认为事实。
+- 今日待办按待评估、审批、跟进、完成及草稿展示。三个工作台先呈现库存变化、处置分配或付款压力，再展开完整依据；计算仍来自后端。
+- 已保存且有效的方案可下载 CSV 交接表或 JSON 结构化资料，附方案版本、快照、事实与计算版本。下载前重新读取核对；编辑未保存或版本过期时禁止导出。资料仅供执行准备，不自动写入 ERP。
 - 审批成功只代表方案已审批；执行接口只创建本地待执行任务。人工填写回执也不代表系统向外部 ERP 写入。
 - 模拟仅支持减少可调整采购数量。备注文字不自动转换成任意业务动作；参数确认后才发送模拟请求。
 - 金额单位为人民币元，百分比使用 0—100。调拨改变库存位置；库存成本减少、少采购与现金到账不能混为一谈。
@@ -51,8 +53,11 @@ python -m venv .venv
 - [HTML 演示稿](docs/DEMO_SLIDES.html) · [PowerPoint](docs/DEMO_SLIDES.pptx)
 - [实际后端联调录像](docs/demo-recording/live-flow.webm) · [截图](docs/demo-recording/live-flow.png)
 - [验证记录](docs/VALIDATION_RESULT.md)
+- [用户访谈与人工＋GPT对照评测](docs/USER_VALIDATION.md) · [赛事交付检查表](docs/COMPETITION_CHECKLIST.md)
 
-录像使用本地真实后端和合成数据，不表示模型调用或真实业务执行。旧 v0.3 草案仅用于历史查阅，不再指导当前页面或 API。
+现有录像记录上一轮 v1.2 界面，使用本地真实后端和合成数据，不表示模型调用或真实业务执行，也不是赛事要求的 2—5 分钟 MP4 成片。旧 v0.3 草案仅用于历史查阅，不再指导当前页面或 API。
+
+新增 24 条门店反馈人工参考语料与既有 24 条采购参考独立存放，均未运行真实模型评测。对照 CSV 只有表头；`python scripts/evaluate_workflow.py --input sample-data/evaluation/workflow-comparison.csv` 输出未采集状态。真实模型的准确率、token 成本及商业收益仍待实测。
 
 ## 开发验证
 
@@ -60,8 +65,8 @@ python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python -m playwright install chromium
 .\.venv\Scripts\python sample-data/generate.py --check
-.\.venv\Scripts\python -m unittest tests.test_sample_data tests.test_frontend_server tests.test_frontend_browser -v
-node --test tests/test_frontend_api.mjs tests/test_retail_contract.mjs tests/test_dataset.mjs
+.\.venv\Scripts\python -m unittest tests.test_sample_data tests.test_frontend_server tests.test_workflow_evaluation tests.test_frontend_browser -v
+node --test tests/*.mjs
 node --check app.js
 git diff --check
 ~~~

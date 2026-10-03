@@ -67,4 +67,14 @@ account.balance、inventory.cost、purchase_commitments.amount 分别来自账�
 
 ## 下一轮验收
 
+### 朱已完成、可直接对接的前端能力
+
+反馈确认已使用业务表单，提交仍为原有 `confirmed` 对象中的七个字段：factors、current_status、date_interpretation、raw_text、source、evidence_refs、remediation_status。未核实情况保留pending_confirmation/unknown，排除为rejected，明确采信为confirmed；causal_status仍为unknown。额外模型字段仅供查看，不会无审核地随确认提交。魏接入AI时需确认这些语义及日期结构是否继续沿用，变更先更新契约。
+
+方案交接导出只读取已保存的input/calculation/basis，并核对方案ID、current_version、snapshot_id、fact_version及risk_id。旧种子方案只有actions，不足以形成完整交接表；前端会要求先到工作台计算保存。单位未返回时明确标为未提供，不从包装名猜测。下载不调用写接口，不改变审批或执行状态。
+
+下一批请魏提供：模型请求与运行状态、错误/超时/限流、原文证据、输入输出token及费用/币种/计价依据、是否复用缓存、反馈历史查询，以及并发版本冲突响应。当前前端不编造这些字段，也不以规则输出或静态数字代替。反馈核对会话目前只在当前浏览器页面内按risk_id保留，刷新后的历史恢复需要查询接口。
+
+朱新增的 `sample-data/evaluation/` 是离线评测资料，不是运行接口Schema；待AI契约冻结后双方确认映射与判分。真实访谈、成本及“人工＋GPT”对照结果目前未采集。
+
 优先用一条“风险核对 → 调拨测算 → 保存 → 审批 → 任务 → 人工回执”复核版本失效与并发。真实数据、权限、模型和 ERP 逐项接入后分别记录证据，避免用页面测试通过数代替业务收益或模型效果。
