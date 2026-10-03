@@ -21,6 +21,15 @@ python -m venv .venv
 
 也可运行 start.bat，或使用 python scripts/run_local.py。默认前端地址为 http://127.0.0.1:8000。启动器运行本地后端与公开文件白名单代理；Windows 默认数据库位于 %LOCALAPPDATA%\huobuyaqian\retail-demo-v1.2.db，避免在静态网站目录保存数据库。已有数据库会保留，本次启动不会自动重置历史方案。按 Ctrl+C 关闭本次启动的服务，不影响其他服务。
 
+彩排或现场演示可使用独立会话：
+
+~~~powershell
+.\start.ps1 -DemoSession
+.\start.ps1 -DemoSession -Check
+~~~
+
+跨平台入口为 `python scripts/run_local.py --demo-session`。每次启动创建独立临时合成库；在启动终端按 Ctrl+C 正常关闭后清理，重新运行即恢复种子状态。演示期间需要保留的交接资料应先下载，关闭浏览器本身不会停止服务。该模式忽略父环境的日常数据库路径，只给自己的后端进程指定合成模式；不能与显式 `-Database`、外部 `-ApiBase` 或有效 `AGENT_API_BASE` 同用。普通启动继续保留日常数据库。`-Check` 不创建数据库或启动服务。
+
 连接已有后端时，传入包含 /api/v1 的完整地址：
 
 ~~~powershell
@@ -34,6 +43,7 @@ python -m venv .venv
 
 - 经营总览区分账户余额、库存成本、待关注库存成本和未来采购付款；缺少真实资料时保留 null，显示“未接入／待补充”。
 - 工作台初值来自后端；输入变化后需重新计算、保存新方案。无效计算不能保存或审批。
+- 工作台编辑按商品与模块保留在当前页面内存。切换商品后重新读取服务事实，只恢复改动过的可编辑字段；候选门店失效时要求重新选择。可保存编辑输入，或放弃当前商品的本地编辑。刷新／关闭时对未保存工作台、门店反馈编辑及进行中的操作请求浏览器离开提示；真正持久保存以服务回执为准。编辑输入保存与方案保存是两个状态。
 - 门店反馈保存原文，用业务表单更正、采信、排除或保留待核实情况；支持补充现况与证据，不需要编辑 JSON。当前生成的是规则草稿，未核实的原因、日期和处理情况不会自动确认为事实。
 - 今日待办按待评估、审批、跟进、完成及草稿展示。三个工作台先呈现库存变化、处置分配或付款压力，再展开完整依据；计算仍来自后端。
 - 已保存且有效的方案可下载 CSV 交接表或 JSON 结构化资料，附方案版本、快照、事实与计算版本。下载前重新读取核对；编辑未保存或版本过期时禁止导出。资料仅供执行准备，不自动写入 ERP。
@@ -64,11 +74,10 @@ python -m venv .venv
 ~~~powershell
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python -m playwright install chromium
-.\.venv\Scripts\python sample-data/generate.py --check
-.\.venv\Scripts\python -m unittest tests.test_sample_data tests.test_frontend_server tests.test_workflow_evaluation tests.test_frontend_browser -v
-node --test tests/*.mjs
-node --check app.js
+.\.venv\Scripts\python scripts/run_acceptance.py
 git diff --check
 ~~~
+
+统一入口执行语法检查、全部JavaScript测试、样例校验、全部Python测试及后端并发复现。各步骤失败后仍收集其余结果，最终有失败即返回非零；每次的日志、汇总与浏览器实录保存在 `output/acceptance/` 独立目录。GitHub Actions使用同一入口运行Windows／Ubuntu检查并上传失败证据，不跳过已知后端500。
 
 测试使用临时数据库与随机本地端口，具体结果和限制见[测试说明](tests/README.md)及[验证记录](docs/VALIDATION_RESULT.md)。演示稿由 python scripts/build_demo_slides.py 生成，需要 python-pptx。

@@ -6,6 +6,18 @@
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python -m playwright install chromium
+.\.venv\Scripts\python scripts/run_acceptance.py
+~~~
+
+统一入口也适用于Linux/macOS，使用已安装依赖的Python解释器执行；原 `bash scripts/run_acceptance.sh` 调用同一入口。它展开文件参数，不依赖Windows shell通配符。检查顺序是后端语法、前端语法、全部Node测试、样例生成校验、全部unittest discover、独立后端并发复现。失败不重试、不跳过，后续步骤继续执行，最终任一步失败即退出1；配置/记录异常退出2，中断退出130。
+
+每次输出到 `output/acceptance/<UTC时间戳-PID>/`，包含逐步日志、状态/退出码/耗时汇总和实际浏览器主流程实录。文件夹已被Git忽略，保留失败和未执行状态，不覆盖前次结果。浏览器录像成功与否分别命名，不能替代全套结果。
+
+GitHub Actions在zmj提交、相关PR及zmj手动运行时使用Python 3.13、Node 22，在Windows和Ubuntu运行同一入口；矩阵不因另一系统失败提前结束，最后上传结果，保留14天。测试失败仍让任务失败。环境安装失败时保留Action安装日志，尽可能执行其余验收以记录缺失项。不能把工作流文件已添加写成两个系统已通过。
+
+需要定位单项时可运行：
+
+~~~powershell
 node --test tests/*.mjs
 .\.venv\Scripts\python -m unittest tests.test_frontend_browser tests.test_frontend_server tests.test_sample_data tests.test_workflow_evaluation -v
 ~~~
@@ -13,6 +25,8 @@ node --test tests/*.mjs
 Node 验证通用请求、错误、v1.2 响应关联和金额、采购参数与输入包。当前协议为元金额、0—100百分比；没有 agent-runs、整数分或旧模拟决策接口。
 
 新增反馈表单测试覆盖否定、未知、人工更正、日期范围、原文关联和转义；导出测试覆盖版本/快照/事实关联、金额原值、缺项、CSV公式防护和三类工作台；业务摘要测试确保不在前端推算缺失结果。评测工具测试使用临时人工记录，验证配对、失败与放弃、成本缺测、证据要求及空模板，不代表真实用户实测或模型评测。
+
+工作台编辑测试覆盖模块与商品隔离、只保存变化字段、最新事实/候选重建、未保存提示、保存回执关联、读写失败恢复及单商品放弃。启动器测试用真实临时后端验证演示会话恢复初值、父环境日常库保持不变、普通真实模式、外部模式、端口冲突及关闭清理；验收入口测试验证失败传播、后续步骤执行、参数空格和证据目录保留。
 
 test_frontend_browser 启动实际 FastAPI、独立临时数据库与本地前端代理，使用随机端口和新的浏览器上下文。主流程访问真实业务接口，覆盖工作台计算、保存、提交、审批、待执行任务、反馈核对、采购预览和模拟；不存在用响应夹具替代成功业务计算的步骤。测试每例重置的只是自己的临时数据库。
 
