@@ -1,0 +1,78 @@
+{
+  "contract_version": "v1.2",
+  "synthetic": true,
+  "as_of_date": "2026-10-03",
+  "snapshot_id": "snapshot-demo-v1",
+  "disclaimer": "合成演示请求；GET输入初值取本次服务响应。此文件不是API结果，审批和执行必须使用实时ID及版本。",
+  "items": [
+    {
+      "id": "overview",
+      "title": "经营总览",
+      "method": "GET",
+      "path": "/api/v1/retail/overview?period=7&store_id=all"
+    },
+    {
+      "id": "diagnosis",
+      "title": "滞销诊断",
+      "method": "GET",
+      "path": "/api/v1/risks/1"
+    },
+    {
+      "id": "transfer",
+      "title": "跨店调拨输入",
+      "method": "GET",
+      "path": "/api/v1/workbenches/transfer?risk_id=1"
+    },
+    {
+      "id": "expiry",
+      "title": "近效期处置输入",
+      "method": "GET",
+      "path": "/api/v1/workbenches/expiry-rescue?risk_id=3"
+    },
+    {
+      "id": "procurement",
+      "title": "采购刹车输入",
+      "method": "GET",
+      "path": "/api/v1/workbenches/procurement-brake?risk_id=4"
+    },
+    {
+      "id": "cash-20",
+      "title": "两周减少20%采购",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 14,
+        "reduction_pct": 20,
+        "store_id": "all",
+        "category": null,
+        "request_text": "未来两周少采购20%，会不会缺货？"
+      }
+    },
+    {
+      "id": "cash-zero",
+      "title": "零减量对照",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 14,
+        "reduction_pct": 0,
+        "store_id": "STORE-001",
+        "category": null,
+        "request_text": "西湖文三店未来两周维持原采购量。"
+      }
+    },
+    {
+      "id": "cash-full",
+      "title": "全减量边界",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 30,
+        "reduction_pct": 100,
+        "store_id": "all",
+        "category": "坚果炒货",
+        "request_text": "所有门店未来30天暂停可调整的坚果采购。"
+      }
+    }
+  ]
+}

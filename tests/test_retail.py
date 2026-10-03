@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend import api
+from tests.backend_fixture import api
 from backend.retail import demo_dataset, demo_overview, simulate_purchase
 from backend.store import Store
 

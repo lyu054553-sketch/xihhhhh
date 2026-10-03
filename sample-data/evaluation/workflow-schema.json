@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workflow comparison observations",
+  "description": "朱维护的离线人工评测输入。不是模型响应或当前v1.2业务API协议。CSV所有表头必须出现，未测数字留空；脚本还执行跨字段与唯一性约束。",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "case_id",
+      "arm",
+      "status",
+      "review_outcome",
+      "elapsed_seconds",
+      "human_seconds",
+      "human_edits",
+      "execution_status",
+      "model_cost_cny",
+      "labor_cost_cny",
+      "other_cost_cny",
+      "evidence_ref",
+      "execution_evidence_ref",
+      "notes"
+    ],
+    "properties": {
+      "case_id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80,
+        "description": "相同输入、数据快照与任务的唯一编号；每个方法仅一行，重试包含在该行总时间和成本中。"
+      },
+      "arm": {
+        "type": "string",
+        "enum": [
+          "human_gpt",
+          "system"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "not_run",
+          "in_progress",
+          "completed",
+          "failed",
+          "abandoned"
+        ]
+      },
+      "review_outcome": {
+        "type": "string",
+        "enum": [
+          "not_assessed",
+          "accepted",
+          "revision_needed",
+          "rejected"
+        ],
+        "description": "相同验收标准下的人工评审结果；不是模型自评分。"
+      },
+      "elapsed_seconds": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1000000000,
+        "description": "从开始处理到完成或停止的总墙钟时间，包含重试和等待；未测留空，不将完成状态改成未完成来掩盖缺测。"
+      },
+      "human_seconds": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1000000000,
+        "description": "实际人工投入秒数；未测留空。"
+      },
+      "human_edits": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1000000000,
+        "description": "人工更改事实、参数或建议的次数，计数规则在实验前冻结。"
+      },
+      "execution_status": {
+        "type": "string",
+        "enum": [
+          "not_applicable",
+          "not_started",
+          "draft_only",
+          "performed",
+          "failed",
+          "unknown"
+        ],
+        "description": "业务执行结果；生成草稿不属于performed。"
+      },
+      "model_cost_cny": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1000000000,
+        "multipleOf": 0.000001,
+        "description": "本案例全部模型请求费用，人民币元；准确已知无调用才填0。"
+      },
+      "labor_cost_cny": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1000000000,
+        "multipleOf": 0.000001,
+        "description": "按预先记录的人工成本口径填写；未知留空。"
+      },
+      "other_cost_cny": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1000000000,
+        "multipleOf": 0.000001,
+        "description": "本案例其他成本；实施分摊与换汇规则须在notes记录。"
+      },
+      "evidence_ref": {
+        "type": "string",
+        "description": "脱敏计时、操作、费用及评审记录的引用；有测量或已评审时必填。"
+      },
+      "execution_evidence_ref": {
+        "type": "string",
+        "description": "performed必填：实际执行回执，不能只填方案或模拟编号。"
+      },
+      "notes": {
+        "type": "string",
+        "description": "失败原因、计费依据、固定条件及异常说明。"
+      }
+    }
+  }
+}

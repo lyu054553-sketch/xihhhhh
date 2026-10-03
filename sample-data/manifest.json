@@ -1,0 +1,55 @@
+{
+  "contract_version": "v1.2",
+  "snapshot_id": "snapshot-demo-v1",
+  "as_of_date": "2026-10-03",
+  "is_demo": true,
+  "synthetic": true,
+  "source": "零食仓 · 合成零售经营样例 v1",
+  "timezone": "Asia/Shanghai",
+  "generation": "deterministic_backend_seed",
+  "units": {
+    "money": "CNY",
+    "percentage": "0..100",
+    "quantity": "商品单位"
+  },
+  "input_origin": "backend.store.Store.seed_demo + backend.retail.demo_dataset",
+  "disclaimer": "合成输入导出，不是客户数据、API响应、模型输出或真实收益；下载不会导入或重置服务。",
+  "record_counts": {
+    "stores": 50,
+    "inventory_inputs": 313,
+    "confirmed_payments": 100,
+    "risk_inputs": 13,
+    "workbench_inputs": 11
+  },
+  "scenario_count": 8,
+  "files": {
+    "dataset": {
+      "path": "generated/dataset.json",
+      "sha256": "a46ec640d296ae194d0607c009e729d2b03b42369262e75ace207dcc16a5d68f"
+    },
+    "stores": {
+      "path": "generated/stores.csv",
+      "sha256": "b9c37a7d0ae3c7256fc7b580585a4fff558971b8fd8332841581b24e2155dafc"
+    },
+    "inventory_inputs": {
+      "path": "generated/inventory_inputs.csv",
+      "sha256": "4bff7133d3f43f533da90726c2c310b62312d8169535aa3c9fec68b347c64744"
+    },
+    "confirmed_payments": {
+      "path": "generated/confirmed_payments.csv",
+      "sha256": "3aeab3781a1f94158e7531b28f4a4ab11ddd48f3e04dde8ff2789d6efeff3498"
+    },
+    "risk_inputs": {
+      "path": "generated/risk_inputs.csv",
+      "sha256": "664508283f7a926df1d67adb3858c36fdad4cf19a1762811ffe45ca837303308"
+    },
+    "workbench_inputs": {
+      "path": "generated/workbench_inputs.json",
+      "sha256": "e409f6ad84b1bfd86135683aba5f7d052676853a1fdc6b9a2701b03cc8336a22"
+    },
+    "scenario_requests": {
+      "path": "generated/scenario_requests.json",
+      "sha256": "a422dd4930db90212884d560af9a99b1dd2ad6bb7fd35b4694737aa9645578f8"
+    }
+  }
+}
