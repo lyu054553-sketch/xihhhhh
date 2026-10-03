@@ -450,12 +450,19 @@ class Store:
     def proposal_versions(self, proposal_id: str, tenant_id: str = "demo") -> List[Dict[str, Any]]:
         return self.rows("SELECT pv.* FROM proposal_versions pv JOIN proposals p ON p.id=pv.proposal_id WHERE p.id=? AND p.tenant_id=? ORDER BY pv.version", (proposal_id, tenant_id))
 
+    @staticmethod
+    def _scoped_idem(tenant_id: str, operation: str, proposal_id: str, key: str) -> str:
+        # 幂等键由客户端提供，表上的 UNIQUE 约束又是全局的；落库前绑定租户、操作与方案，
+        # 避免一个租户的键命中或占用另一个租户（或另一个方案）的记录。
+        # tenant 与客户端键是自由文本，用 JSON 数组编码保证字段边界无歧义。
+        return json.dumps([tenant_id, operation, proposal_id, key], ensure_ascii=False, separators=(",", ":"))
+
     def approve(self, proposal_id: str, actor_id: str = "demo-user", tenant_id: str = "demo", idem: Optional[str] = None) -> Dict[str, Any]:
         proposal = self.proposal(proposal_id, tenant_id)
         if not proposal:
             raise ValueError("方案不存在或无权访问")
-        key = idem or "approve|%s|%s" % (proposal_id, proposal["current_version"])
-        existing = self.one("SELECT * FROM approvals WHERE idempotency_key=?", (key,))
+        key = self._scoped_idem(tenant_id, "approve", proposal_id, idem or "approve|%s|%s" % (proposal_id, proposal["current_version"]))
+        existing = self.one("SELECT * FROM approvals WHERE idempotency_key=? AND tenant_id=?", (key, tenant_id))
         if existing:
             return existing
         if proposal["status"] in ("needs_replan", "invalidated", "replan_pending"):
@@ -475,15 +482,15 @@ class Store:
         proposal = self.proposal(proposal_id, tenant_id)
         if not proposal:
             raise ValueError("方案不存在或无权访问")
-        key = idem or "execute|%s|%s" % (proposal_id, proposal["current_version"])
-        existing = self.one("SELECT * FROM execution_tasks WHERE idempotency_key=?", (key,))
+        key = self._scoped_idem(tenant_id, "execute", proposal_id, idem or "execute|%s|%s" % (proposal_id, proposal["current_version"]))
+        existing = self.one("SELECT * FROM execution_tasks WHERE idempotency_key=? AND tenant_id=?", (key, tenant_id))
         if existing:
             return existing
         if proposal["status"] != "approved":
             raise ValueError("只有已批准的具体版本可以生成执行任务")
         task_id = "TASK-" + uuid.uuid4().hex[:10]
         self.conn.execute("INSERT INTO execution_tasks(id, tenant_id, proposal_id, proposal_version, status, idempotency_key, created_at, metadata_json) VALUES(?,?,?,?,?,?,?,?)", (task_id, tenant_id, proposal_id, proposal["current_version"], "draft_pending_external_execution", key, now_iso(), json.dumps({"external_write": False}, ensure_ascii=False)))
-        self.conn.execute("UPDATE proposals SET status='execution_task_created' WHERE id=?", (proposal_id,))
+        self.conn.execute("UPDATE proposals SET status='execution_task_created' WHERE id=? AND tenant_id=?", (proposal_id, tenant_id))
         self.conn.commit()
         self.audit("execution_task", task_id, "created", {"proposal_id": proposal_id, "external_write": False}, tenant_id, actor_id)
         return self.one("SELECT * FROM execution_tasks WHERE id=?", (task_id,)) or {}
