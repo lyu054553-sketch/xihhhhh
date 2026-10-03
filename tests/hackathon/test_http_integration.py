@@ -98,10 +98,19 @@ class HackathonHttpIntegrationTests(unittest.TestCase):
         }, headers=self.headers)
         self.assertEqual(pending_response.status_code, 200, pending_response.text)
         self.assertEqual(pending_response.json()["proposals"][0]["proposal_id"], saved["proposal_id"])
+        draft_case = self.client.get(f"{BASE}/cases/{saved['proposal_id']}", headers=self.headers)
+        self.assertEqual(draft_case.status_code, 200, draft_case.text)
+        self.assertEqual(draft_case.json()["case"]["case_id"], saved["proposal_id"])
+        self.assertEqual(draft_case.json()["case"]["tasks"], [])
+        stale_list = self.client.get(BASE + "/proposals", params={
+            "scenario_id": "S01", "branch_id": "transfer_80", "snapshot_id": "stale-snapshot",
+        }, headers=self.headers)
+        self.assertEqual(stale_list.status_code, 409, stale_list.text)
         overview = self.client.get(BASE + "/overview", params={"scenario_id": "S01", "branch_id": "transfer_80"}, headers=self.headers)
         self.assertEqual(overview.status_code, 200, overview.text)
         self.assertEqual(overview.json()["overview"]["pending_approvals"]["count"], 1)
         self.assertIn("purchase_commitments", overview.json()["overview"])
+        self.assertIn("task_links", overview.json()["overview"])
 
         assignments = [{"action_line_id": line["action_line_id"], "assignee_id": "P-003",
                         "due_at": "2026-10-25T18:00:00+08:00"} for line in saved["action_lines"]]
@@ -126,9 +135,20 @@ class HackathonHttpIntegrationTests(unittest.TestCase):
         task_detail = self.client.get(f"{BASE}/tasks/{task_id}", headers=self.headers)
         self.assertEqual(task_detail.status_code, 200, task_detail.text)
         self.assertEqual(task_detail.json()["task"]["task_id"], task_id)
+        self.assertEqual(task_detail.json()["accounting"]["task_id"], task_id)
         tasks = self.client.get(BASE + "/tasks", params={"scenario_id": "S01", "branch_id": "transfer_80"}, headers=self.headers)
         self.assertEqual(tasks.status_code, 200, tasks.text)
         self.assertEqual(tasks.json()["tasks"][0]["task_id"], task_id)
+        filtered_tasks = self.client.get(BASE + "/tasks", params={
+            "scenario_id": "S01", "branch_id": "transfer_80", "task_id": task_id,
+            "task_version": tasks.json()["tasks"][0]["version"],
+        }, headers=self.headers)
+        self.assertEqual(filtered_tasks.status_code, 200, filtered_tasks.text)
+        self.assertEqual(len(filtered_tasks.json()["tasks"]), 1)
+        case_detail = self.client.get(f"{BASE}/cases/{saved['proposal_id']}", headers=self.headers)
+        self.assertEqual(case_detail.status_code, 200, case_detail.text)
+        self.assertEqual(case_detail.json()["case"]["proposal"]["proposal_id"], saved["proposal_id"])
+        self.assertEqual(len(case_detail.json()["case"]["tasks"]), 1)
 
         replay_response = self.client.post(BASE + "/replays/advance", json={
             "scenario_id": "S01", "branch_id": "transfer_80", "as_of": "2026-10-25T23:59:00+08:00",
@@ -177,6 +197,41 @@ class HackathonHttpIntegrationTests(unittest.TestCase):
         image_response = self.client.get(f"{BASE}/materials/{draft['material_id']}/image", headers=self.headers)
         self.assertEqual(image_response.status_code, 200, image_response.text)
         self.assertEqual(image_response.content, image)
+
+        # The unavailable provider result stays visibly failed; a human can
+        # still confirm manually, and a fresh draft read restores published context.
+        s07_context = self.client.get(BASE + "/context", params={
+            "scenario_id": "S07", "branch_id": "reduce_to_60",
+        }, headers=self.headers).json()["context"]
+        s07_facts = self.client.post(BASE + "/facts/query", json={"context": s07_context}, headers=self.headers).json()
+        s07_target = s07_facts["reference_data"]["target"]
+        s07_product = next(row for row in s07_facts["reference_data"]["tables"]["products"]
+                           if row["sku_id"] == s07_target["sku_id"])
+        extraction = self.client.post(BASE + "/materials/extract", json={
+            "context": s07_context, "actor_id": "P-001", "kind": "purchase_intent",
+            "text": "人工录入采购意向", "source_name": "采购意向确认测试",
+        }, headers={**self.headers, "Idempotency-Key": "integration-extract-manual-confirm"})
+        self.assertEqual(extraction.status_code, 200, extraction.text)
+        manual_draft = extraction.json()
+        self.assertEqual(manual_draft["status"], "failed")
+        fields = {"store_id": s07_target["store_id"], "sku_id": s07_target["sku_id"],
+                  "quantity": 10, "unit": s07_product["base_unit"], "unit_cost_cny": 5,
+                  "supplier_id": s07_product["supplier_id"], "expected_arrival_date": "2026-10-10",
+                  "payment_date": "2026-10-15"}
+        material_confirmation = self.client.post(f"{BASE}/materials/{manual_draft['draft_id']}/confirm", json={
+            "actor_id": "P-001", "expected_fact_version": s07_context["fact_version"],
+            "fields": fields, "accepted_unresolved_fields": [],
+        }, headers={**self.headers, "Idempotency-Key": "integration-confirm-manual-material"})
+        self.assertEqual(material_confirmation.status_code, 200, material_confirmation.text)
+        confirmed_context = material_confirmation.json()["context"]
+        self.assertEqual(confirmed_context["fact_version"], s07_context["fact_version"] + 1)
+        refreshed_draft = self.client.get(f"{BASE}/materials/drafts/{manual_draft['draft_id']}", headers=self.headers)
+        self.assertEqual(refreshed_draft.status_code, 200, refreshed_draft.text)
+        self.assertEqual(refreshed_draft.json()["context"], confirmed_context)
+        refreshed_facts = self.client.post(BASE + "/facts/query", json={"context": confirmed_context}, headers=self.headers).json()
+        published_intent = next(row for row in refreshed_facts["reference_data"]["tables"]["purchase_intents"]
+                                if row["intent_id"] == manual_draft["draft_id"])
+        self.assertEqual(published_intent["intent_status"], "draft_unconfirmed")
 
     def test_explicit_hackathon_write_requires_idempotency(self):
         response = self.client.post(BASE + "/agent-runs", json={}, headers=self.headers)

@@ -1090,13 +1090,23 @@ def compare_options(facts, request=None):
             candidates.append(_finish(candidate, start, end, baseline["settlement_timeline"]))
     promotion = (_unresolved_input("promotion", scoped["promotion"], start, end) if scoped["promotion"].get("input_missing_fields")
                  else calculate_promotion(facts, scoped["promotion"]))
+    if scoped["promotion"].get("input_source"):
+        promotion["details"]["input_source"] = scoped["promotion"]["input_source"]
+        promotion["assumptions"].append("促销动作输入仅用于本候选，不会改写活动事实或需求弹性")
     candidates.append(promotion)
     returned = (_unresolved_input("return", scoped["return"], start, end) if scoped["return"].get("input_missing_fields")
                 else calculate_return(facts, scoped["return"]))
+    if scoped["return"].get("input_source"):
+        returned["details"]["input_source"] = scoped["return"]["input_source"]
+        returned["assumptions"].append("退供条件仅用于本候选；输入不构成供应商接受、验收或实际结算回执")
     candidates.append(returned)
     if _rows(facts, "purchase_intents", store_id=target["store_id"], sku_id=target["sku_id"]) or scoped["purchase"].get("purchase_intent") or "purchase" in request.get("action_inputs", {}):
-        candidates.append(_unresolved_input("purchase", scoped["purchase"], start, end) if scoped["purchase"].get("input_missing_fields")
-                          else calculate_purchase(facts, scoped["purchase"]))
+        purchase = (_unresolved_input("purchase", scoped["purchase"], start, end) if scoped["purchase"].get("input_missing_fields")
+                    else calculate_purchase(facts, scoped["purchase"]))
+        if scoped["purchase"].get("input_source"):
+            purchase["details"]["input_source"] = scoped["purchase"]["input_source"]
+            purchase["assumptions"].append("采购动作输入仅用于本候选，不会生成采购订单或付款事实")
+        candidates.append(purchase)
     baseline["incremental_net_cash_vs_baseline"] = ZERO if baseline["feasibility"] == "feasible" else None
     for candidate in (promotion, returned):
         if candidate["allocations"]:

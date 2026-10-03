@@ -6,9 +6,9 @@ from .calculations import _date, _number
 
 FIELDS = {
     "transfer": {"origin_store_id", "target_store_id", "sku_id", "lot_id", "quantity", "base_unit", "route_id", "route_fee_cny", "eta_days", "sales_settlement_days"},
-    "promotion": {"promotion_id", "products", "price_stages", "sales_settlement_days"},
-    "return": {"supplier_id", "sku_id", "lot_id", "quantity", "base_unit", "settlement_method", "fee_cny"},
-    "procurement": {"intent_id", "supplier_id", "purchase_order_id", "sku_id", "quantity", "base_unit", "unit_cost_cny", "expected_arrival_date", "payment_date", "new_payment_date", "recommended_quantity"},
+    "promotion": {"promotion_id", "products", "price_stages", "quantity", "sku_id", "store_id", "lot_id", "base_unit", "sales_settlement_days"},
+    "return": {"supplier_id", "sku_id", "lot_id", "quantity", "base_unit", "settlement_method", "fee_cny", "store_id", "return_terms"},
+    "procurement": {"intent_id", "supplier_id", "purchase_order_id", "sku_id", "store_id", "quantity", "base_unit", "unit_cost_cny", "expected_arrival_date", "payment_date", "new_payment_date", "recommended_quantity"},
 }
 LEGACY_FIELDS = {
     "transfer": {"quantity", "target_store_id", "transport_fee", "eta_days"},
@@ -67,12 +67,30 @@ def action_inputs(value, legacy, facts, target):
         kind = "purchase" if public_kind == "procurement" else public_kind
         current = {"input_missing_fields": missing, "input_source": path}
         normalized[kind] = current
-        for field, target_field in (("origin_store_id", "store_id"), ("sku_id", "sku_id"), ("lot_id", "lot_id")):
+        scope_fields = (("origin_store_id", "store_id"), ("sku_id", "sku_id"), ("lot_id", "lot_id"))
+        if public_kind == "promotion":
+            scope_fields = (("origin_store_id", "store_id"),)
+        for field, target_field in scope_fields:
             if field in raw and raw[field] is not None and raw[field] != target[target_field]:
                 raise ValueError(f"{path}.{field} 与当前比较范围不一致")
-        product = products.get(target["sku_id"], {})
+        if raw.get("store_id") is not None:
+            stores = {row["store_id"] for row in tables.get("stores", [])}
+            if raw["store_id"] not in stores:
+                raise ValueError(f"{path}.store_id 不在当前事实范围")
+            if public_kind != "promotion" and raw["store_id"] != target["store_id"]:
+                raise ValueError(f"{path}.store_id 与当前比较门店不一致")
+        product_id = raw.get("sku_id") if public_kind == "promotion" else target["sku_id"]
+        product = products.get(product_id, {})
+        if public_kind == "promotion" and raw.get("sku_id") is not None and not product:
+            raise ValueError(f"{path}.sku_id 不在商品事实中")
         if "base_unit" in raw and raw["base_unit"] is not None and raw["base_unit"] != product.get("base_unit"):
             raise ValueError(f"{path}.base_unit 与商品基础单位不一致")
+        if public_kind == "promotion" and raw.get("lot_id") is not None and not any(
+            row.get("store_id") == raw.get("store_id", target["store_id"])
+            and row.get("sku_id") == product_id and row.get("lot_id") == raw["lot_id"]
+            and row.get("stock_state") == "on_hand" for row in tables.get("inventory", [])
+        ):
+            raise ValueError(f"{path}.lot_id 不匹配当前促销门店和商品")
         if "quantity" in raw:
             if "base_unit" not in raw:
                 raise ValueError(f"{path}.quantity 必须同时提供 base_unit")
@@ -105,9 +123,37 @@ def action_inputs(value, legacy, facts, target):
                 current["settlement_mode"] = {"refund": "cash_refund", "exchange": "exchange", "offset": "payable_credit"}.get(raw["settlement_method"])
             if raw.get("fee_cny") is not None:
                 _number(raw["fee_cny"], path + ".fee_cny")
+            if "return_terms" in raw:
+                terms = raw["return_terms"]
+                if terms is not None:
+                    term_fields = {"supplier_confirmed", "packaging_confirmed", "acceptance_date", "refund_ratio_pct",
+                                   "freight_fee_cny", "restocking_fee_cny", "replacement_sku_id", "replacement_lot_id",
+                                   "replacement_qty", "replacement_unit_cost", "cash_difference", "payable_id", "credit_apply_date"}
+                    _object(terms, term_fields, path + ".return_terms")
+                    mapped_terms = {({"freight_fee_cny": "freight_fee", "restocking_fee_cny": "restocking_fee"}.get(key, key)): value
+                                    for key, value in terms.items()}
+                    for field in ("acceptance_date", "credit_apply_date"):
+                        if mapped_terms.get(field) is not None:
+                            _date(mapped_terms[field], path + ".return_terms." + field)
+                    for field in ("refund_ratio_pct", "freight_fee", "restocking_fee", "replacement_unit_cost", "cash_difference"):
+                        if mapped_terms.get(field) is not None:
+                            _number(mapped_terms[field], path + ".return_terms." + field)
+                    if mapped_terms.get("refund_ratio_pct") is not None and _number(mapped_terms["refund_ratio_pct"], path + ".return_terms.refund_ratio_pct") > 100:
+                        raise ValueError("refund_ratio_pct 不能超过 100")
+                    for field in ("supplier_confirmed", "packaging_confirmed"):
+                        if field in mapped_terms and mapped_terms[field] is not None and type(mapped_terms[field]) is not bool:
+                            raise ValueError(f"{path}.return_terms.{field} 必须为布尔值或 null")
+                    if "fee_cny" in raw and raw["fee_cny"] is not None:
+                        mapped_terms.setdefault("freight_fee", raw["fee_cny"])
+                    current["return_terms"] = mapped_terms
         elif public_kind == "promotion":
             if raw.get("promotion_id") is not None:
                 current["promotion_id"] = raw["promotion_id"]
+            for field in ("quantity", "sku_id", "store_id", "lot_id"):
+                if field in raw:
+                    current[field] = raw[field]
+            if raw.get("quantity") is not None:
+                _number(raw["quantity"], path + ".quantity", integer=True)
             for key, fields in (("products", {"sku_id", "quantity_per_bundle", "base_unit"}),
                                 ("price_stages", {"stage_id", "label", "price_cny", "start_date", "end_date_exclusive"})):
                 if key not in raw or raw[key] is None:
@@ -171,6 +217,8 @@ def action_inputs(value, legacy, facts, target):
         else:
             intent = {}
             current["purchase_input_unit"] = product.get("base_unit")
+            if raw.get("store_id") is not None:
+                current["store_id"] = raw["store_id"]
             if raw.get("intent_id") is not None:
                 override_fields = ("supplier_id", "sku_id", "quantity", "base_unit", "unit_cost_cny",
                                    "expected_arrival_date", "payment_date", "purchase_order_id")

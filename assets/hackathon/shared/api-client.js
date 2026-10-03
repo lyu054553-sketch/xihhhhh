@@ -112,7 +112,9 @@
       listProposals: (params = {}) => request(`/hackathon/proposals${queryString(params)}`),
       listTasks: (params = {}) => request(`/hackathon/tasks${queryString(params)}`),
       getOverview: (params = {}) => request(`/hackathon/overview${queryString(params)}`),
-      getTask: (taskId) => request(`/hackathon/tasks/${encodeURIComponent(taskId)}`),
+      getTask: (taskId, params = {}) => request(
+        `/hackathon/tasks/${encodeURIComponent(taskId)}${queryString(params)}`,
+      ),
       recordChannelAction: (taskId, body, idempotencyKey) => request(
         `/hackathon/tasks/${encodeURIComponent(taskId)}/channel-actions`,
         { method: "POST", body, idempotencyKey },
@@ -126,7 +128,9 @@
         { method: "POST", body, idempotencyKey },
       ),
       getAccounting: (params = {}) => request(`/hackathon/accounting${queryString(params)}`),
-      getCase: (caseId) => request(`/hackathon/cases/${encodeURIComponent(caseId)}`),
+      getCase: (caseId, params = {}) => request(
+        `/hackathon/cases/${encodeURIComponent(caseId)}${queryString(params)}`,
+      ),
     };
     return Object.freeze(client);
   }

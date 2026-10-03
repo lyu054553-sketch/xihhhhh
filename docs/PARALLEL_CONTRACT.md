@@ -274,11 +274,15 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 
 ### 待确认方案列表
 
-**GET `/api/v1/hackathon/proposals?scenario_id=...&branch_id=...&status=pending_approval`（已注册）**返回当前上下文中的方案记录，不把待审批草稿与已批准执行任务混在一起。列表响应为 `{contract_version, proposals[], metadata}`；每行至少含 `proposal_id/proposal_version/status/context/candidate_id/action_type/title/risk_keys/action_lines/created_at/updated_at/missing_fields`。筛选 `status=pending_approval` 时仅返回待确认项；空列表返回 `proposals: []`。金额和数量仍来自保存时的服务端候选快照，不在列表路由重算或补值。
+**GET `/api/v1/hackathon/proposals?scenario_id=...&branch_id=...&status=pending_approval`（已注册）**返回当前上下文中的方案记录，不把待审批草稿与已批准执行任务混在一起。列表响应为 `{contract_version, proposals[], metadata}`；每行至少含 `proposal_id/proposal_version/status/context/candidate_id/action_type/title/risk_keys/action_lines/created_at/updated_at/missing_fields`。筛选 `status=pending_approval` 时仅返回待确认项；空列表返回 `proposals: []`。可选 `proposal_id/proposal_version` 用于限定当前方案版本；快照、时点、数据版本或事实版本与当前上下文不一致时返回 409。金额和数量来自保存时经服务端校验的候选快照，列表读取不重算。
+
+### 任务与案例读取
+
+**GET `/api/v1/hackathon/tasks?scenario_id=...&branch_id=...`（已注册）**通过 `ExecutionService.list_tasks` 返回保存的执行任务，支持 `status/task_id/task_version/proposal_id/proposal_version` 过滤；空列表明确返回 `tasks: []`。**GET `/tasks/{task_id}`**返回限定到单任务的任务、核算、渠道和时间线，可带任务／方案版本查询参数。**GET `/cases/{case_id}`**中的 `case_id` 与稳定 `proposal_id` 相同；返回已保存的方案版本、确认历史、任务、回执时间线及该方案范围的核算。草稿也可读取案例，但不生成空任务或核算记录。上述读操作只读公共账表，不调用计算或模型；历史方案金额保留保存值，事实版本变化由 `requires_recalculation` 标出。
 
 ### 经营总览汇总
 
-**GET `/api/v1/hackathon/overview?scenario_id=...&branch_id=...&snapshot_id=...&as_of=...`（已注册）**以当前同一业务快照返回首页四张指标卡和门店库存资金表；不会通过任务列表拼算账户、库存或采购付款金额。响应中 `metadata` 提供 `is_demo/source/as_of_date/as_of/data_version/fact_version/source_refs/missing_fields`；`overview` 字段如下：
+**GET `/api/v1/hackathon/overview?scenario_id=...&branch_id=...&snapshot_id=...&as_of=...`（已注册）**以当前同一业务快照返回首页四张指标卡和门店库存资金表。账户余额、库存／风险成本、30 日已确认采购承诺由 `RetailFactService.get_overview` 统一计算；执行服务只增加待确认方案成本、`task_links[]` 与各门店待办链接，路由不重复汇总经营事实。响应中 `metadata` 提供 `is_demo/source/as_of_date/as_of/data_version/fact_version/source_refs/missing_fields`；未知保持 `null`。
 
 ```json
 {
@@ -286,9 +290,10 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
   "inventory": {"cost": null, "risk_cost": null, "source": "库存快照待聚合"},
   "purchase_commitments": {"amount": null, "count": null, "horizon_days": 30, "status": "unknown", "source": "付款计划未接入"},
   "pending_approvals": {"count": 0, "amount": null, "known_amount": null, "missing_count": 0},
+  "task_links": [],
   "stores": [{
     "store_id": "ST-001", "store_name": "示例门店", "inventory_cost": null,
-    "risk_cost": null, "turnover_days": null, "primary_risk": null,
+    "risk_cost": null, "turnover_days": null, "primary_risk": null, "risk_types": [],
     "work_item_id": null, "work_item_label": null, "pending_label": "未知",
     "missing_fields": ["inventory_cost", "risk_cost"]
   }]
@@ -603,7 +608,7 @@ const mounted = window.HackathonDecision.mount(document.querySelector("#decision
 mounted.destroy();
 ```
 
-跟进组件使用 `listTasks(contextQuery) + listProposals({...contextQuery, status: "pending_approval"}) + getOverview(overviewQuery)` 分开加载执行任务、待确认方案与经营聚合；列表项互不替代。`GET /hackathon/overview` 的未知值以 `null` 展示，不能从任务事件或 fixture 推算后端汇总。
+跟进组件使用 `listTasks(contextQuery) + listProposals({...contextQuery, status: "pending_approval"}) + getOverview(overviewQuery)` 加载任务、待确认方案与经营聚合；列表项互不替代。总览中的 `pending_approvals/task_links` 由执行读服务补充；经营事实只由数据服务聚合。`GET /hackathon/overview` 的未知值以 `null` 展示，不能从任务事件或 fixture 推算后端汇总。
 
 组件在容器上 dispatch 以下可冒泡 `CustomEvent`，`detail` 至少带 `context`：
 
@@ -621,4 +626,4 @@ mounted.destroy();
 
 任务 1—6 按 `docs/PARALLEL_DEVELOPMENT.md` 与各自提示词约定的独占路径工作。本契约与共享适配器由任务框 0 维护。若实现需要偏离字段、路径、事务或组件签名，先在自己的 `docs/parallel-handoff/` 记录原因与替代提议；不要悄悄建立第二套契约。
 
-总集成已完成服务注册与迁移、唯一 `Store` 注入、`/api/v1/hackathon/*` 路由、静态代理 allowlist、主页面组件挂载、动作级业务输入转换、库存变化、待确认方案列表和首页聚合。S01 已通过本地 HTTP 服务完成比较、保存、确认、任务、回放和核算主线；S07 采购与 S06 促销公共输入通过代表性 HTTP 路由验证，S05 退供保留供应商／包装／验收缺项并阻止确认。模型 provider 未配置时，材料与 Agent 返回持久化的不可用状态；不调用外部模型，不把本地预览夹具当作接口成功。截图级视觉核验没有通过 CUA 完成，可使用上传的页面截图做人工对照。
+总集成已完成服务注册与迁移、唯一 `Store` 注入、`/api/v1/hackathon/*` 路由、静态代理 allowlist、原版绿色外壳组件挂载、计算服务内的动作级输入验证、按批次库存变化、执行读服务的待确认方案列表和首页聚合。总集成在合并分支先保存为 `cd3d180`，随后仅按序 cherry-pick 后端增量 `c62827e/a1bbad6/92e59d3/54d995b`（本地提交 `9b2b3fa/42ffc8d/0deab15/8a7ee8f`）；没有引入 `5deb452` 的另一套前端壳。HTTP 联测覆盖 S01 调拨、方案保存与确认、任务读取、回放核算；S07 采购、S06 促销和 S05 缺条件退供；经营总览复用数据服务，材料刷新恢复读取保存的确认上下文。模型 provider 未配置时，材料与 Agent 返回持久化不可用状态；预览 fixture 和 MockTransport 不作为真实接口／模型成功。CUA 截图环境仍异常，截图级视觉核验未完成。

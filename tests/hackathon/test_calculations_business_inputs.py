@@ -124,6 +124,22 @@ class BusinessInputTests(unittest.TestCase):
         self.assertFalse(candidate["feasible"])
         self.assertTrue(candidate["exclusion_reasons"])
 
+    def test_documented_promotion_scope_and_stage_ids_use_the_same_validator(self):
+        facts = self.samples["S06"]
+        target = facts["reference_data"]["target"]
+        product = next(row for row in facts["reference_data"]["tables"]["products"]
+                       if row["sku_id"] == target["sku_id"])
+        stages = facts["reference_data"]["tables"]["promotion_stages"]
+        supplied = {"promotion_id": stages[0]["promotion_id"], "store_id": target["store_id"],
+                    "sku_id": target["sku_id"], "lot_id": target["lot_id"],
+                    "base_unit": product["base_unit"], "quantity": 20, "sales_settlement_days": 0,
+                    "products": self.promotion()["products"],
+                    "price_stages": [{"stage_id": row["stage_id"], "price_cny": row["bundle_price"]} for row in stages]}
+        candidate = self.candidate(self.compare("S06", business={"promotion": supplied}), "promotion")
+        self.assertTrue(candidate["feasible"], candidate["missing_fields"])
+        self.assertEqual(candidate["quantity"], 20)
+        self.assertEqual(candidate["calculation"]["details"]["input_source"], "business_inputs.promotion")
+
     def test_promotion_changes_cannot_reuse_unrelated_demand_or_skip_fees(self):
         for mutation in ("products", "dates", "subset", "null"):
             inputs = self.promotion()
