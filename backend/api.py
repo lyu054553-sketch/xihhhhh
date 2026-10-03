@@ -33,6 +33,7 @@ from .domain import (
     validate_action_bundle,
 )
 from .store import Store
+from .hackathon_shared import HackathonServices, install_services
 from .errors import BusinessConflict
 from .serialization import numeric_response, dumps
 from .imports import inventory_rows, REQUIRED_INVENTORY_FIELDS
@@ -49,6 +50,8 @@ if os.environ.get("INVENTORY_AGENT_MODE", "demo") != "real":
 
 app = FastAPI(title="货不压钱｜连锁零售库存资金 Agent API", version="1.4.0")
 app.state.model_config = load_model_config()
+app.state.store = store
+install_services(app, HackathonServices(database=store))
 
 
 class InvestigationInput(BaseModel):

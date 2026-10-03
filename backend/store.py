@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 from threading import RLock
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 from .domain import (TEACHER_BASELINE_VERSION, evidence_label, evidence_level, money,
                      calculate_transfer, calculate_expiry_rescue, calculate_procurement_brake, teacher_baseline)
@@ -239,6 +240,30 @@ class Store:
     def _commit(self):
         if self._transaction_depth == 0:
             self.conn.commit()
+
+    @contextmanager
+    def transaction(self) -> Iterator[sqlite3.Connection]:
+        """Expose the shared SQLite transaction boundary to feature services.
+
+        The reentrant lock remains held for the whole context. Nested Store
+        methods join this transaction because ``_transaction_depth`` is
+        nonzero; only the outermost scope commits or rolls back.
+        """
+        with self._lock:
+            outer = self._transaction_depth == 0
+            if outer:
+                self.conn.execute("BEGIN IMMEDIATE")
+            self._transaction_depth += 1
+            try:
+                yield self.conn
+                if outer:
+                    self.conn.commit()
+            except BaseException:
+                if outer:
+                    self.conn.rollback()
+                raise
+            finally:
+                self._transaction_depth -= 1
 
     @_serialized
     def _migrate_real_inventory_lines(self) -> None:
