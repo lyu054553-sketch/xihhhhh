@@ -1,0 +1,4 @@
+-r requirements.txt
+playwright>=1.49,<2
+python-pptx>=1,<2
+httpx>=0.28,<1

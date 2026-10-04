@@ -1,9 +1,9 @@
 const fallbackRisks = [
-  { id: 1, sku: "SKU-88310", product: "钙维生素D软胶囊", store: "西湖文三店", sales_30: 12, comparison: [18, 22, 26, 30, 30, 34, 38, 42], inventory_qty: 120, unit_cost: 80, days_to_sell: 168, risk_type: "调拨", priority: "紧急", observation: "近30天销量低于同规格对照门店中位数 60%；原因待核查。", evidence_level: "partial", evidence_label: "部分支持", missing_fields: ["shelf_availability", "stockout_records"], proposal_id: "PROP-AC10-001", proposal_status: "pending_approval" },
-  { id: 3, sku: "SKU-34106", product: "藿香正气口服液", store: "拱墅运河店", sales_30: 16, comparison: [18, 22, 25], inventory_qty: 90, unit_cost: 76, days_to_sell: 146, risk_type: "促销", priority: "紧急", observation: "近效期批次预计无法在当前速度下售完；需求与效期证据部分支持。", evidence_level: "partial", evidence_label: "部分支持", missing_fields: ["sellable_days"] },
-  { id: 2, sku: "SKU-10428", product: "阿胶块 250g", store: "余杭未来店", sales_30: 8, comparison: [12, 18, 20, 25], inventory_qty: 110, unit_cost: 80, days_to_sell: 214, risk_type: "退供", priority: "高", observation: "库存覆盖天数偏高；采购量与退换条件待核查。", evidence_level: "insufficient", evidence_label: "信息不足", missing_fields: ["supplier_return_terms"] },
-  { id: 4, sku: "SKU-55091", product: "乳酸菌素片 32片", store: "上城庆春店", sales_30: 14, comparison: [19, 20, 23], inventory_qty: 80, unit_cost: 59, days_to_sell: 137, risk_type: "采购刹车", priority: "高", observation: "销量下降但在途采购状态待核查。", evidence_level: "insufficient", evidence_label: "信息不足", missing_fields: ["purchase_order_status"] },
-  { id: 5, sku: "SKU-79033", product: "血糖试纸 50片", store: "临平东湖店", sales_30: 20, comparison: [24, 28, 30], inventory_qty: 70, unit_cost: 55, days_to_sell: 119, risk_type: "调拨", priority: "中", observation: "门店间销量差异需结合规模和可售天数核查。", evidence_level: "insufficient", evidence_label: "信息不足", missing_fields: ["store_scale", "sellable_days"] },
+  { id: 1, sku: "SKU-88310", product: "每日坚果 25g", store: "西湖文三店", sales_30: 12, comparison: [18, 22, 26, 30, 30, 34, 38, 42], inventory_qty: 120, unit_cost: 80, days_to_sell: 168, risk_type: "调拨", priority: "紧急", observation: "近30天销量低于同规格对照门店中位数 60%；原因待核查。", evidence_level: "partial", evidence_label: "部分支持", missing_fields: ["shelf_availability", "stockout_records"], proposal_id: "PROP-AC10-001", proposal_status: "pending_approval" },
+  { id: 3, sku: "SKU-34106", product: "芒果果汁 300ml", store: "拱墅运河店", sales_30: 16, comparison: [18, 22, 25], inventory_qty: 90, unit_cost: 76, days_to_sell: 146, risk_type: "促销", priority: "紧急", observation: "近效期批次预计无法在当前速度下售完；需求与效期证据部分支持。", evidence_level: "partial", evidence_label: "部分支持", missing_fields: ["sellable_days"] },
+  { id: 2, sku: "SKU-10428", product: "巧克力礼盒 200g", store: "余杭未来店", sales_30: 8, comparison: [12, 18, 20, 25], inventory_qty: 110, unit_cost: 80, days_to_sell: 214, risk_type: "退供", priority: "高", observation: "库存覆盖天数偏高；采购量与退换条件待核查。", evidence_level: "insufficient", evidence_label: "信息不足", missing_fields: ["supplier_return_terms"] },
+  { id: 4, sku: "SKU-55091", product: "香辣薯片 110g", store: "上城庆春店", sales_30: 14, comparison: [19, 20, 23], inventory_qty: 80, unit_cost: 59, days_to_sell: 137, risk_type: "采购刹车", priority: "高", observation: "销量下降但在途采购状态待核查。", evidence_level: "insufficient", evidence_label: "信息不足", missing_fields: ["purchase_order_status"] },
+  { id: 5, sku: "SKU-79033", product: "海盐薯片 80g", store: "临平东湖店", sales_30: 20, comparison: [24, 28, 30], inventory_qty: 70, unit_cost: 55, days_to_sell: 119, risk_type: "调拨", priority: "中", observation: "门店间销量差异需结合规模和可售天数核查。", evidence_level: "insufficient", evidence_label: "信息不足", missing_fields: ["store_scale", "sellable_days"] },
 ];
 
 const caseCategories = [
@@ -18,55 +18,128 @@ const caseCategories = [
 
 const featuredCases = [
   {
-    id: "CASE-TRANSFER-01", featured: true, tags: ["transfer"], image: "assets/cases/cross-store-transfer.png",
-    category: "跨店调拨", title: "西湖文三店：积压商品跨店调拨后完成销售",
-    summary: "钙维生素D软胶囊在西湖文三店积压，通过调拨至余杭未来店，30天内实现销售，有效减少库存占用。",
-    metrics: [["120 件", "调出数量"], ["28 天", "完成销售"], ["¥9,600", "减少库存占用"]],
-    scenario: "单店积压、其他门店需求较好", impact: 9600, speed: 28, route: "transfer",
+    id: "CASE-TRANSFER-01", featured: true, tags: ["transfer"], image: "assets/retail-nuts.png", visual: "nuts", product: "每日坚果礼盒",
+    category: "跨店调拨", title: "古荡店坚果礼盒调往文三店",
+    summary: "古荡店有 600 袋慢销，文三店缺货。调拨 80 袋后，文三店 21 天售出 64 袋。",
+    metrics: [["80 袋", "古荡 → 文三"], ["64 袋", "21 天售出"], ["¥24", "调拨运费"]],
+    scenario: "一店积压、另一店动销较快", route: "transfer",
+    outcome: { value: "¥1,256", label: "模拟多赚（扣商品成本与运费）", status: "模拟已执行", note: "假设文三店调入前无可售库存，64 袋销量来自本次调拨；古荡店调出后仍能满足本店需求。" },
+    flow: [
+      { stage: "发现", module: "滞销诊断 Agent", title: "古荡店积压，文三店有需求", detail: "古荡店每日坚果礼盒库存 600 袋、日销约 2 袋；文三店可售库存为 0，预计 21 天可售 64 袋。" },
+      { stage: "测算", module: "跨店调拨 Agent", title: "建议古荡店 → 文三店调拨 80 袋", detail: "按安全库存、门店销量和运输条件核算；古荡店调出后剩 520 袋，文三店收到 80 袋。" },
+      { stage: "执行", module: "门店确认与调拨回执", title: "80 袋完成调拨，运费 ¥24", detail: "商品成本 ¥6,400 仅从一店转到另一店；调拨当时没有产生销售回款。" },
+      { stage: "结果", module: "销售回执", title: "文三店 21 天售出 64 袋", detail: "按演示售价 ¥100／袋收到销售款 ¥6,400；其余 16 袋仍在文三店库存。" },
+    ],
+    moneyFlow: [
+      { label: "库存成本位置变化", value: "¥6,400", detail: "80 袋 × ¥80；店间调拨，不是现金流入", type: "neutral" },
+      { label: "销售回款", value: "+¥6,400", detail: "64 袋 × ¥100；出售后形成回款", type: "in" },
+      { label: "已售商品成本", value: "−¥5,120", detail: "64 袋 × ¥80；成本结转，不是出售当天的现金流出", type: "neutral" },
+      { label: "调拨运费", value: "−¥24", detail: "实际执行成本", type: "out" },
+    ],
+    formula: "¥6,400 销售回款 − ¥5,120 商品成本 − ¥24 运费 = ¥1,256 模拟多赚",
   },
   {
-    id: "CASE-EXPIRY-01", featured: true, tags: ["expiry"], image: "assets/cases/expiry-clearance.png",
-    category: "近效期处置", title: "古荡店：近效期商品促销清库存",
-    summary: "针对45天内到期的藿香正气口服液，制定门店促销方案，2周内完成销售，避免报损。",
-    metrics: [["85%", "库存周转提升"], ["45 天", "清仓周期"], ["¥6,800", "避免报损"]],
-    scenario: "近效期商品、季节性商品", impact: 6800, speed: 14, route: "expiry-rescue",
+    id: "CASE-EXPIRY-01", featured: true, tags: ["expiry"], image: "assets/retail-drink.png", visual: "drink", product: "气泡果汁整箱",
+    category: "近效期处置", title: "湖滨店气泡果汁分批处置",
+    summary: "40 箱气泡果汁仅剩 18 天可售，方案把调拨、促销和退供分开测算。",
+    metrics: [["18 天", "剩余可售"], ["10 箱", "计划调拨"], ["16 箱", "计划促销"]],
+    scenario: "批次可售时间短、单店销量不足", route: "expiry-rescue",
+    outcome: { value: "¥1,600", label: "方案预计回款，尚未到账", status: "待执行测算", note: "促销和退供都需实际售出或收到供应商退款；调拨 10 箱只改变库存位置，不计为回款。" },
+    flow: [
+      { stage: "发现", module: "近效期 Agent", title: "40 箱果汁剩余可售 18 天", detail: "按现有销量，湖滨店难以在效期内卖完全部批次。" },
+      { stage: "测算", module: "近效期处置 Agent", title: "拆分为调拨 10 箱、促销 16 箱、退供 8 箱", detail: "剩余 6 箱继续观察；调拨去向和退供条件都需人工确认。" },
+      { stage: "待执行", module: "门店与供应商确认", title: "先审批价格和退供条款", detail: "促销价按 ¥62／箱、供应商退供按 ¥76／箱做演示测算。" },
+      { stage: "预计", module: "现金回收测算", title: "若促销卖出且退供到账，预计回款 ¥1,600", detail: "这是两类未来回款的合计，当前未形成实际到账。" },
+    ],
+    moneyFlow: [
+      { label: "跨店调拨货值", value: "¥760", detail: "10 箱 × ¥76；仅改变库存位置", type: "neutral" },
+      { label: "促销预计回款", value: "+¥992", detail: "16 箱 × ¥62；售出后才形成现金", type: "future" },
+      { label: "退供预计退款", value: "+¥608", detail: "8 箱 × ¥76；供应商到账后确认", type: "future" },
+    ],
+    formula: "¥992 促销预计回款 + ¥608 退供预计退款 = ¥1,600 方案预计回款；不等于利润",
   },
   {
-    id: "CASE-RETURN-01", featured: true, tags: ["return"], image: "assets/cases/supplier-return.png",
-    category: "退供回款", title: "余杭未来店：退供流程优化，退款快速到账",
-    summary: "针对滞销的阿胶块，核实退供政策并与供应商沟通，完成80盒退货，6天内退款到账。",
-    metrics: [["80 盒", "退货数量"], ["6 天", "处理周期"], ["¥6,400", "退款到账"]],
-    scenario: "供应商支持退供、近效期或滞销商品", impact: 6400, speed: 6, route: "risks",
+    id: "CASE-RETURN-01", featured: true, tags: ["return"], image: "assets/retail-nuts.png", visual: "nuts", product: "混合坚果礼盒",
+    category: "退供回款", title: "未来店坚果礼盒核对条款后退供",
+    summary: "慢销坚果礼盒符合退供条款，退回 40 袋，并在演示回执中确认到账。",
+    metrics: [["40 袋", "退回供应商"], ["8 天", "演示到账"], ["¥80", "每袋成本"]],
+    scenario: "合同允许退供、库存长期慢销", route: "slow-diagnosis",
+    outcome: { value: "¥3,200", label: "演示已到账退款", status: "模拟已执行", note: "退款是原库存成本的回收，不是新增销售收入或利润。真实业务必须以供应商退款回执与银行到账为准。" },
+    flow: [
+      { stage: "发现", module: "滞销诊断 Agent", title: "未来店坚果礼盒长期慢销", detail: "40 袋库存按 ¥80／袋占用 ¥3,200。" },
+      { stage: "核查", module: "退供条件核查", title: "确认合同允许退供", detail: "核对包装、批次、退货期限和供应商确认记录。" },
+      { stage: "执行", module: "退供与物流回执", title: "40 袋退回供应商", detail: "库存成本减少 ¥3,200，但发货时不能算作到账。" },
+      { stage: "到账", module: "退款回执", title: "第 8 天收到 ¥3,200", detail: "款项回到企业账户，完成本次演示退供闭环。" },
+    ],
+    moneyFlow: [
+      { label: "退回库存成本", value: "−¥3,200", detail: "40 袋 × ¥80；货品离开企业库存", type: "neutral" },
+      { label: "供应商退款到账", value: "+¥3,200", detail: "以演示退款回执确认", type: "in" },
+    ],
+    formula: "40 袋 × ¥80／袋 = ¥3,200 演示已回收资金；不计作新增利润",
   },
   {
-    id: "CASE-PROCUREMENT-01", featured: true, tags: ["procurement"], image: "assets/cases/procurement-adjustment.png",
-    category: "采购调整", title: "上城区庆春店：调整采购计划，避免重复补货",
-    summary: "通过分析近3个月动销，发现部分商品采购频次过高，调整后采购量下降，库存占用明显减少。",
-    metrics: [["32%", "采购量下降"], ["¥12,000", "库存占用减少"], ["0 件", "未发生缺货"]],
-    scenario: "动销下降、重复补货风险", impact: 12000, speed: 30, route: "procurement-brake",
+    id: "CASE-PROCUREMENT-01", featured: true, tags: ["procurement"], image: "assets/retail-cookies.png", visual: "cookies", product: "酸奶夹心饼干",
+    category: "采购调整", title: "庆春店饼干库存偏高，暂停重复补货",
+    summary: "庆春店已有 80 箱、在途 40 箱，仍有 60 箱未执行采购；建议减量 40 箱。",
+    metrics: [["40 箱", "减少未执行量"], ["80 箱", "现有库存"], ["0 项", "测算缺货风险"]],
+    scenario: "库存偏高且仍有未执行采购", route: "procurement-brake",
+    outcome: { value: "¥2,360", label: "未来采购付款预计减少", status: "待供应商确认", note: "金额是原计划少付的采购款，不是已到账现金或新增利润；最终取决于供应商变更确认。" },
+    flow: [
+      { stage: "发现", module: "采购刹车 Agent", title: "重复补货将继续增加库存", detail: "庆春店现有 80 箱、在途 40 箱，采购单另有 60 箱未执行。" },
+      { stage: "测算", module: "采购刹车 Agent", title: "建议未执行采购从 60 箱减到 20 箱", detail: "按每箱 ¥59 计算，减量 40 箱；同时核对安全库存和缺货风险。" },
+      { stage: "待确认", module: "采购主管与供应商", title: "提交订单变更", detail: "确认最小起订量、取消费用和供应商是否接受变更。" },
+      { stage: "预计", module: "付款计划对比", title: "原计划 ¥3,540 → 调整后 ¥1,180", detail: "若变更生效，未来采购付款少流出 ¥2,360。" },
+    ],
+    moneyFlow: [
+      { label: "原计划采购付款", value: "−¥3,540", detail: "60 箱 × ¥59", type: "out" },
+      { label: "调整后采购付款", value: "−¥1,180", detail: "20 箱 × ¥59；待供应商确认", type: "future" },
+      { label: "未来少付款", value: "+¥2,360", detail: "现金少流出，不是新增现金收入", type: "future" },
+    ],
+    formula: "(60 − 20) 箱 × ¥59／箱 = ¥2,360 未来采购付款预计减少",
   },
   {
-    id: "CASE-DISPLAY-01", featured: true, tags: ["display"], image: "assets/cases/display-improvement.png",
-    category: "陈列改善", title: "蒋村店：恢复陈列后销量明显提升",
-    summary: "经门店核查，该商品曾有20天未上架。恢复陈列并优化货架位置后，30天销量较上月提升2.3倍。",
-    metrics: [["2.3 倍", "销量提升"], ["30 天", "观察周期"], ["0 件", "现有积压"]],
-    scenario: "销量异常、疑似未上架或陈列不佳", impact: 9200, speed: 30, route: "slow-diagnosis",
+    id: "CASE-DISPLAY-01", featured: true, tags: ["display"], image: "assets/retail-cookies.png", visual: "cookies", product: "黄油曲奇分享装",
+    category: "陈列改善", title: "蒋村店曲奇销量异常，先查陈列",
+    summary: "演示回放：核查发现商品连续 20 天未上架；恢复陈列后，用下一期销量验证改善是否持续。",
+    metrics: [["20 天", "未上架时长"], ["8→22 盒", "两期销量"], ["30 天", "观察周期"]],
+    scenario: "有库存却卖得慢，陈列记录缺失", route: "slow-diagnosis",
+    outcome: { value: "+¥140", label: "两期毛利差额，归因待核查", status: "观察结果", note: "14 盒销量差额按演示单盒毛利 ¥10 估算；季节、价格、客流等因素未剔除，不能全部归功于陈列调整。" },
+    flow: [
+      { stage: "发现", module: "滞销诊断 Agent", title: "有库存但只售出 8 盒", detail: "系统提示销量异常，要求先核对门店陈列记录。" },
+      { stage: "核查", module: "门店反馈", title: "商品连续 20 天未上架", detail: "店员确认陈列问题，主管记录核查结果。" },
+      { stage: "执行", module: "门店陈列整改", title: "恢复货架陈列并保持 30 天", detail: "先改陈列，再观察下一期销量。" },
+      { stage: "观察", module: "销售复盘", title: "销量从 8 盒到 22 盒", detail: "毛利差额约 ¥140，仍需核查客流和价格变化。" },
+    ],
+    moneyFlow: [
+      { label: "两期销量差额", value: "+14 盒", detail: "22 − 8；仅为观察值", type: "neutral" },
+      { label: "毛利差额", value: "+¥140", detail: "14 盒 × 演示单盒毛利 ¥10；归因待核查", type: "future" },
+    ],
+    formula: "(22 − 8) 盒 × ¥10／盒 = ¥140 两期毛利差额；不等于已证实的陈列增益",
   },
   {
-    id: "CASE-LAUNCH-01", featured: true, tags: ["launch", "display"], image: "assets/cases/new-product-launch.png",
-    category: "新品上市", title: "滨江店：新品试点上市快速打开销量",
-    summary: "参考历史相似商品的成功经验，选择高需求门店试点上新，首月完成85%的铺货销量。",
-    metrics: [["85%", "首月动销率"], ["14 天", "完成铺货"], ["¥18,000", "首月销售额"]],
-    scenario: "新品上市、重点门店试点", impact: 18000, speed: 14, route: "slow-diagnosis",
+    id: "CASE-LAUNCH-01", featured: true, tags: ["launch"], image: "assets/retail-drink.png", visual: "drink", product: "气泡果汁整箱",
+    category: "新品上市", title: "滨江店气泡果汁先小范围试销",
+    summary: "演示回放：先在 12 家门店试销，再依据首轮动销决定是否扩大铺货，避免一开始就压进过多库存。",
+    metrics: [["12 家", "试销门店"], ["14 天", "首轮复盘"], ["约72%", "演示动销率"]],
+    scenario: "新品需求尚未验证，先控制铺货量", route: "slow-diagnosis",
+    outcome: { value: "¥1,800", label: "首轮少占用库存成本", status: "方案对比", note: "与一次铺到 30 家门店的对照方案相比；只是推迟占用库存资金，不是节约采购成本或增加利润。" },
+    flow: [
+      { stage: "发现", module: "新品铺货评估", title: "需求尚无跨店验证", detail: "直接铺满 30 家店，首轮每店 10 箱、每箱成本 ¥10，会占用 ¥3,000。" },
+      { stage: "建议", module: "库存资金对比", title: "先在 12 家店各铺 10 箱", detail: "初期库存成本为 ¥1,200，其余门店暂不压货。" },
+      { stage: "执行", module: "试销回执", title: "14 天复盘 120 箱首轮库存", detail: "演示售出 86 箱，动销率约 72%。" },
+      { stage: "决策", module: "扩大铺货评估", title: "依据门店动销决定下一轮", detail: "是否扩大到其他门店仍需核对缺货风险与补货周期。" },
+    ],
+    moneyFlow: [
+      { label: "一次铺 30 店占用成本", value: "¥3,000", detail: "30 店 × 10 箱 × ¥10", type: "neutral" },
+      { label: "先铺 12 店占用成本", value: "¥1,200", detail: "12 店 × 10 箱 × ¥10", type: "neutral" },
+      { label: "首轮少占用", value: "¥1,800", detail: "暂未进货的库存资金；并非现金收益", type: "future" },
+    ],
+    formula: "(30 − 12) 家 × 10 箱 × ¥10／箱 = ¥1,800 首轮少占用库存成本",
   },
-  { id: "CASE-TRANSFER-02", tags: ["transfer"], image: "assets/cases/cross-store-transfer.png", category: "跨店调拨", title: "临平东湖店：慢销商品调至商圈店", summary: "按门店动销差异完成同城调拨，21天内消化库存。", metrics: [["68 件", "调出数量"], ["21 天", "完成销售"], ["¥7,480", "减少占用"]], scenario: "门店间需求差异明显", impact: 7480, speed: 21, route: "transfer" },
-  { id: "CASE-TRANSFER-03", tags: ["transfer"], image: "assets/cases/cross-store-transfer.png", category: "跨店调拨", title: "拱墅运河店：季节品跨区补位", summary: "将低需求门店库存转移至活动商圈，避免旺季后积压。", metrics: [["96 件", "调出数量"], ["19 天", "完成销售"], ["¥8,160", "减少占用"]], scenario: "季节需求错配", impact: 8160, speed: 19, route: "transfer" },
-  { id: "CASE-TRANSFER-04", tags: ["transfer"], image: "assets/cases/cross-store-transfer.png", category: "跨店调拨", title: "萧山北干店：跨店补货替代新采购", summary: "优先使用邻店余量补货，避免新增采购并保持安全库存。", metrics: [["54 件", "调出数量"], ["12 天", "完成销售"], ["¥5,940", "避免采购"]], scenario: "一店积压、一店缺货", impact: 5940, speed: 12, route: "transfer" },
-  { id: "CASE-EXPIRY-02", tags: ["expiry"], image: "assets/cases/expiry-clearance.png", category: "近效期处置", title: "钱塘下沙店：组合处置降低报损", summary: "调拨、门店促销与退供组合执行，在到期前完成处置。", metrics: [["92%", "处置完成率"], ["18 天", "处理周期"], ["¥9,200", "避免报损"]], scenario: "多批次临期库存", impact: 9200, speed: 18, route: "expiry-rescue" },
-  { id: "CASE-EXPIRY-03", tags: ["expiry"], image: "assets/cases/expiry-clearance.png", category: "近效期处置", title: "富阳银湖店：提前预警完成清仓", summary: "在60天窗口触发预警，分阶段完成门店间调配和促销。", metrics: [["100%", "处置完成率"], ["32 天", "清仓周期"], ["¥5,760", "避免报损"]], scenario: "可售时间快速缩短", impact: 5760, speed: 32, route: "expiry-rescue" },
-  { id: "CASE-JOINT-01", tags: ["procurement", "return"], image: "assets/cases/supplier-return.png", category: "采购调整", title: "西湖古荡店：暂停补货并完成退供", summary: "联动采购暂停与供应商退供，阻止库存继续增加。", metrics: [["40%", "采购下降"], ["8 天", "处理周期"], ["¥10,400", "现金回收"]], scenario: "在途采购与高库存并存", impact: 10400, speed: 8, route: "procurement-brake" },
 ];
 
+// Keep the production file-import UI and handlers available in source, but hide them for the competition.
+const ENABLE_LEGACY_FILE_IMPORT = false;
 const API_BASE = window.location.protocol === "file:" ? null : "/api/v1";
 const validRoutes = new Set([
   "overview", "today", "slow-diagnosis", "transfer", "expiry-rescue", "procurement-brake",
@@ -98,6 +171,8 @@ const state = {
   proposals: [],
   executionTasks: [],
   dataCenter: null,
+  erpConnection: null,
+  erpConnectionError: null,
   workbenchLoading: {},
   region: "all",
   todayFilter: "pending",
@@ -106,7 +181,6 @@ const state = {
   todayWorkbenchLoading: null,
   chatMessages: [],
   caseFilter: "all",
-  caseSort: "featured",
   selectedCaseId: null,
   confirmedCases: [],
   analysisSearch: "",
@@ -131,6 +205,41 @@ const REGIONS = {
   qiantang: { label: "钱塘区区域", stores: ["钱塘"] },
   fuyang: { label: "富阳区区域", stores: ["富阳"] },
 };
+
+function hackathonMountContext() {
+  const configured = window.RETAIL_HACKATHON_CONTEXT || {};
+  const dashboard = state.dashboard || {};
+  const dataCenter = state.dataCenter || {};
+  return {
+    // Hackathon facts use an isolated demo tenant by default so their legacy
+    // risk-FK compatibility rows do not enter the original demo queue.
+    tenantId: configured.tenantId || (configured.scenarioId ? dashboard.tenant_id : "hackathon-demo"),
+    scenarioId: configured.scenarioId ?? "S01",
+    branchId: configured.branchId ?? "transfer_80",
+    snapshotId: configured.snapshotId ?? dashboard.snapshot_id ?? dataCenter.snapshot_id ?? null,
+    asOf: configured.asOf ?? dashboard.as_of ?? dashboard.as_of_date ?? null,
+    dataVersion: configured.dataVersion ?? dashboard.data_version ?? dataCenter.data_version ?? null,
+    factVersion: configured.factVersion ?? dashboard.fact_version ?? null,
+    isDemo: configured.isDemo ?? (dataCenter.mode === "real_inventory_snapshot" ? false : true),
+    sourceRefs: Array.isArray(configured.sourceRefs) ? [...configured.sourceRefs] : [],
+    missingFields: Array.isArray(configured.missingFields) ? [...configured.missingFields] : [],
+    area: configured.area || "transfer",
+    horizonStart: configured.horizonStart ?? null,
+    horizonEnd: configured.horizonEnd ?? null,
+    assumptionIds: Array.isArray(configured.assumptionIds) ? [...configured.assumptionIds] : [],
+    riskId: configured.riskId ?? null,
+    storeId: configured.storeId ?? null,
+    skuId: configured.skuId ?? null,
+    lotId: configured.lotId ?? null,
+    actorId: configured.actorId ?? (configured.isDemo === false ? null : "manager-demo"),
+    proposalId: configured.proposalId ?? null,
+    proposalVersion: configured.proposalVersion ?? null,
+    taskId: configured.taskId ?? null,
+    businessInputs: configured.businessInputs && typeof configured.businessInputs === "object" ? { ...configured.businessInputs } : {},
+  };
+}
+
+window.RetailHackathonHost = Object.freeze({ getContext: hackathonMountContext });
 
 function scopedRisks() {
   const region = REGIONS[state.region] || REGIONS.all;
@@ -263,7 +372,6 @@ async function switchRegion(regionId) {
   state.overviewShowAllStores = false;
   state.overviewSelectedStore = null;
   const label = REGIONS[state.region].label;
-  $("#profile-region-name").textContent = label;
   const firstRisk = scopedRisks()[0];
   if (firstRisk) { state.selectedId = firstRisk.id; state.detail = null; state.diagnosisRiskId = firstRisk.id; state.diagnosisDetail = null; }
   renderRiskList();
@@ -435,7 +543,7 @@ function calculationNotice(calculation) {
 
 function transferProductVisual(risk) {
   return Number(risk?.id) === 1
-    ? '<img src="assets/transfer-vitamin-d-product.png" alt="钙维生素D软胶囊商品示意图" />'
+    ? '<img src="assets/retail-nuts.png" alt="每日坚果 25g商品示意图" />'
     : '<span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>';
 }
 
@@ -503,7 +611,7 @@ function expiryWorkbench(data) {
   <form class="workbench-form four-fields" data-workbench-form="expiry-rescue"><input type="hidden" name="risk_id" value="${escapeHtml(input.risk_id || data.risk?.id || "")}" />${inputField("调拨数量", "transfer_qty", input.transfer_qty, "number", "min=0")}${inputField("促销数量", "promo_qty", input.promo_qty, "number", "min=0")}${inputField("审核促销价", "promo_price", input.promo_price, "number", "min=0")}${inputField("退供数量", "return_qty", input.return_qty, "number", "min=0")}<div class="workbench-actions"><button class="primary-action" type="submit">重新计算</button><button class="secondary-action" type="button" data-workbench-save="expiry-rescue" ${calc?.valid ? "" : "disabled"}>保存方案</button><button class="text-action" type="button" data-workbench-submit="expiry-rescue" ${data.proposal?.status === "draft" ? "" : "disabled"}>提交审批</button></div><small class="workbench-status">${workbenchStatus(data)}</small></form>${calculationNotice(calc)}
   <div class="calculation-kpis"><span>正常可售 <b>${forecast.normal_sale_qty ?? "未知"} 件</b></span><span>预计剩余 <b>${forecast.expected_remaining_qty ?? "未知"} 件</b></span><span>避免报损 <b>${money(cash.avoided_loss)}</b></span><span>预计净现金改善 <b>未知</b></span></div>
   <div class="alternative-table">${(calc?.alternatives || []).map((item) => `<div><strong>${escapeHtml(item.type)}</strong><span>${item.quantity} 件 · 费用 ${money(item.fee)} · 现金 ${money(item.cash_impact)}</span><small>${escapeHtml(item.assumption || `剩余风险 ${item.remaining_risk} 件`)}</small></div>`).join("") || '<div class="empty-state">先计算后比较正常销售、调拨、促销、退供和组合处置。</div>'}</div>
-  <p class="workbench-footnote">药品相关沟通仅可生成待审核草稿；未配置审批流程前不自动发送。缺项：${escapeHtml((cash.missing_fields || []).join("、") || "无")}</p></div>`;
+  <p class="workbench-footnote">供应商沟通仅可生成待审核草稿；未配置审批流程前不自动发送。缺项：${escapeHtml((cash.missing_fields || []).join("、") || "无")}</p></div>`;
 }
 
 function procurementEvidencePanel(data, input, inventory) {
@@ -535,6 +643,12 @@ function renderWorkbench(route) {
   }
   if (state.workbenchLoading[route]) { target.innerHTML = '<div class="empty-state">正在读取工作台数据…</div>'; return; }
   if (!data) { target.innerHTML = '<div class="empty-state">工作台数据尚未加载，或接口读取失败。</div>'; return; }
+  if (window.RetailWorkbenches) {
+    const context = { state, api, money, escapeHtml, showToast, loadWorkbench, renderWorkbench, refreshCommonRecords, saveWorkbench, submitWorkbench };
+    target.innerHTML = window.RetailWorkbenches.render(route, data, context);
+    window.RetailWorkbenches.bind(route, target, context);
+    return;
+  }
   target.innerHTML = route === "transfer" ? transferWorkbench(data) : route === "expiry-rescue" ? expiryWorkbench(data) : procurementWorkbench(data);
   bindWorkbenchEvents(route, target);
   if (route === "transfer") {
@@ -565,7 +679,11 @@ async function selectTransferTarget(storeId) {
 
 function formInput(form) {
   const input = {};
-  new FormData(form).forEach((value, key) => { input[key] = value; });
+  new FormData(form).forEach((value, key) => {
+    const control = Array.from(form.elements || []).find((element) => element.name === key);
+    const numericValue = control?.type === "number" && value !== "" ? control.valueAsNumber : null;
+    input[key] = Number.isFinite(numericValue) ? numericValue : value;
+  });
   return input;
 }
 
@@ -642,6 +760,7 @@ async function loadDiagnosisCandidates() {
 function renderDiagnosis() {
   const target = $("#slow-list");
   if (!target) return;
+  if (window.RetailApp) { window.RetailApp.renderDiagnosis(); return; }
   const regionRisks = state.diagnosisRisks || scopedRisks();
   const selectedRisk = regionRisks.find((item) => Number(item.id) === Number(state.diagnosisRiskId)) || regionRisks[0];
   const baselineSummary = state.dashboard?.teacher_baseline || {};
@@ -769,7 +888,6 @@ function renderOperatingOverview() {
   const selectedStore = stores.find((store) => store.name === state.overviewSelectedStore);
   const detailStores = selectedStore ? [selectedStore] : topStores;
   const regionLabel = district ? `${district}区区域` : (summary.region_label || "杭州市 · 全部50家门店");
-  $("#profile-region-name").textContent = regionLabel;
   const regionSelect = $("#region-select");
   if (regionSelect && isRealSnapshot && state.region === "all") {
     const selectedOption = regionSelect.options[0];
@@ -931,6 +1049,8 @@ function renderSupportPages() {
   const todayItems = [...pendingItems, ...approvalItems];
   renderAgentModules();
   renderOperatingOverview();
+  window.RetailApp?.renderDiagnosis();
+  window.RetailApp?.renderToday();
   $("#today-attention").textContent = money(attention);
   $("#today-tasks").textContent = pendingActions;
   $("#today-approvals").textContent = pendingApprovals;
@@ -994,30 +1114,69 @@ function renderApprovalList() {
   $("#approval-page-count").textContent = `${items.length} 项`;
   target.innerHTML = items.map((proposal) => {
     const summary = proposal.approval_summary || { title: `处置方案 ${proposal.id}`, detail: "确认当前事实与计算版本后再进入执行。", boundary: "审批仅绑定当前版本。" };
-    return `<div class="task-row"><div><strong>${escapeHtml(summary.title)}</strong><p>${escapeHtml(summary.detail)}</p></div><div><strong>${escapeHtml(proposal.status === "pending_approval" ? "等待负责人确认" : proposal.status)}</strong><p>${escapeHtml(proposal.status === "needs_replan" ? "事实或输入已变更，旧审批不可沿用" : summary.boundary)}</p></div><span class="evidence-badge">V${proposal.current_version}</span>${proposal.status === "pending_approval" ? `<button class="secondary-action" data-approve-proposal="${proposal.id}">确认并审批</button>` : proposal.status === "approved" ? `<button class="secondary-action" data-execute-proposal="${proposal.id}">生成执行任务</button>` : "<span></span>"}</div>`;
+    return `<div class="task-row"><div><strong>${escapeHtml(summary.title)}</strong><p>${escapeHtml(summary.detail)}</p></div><div><strong>${escapeHtml(window.RetailApp?.taskLabel(proposal.status) || proposal.status)}</strong><p>${escapeHtml(proposal.status === "needs_replan" ? "事实或输入已变更，旧审批不可沿用" : summary.boundary)}</p></div><span class="evidence-badge">V${proposal.current_version}</span>${proposal.status === "pending_approval" ? `<button class="secondary-action" data-approve-proposal="${proposal.id}">确认并审批</button>` : proposal.status === "approved" ? `<button class="secondary-action" data-execute-proposal="${proposal.id}">生成待执行任务</button>` : proposal.status === "execution_task_created" ? '<button class="secondary-action" data-go="execution">查看执行进度</button>' : "<span></span>"}</div>`;
   }).join("") || '<div class="empty-state">暂无待审批或待执行的方案版本。</div>';
   $$("[data-approve-proposal]", target).forEach((button) => button.addEventListener("click", () => approveProposal(button.dataset.approveProposal)));
   $$("[data-execute-proposal]", target).forEach((button) => button.addEventListener("click", () => executeProposal(button.dataset.executeProposal)));
 }
 
 async function approveProposal(id) {
-  try { await api(`/proposals/${id}/approve`, { method: "POST", headers: { "Idempotency-Key": `ui-approve-${id}` } }); await refreshCommonRecords(); showToast("方案已审批；下一步仍需生成执行任务"); }
-  catch (error) { showToast(`审批失败：${error.message}`, "error"); }
+  const version = state.proposals.find((proposal) => proposal.id === id)?.current_version;
+  try { await api(`/proposals/${id}/approve`, { method: "POST", headers: { "Idempotency-Key": `ui-approve-${id}-v${version}` } }); await refreshCommonRecords(); window.RetailApp?.showApprovalFollowUp(id); showToast("审批通过，已移入「审批后跟进」；请继续安排执行"); return true; }
+  catch (error) { showToast(`审批失败：${error.message}`, "error"); return false; }
 }
 
 async function executeProposal(id) {
-  try { await api(`/proposals/${id}/execute`, { method: "POST", headers: { "Idempotency-Key": `ui-execute-${id}` } }); await refreshCommonRecords(); showToast("已生成待外部执行任务，尚未执行调拨或修改采购单"); }
-  catch (error) { showToast(`创建执行任务失败：${error.message}`, "error"); }
+  const version = state.proposals.find((proposal) => proposal.id === id)?.current_version;
+  try { const task = await api(`/proposals/${id}/execute`, { method: "POST", headers: { "Idempotency-Key": `ui-execute-${id}-v${version}` } }); await refreshCommonRecords(); showToast("已生成待执行任务，可在「审批后跟进」查看；仍需负责人执行并回填回执"); return task; }
+  catch (error) { showToast(`创建执行任务失败：${error.message}`, "error"); return null; }
 }
 
 function renderExecutionList() {
   const target = $("#execution-list"); if (!target) return;
   $("#execution-page-count").textContent = `${state.executionTasks.length} 项`;
-  target.innerHTML = state.executionTasks.map((task) => `<div class="execution-row"><div><strong>${escapeHtml(task.id)}</strong><p>方案 ${escapeHtml(task.proposal_id)} · V${task.proposal_version} · 当前 ${escapeHtml(task.status)}</p><div class="timeline-mini">${(task.metadata?.timeline || []).map((event) => `<span>${escapeHtml(event.status)} · ${escapeHtml(event.at)}</span>`).join("") || "<span>已生成任务，等待人工回执</span>"}</div></div><form data-execution-form="${task.id}"><label>更新状态<select name="status"><option value="pending_dispatch">待出库</option><option value="in_transit">在途</option><option value="awaiting_receipt">待收货</option><option value="received">已收货</option><option value="completed">已完成</option><option value="exception">异常</option></select></label><label>回执号（收货/完成必填）<input name="receipt_ref" placeholder="外部单据或签收回执" /></label><button class="secondary-action" type="submit">记录状态</button></form></div>`).join("") || '<div class="empty-state">暂无执行任务。审批方案后可生成任务；这不会自动向 ERP 发单。</div>';
+  const statusLabel = (status) => window.RetailApp?.taskLabel(status) || status;
+  target.innerHTML = state.executionTasks.map((task) => {
+    const proposal = state.proposals.find((item) => item.id === task.proposal_id);
+    const title = proposal?.approval_summary?.title?.replace(/^审批/, "") || `任务 ${task.id}`;
+    const statuses = ["pending_dispatch", "in_transit", "awaiting_receipt", "received", "completed", "exception"];
+    return `<div class="execution-row"><div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(proposal?.approval_summary?.detail || "请安排负责人执行并记录回执。")}</p><p>任务 ${escapeHtml(task.id)} · V${task.proposal_version} · ${escapeHtml(statusLabel(task.status))}</p><div class="timeline-mini">${(task.metadata?.timeline || []).map((event) => `<span>${escapeHtml(statusLabel(event.status))} · ${escapeHtml(event.at)}</span>`).join("") || "<span>任务已生成，待安排负责人执行；尚未派单到门店</span>"}</div></div><form data-execution-form="${escapeHtml(task.id)}"><label>更新状态<select name="status" required>${statuses.includes(task.status) ? '' : '<option value="" selected disabled>选择实际执行状态</option>'}${statuses.map((status) => `<option value="${status}" ${task.status === status ? 'selected' : ''}>${escapeHtml(statusLabel(status))}</option>`).join('')}</select></label><label>回执号（收货/完成必填）<input name="receipt_ref" value="${escapeHtml(task.metadata?.receipt_ref || '')}" placeholder="外部单据或签收回执" /></label><button class="secondary-action" type="submit">记录状态</button></form></div>`;
+  }).join("") || '<div class="empty-state">暂无执行任务。请在今日工作台的「审批后跟进」中生成待执行任务。</div>';
   $$("[data-execution-form]", target).forEach((form) => form.addEventListener("submit", async (event) => { event.preventDefault(); const values = formInput(form); try { await api(`/execution-tasks/${form.dataset.executionForm}/status`, { method: "POST", body: JSON.stringify(values) }); await refreshCommonRecords(); showToast("执行状态与回执已记录"); } catch (error) { showToast(`状态更新失败：${error.message}`, "error"); } }));
 }
 
-function renderDataCenter() {
+function renderErpConnection() {
+  const target = $("#erp-connection");
+  if (!target) return;
+  const erp = state.erpConnection;
+  if (erp?.status !== "connected") {
+    target.innerHTML = `<section class="erp-connection-card"><div class="erp-connection-heading"><div class="erp-connection-icon"><span class="material-symbols-rounded">database</span></div><div class="erp-connection-title"><h2>零食仓 ERP</h2><p>业务数据来源</p></div><span class="erp-connection-status unavailable">尚未接入</span></div><p class="erp-connection-description">${escapeHtml(state.erpConnectionError || "当前没有可读取的 ERP 样例数据。")}</p></section>`;
+    return;
+  }
+  const count = (value) => Number(value || 0).toLocaleString("zh-CN");
+  const displayTime = (value) => value ? String(value).replace("T", " ").slice(0, 16) : "未标注";
+  const inventoryRows = (erp.preview || []).map((row) => `<tr><td>${escapeHtml(row.store_name)}</td><td><strong>${escapeHtml(row.product_name)}</strong><br><small>${escapeHtml(row.sku_id)}</small></td><td>${escapeHtml(row.lot_id)}</td><td>${count(row.quantity)} ${escapeHtml(row.unit)}</td><td>${money(row.inventory_cost_cny)}</td></tr>`).join("");
+  const orderStatus = { confirmed: "已确认", open: "待执行", partially_received: "部分收货", received: "已收货", cancelled: "已取消" };
+  const paymentStatus = { paid: "已付款", unpaid: "待付款", partially_paid: "部分付款" };
+  const purchaseRows = (erp.purchase_preview || []).map((row) => `<tr><td><strong>${escapeHtml(row.po_id)}</strong><br><small>${escapeHtml(row.po_line_id)}</small></td><td>${escapeHtml(row.store_name)}</td><td>${escapeHtml(row.product_name)}</td><td>${count(row.ordered_qty)} ${escapeHtml(row.unit)}<br><small>已收 ${count(row.received_qty)} ${escapeHtml(row.unit)}</small></td><td>${money(row.order_amount_cny)}</td><td>${escapeHtml(orderStatus[row.order_status] || row.order_status)}<br><small>${escapeHtml(paymentStatus[row.payment_status] || row.payment_status)}</small></td></tr>`).join("");
+  const ai = erp.ai || {};
+  const aiStatus = ai.text_configured && ai.vision_configured
+    ? "文本分析和单图识别已配置，发起分析时调用在线模型。"
+    : "模型已选定，等待在本地 .env 填入 API Key 后启用在线分析。";
+  target.innerHTML = `
+    <section class="erp-connection-card">
+      <div class="erp-connection-heading"><div class="erp-connection-icon"><span class="material-symbols-rounded">database</span></div><div class="erp-connection-title"><h2>${escapeHtml(erp.source_name)}</h2><p>零食连锁业务数据源 · 样例数据</p></div><span class="erp-connection-status">已接入</span></div>
+      <p class="erp-connection-description">门店、商品、库存批次和采购订单已进入本系统，库存风险识别与现有工作台可读取相关业务数据。</p>
+      <div class="erp-connection-metrics"><div><strong>${count(erp.complete_store_count)} / ${count(erp.directory_store_count)}</strong><span>有完整数据的门店</span></div><div><strong>${count(erp.sku_count)}</strong><span>商品 SKU</span></div><div><strong>${count(erp.lot_count)}</strong><span>在库批次</span></div><div><strong>${count(erp.purchase_order_count)}</strong><span>采购订单记录</span></div></div>
+      <div class="erp-connection-footer"><p>库存数据截至 ${escapeHtml(displayTime(erp.data_as_of))} · 分析基准 ${escapeHtml(displayTime(erp.analysis_as_of))}</p><div class="erp-actions"><button class="secondary-action" id="erp-open-records" type="button">查看接入数据</button><button class="primary-action" type="button" data-go="slow-diagnosis">查看库存分析</button></div></div>
+      <div class="erp-model-state"><span class="material-symbols-rounded">auto_awesome</span><span><strong>${escapeHtml(ai.model || "MiniMax-M3")}</strong> · ${escapeHtml(aiStatus)}</span></div>
+    </section>
+    <section class="erp-records-card" id="erp-records"><div class="erp-records-heading"><h2>已接入的库存明细</h2><p>供库存风险识别与商品分析查看</p></div><table class="erp-records-table"><thead><tr><th>门店</th><th>商品</th><th>批次</th><th>当前库存</th><th>库存成本</th></tr></thead><tbody>${inventoryRows || '<tr><td colspan="5">暂无在库记录</td></tr>'}</tbody></table></section>
+    <section class="erp-records-card"><div class="erp-records-heading"><h2>已接入的采购订单</h2><p>订单金额按订购数量和进货单价计算</p></div><table class="erp-records-table erp-purchase-table"><thead><tr><th>采购单</th><th>门店</th><th>商品</th><th>订购 / 已收</th><th>订单金额</th><th>订单 / 付款状态</th></tr></thead><tbody>${purchaseRows || '<tr><td colspan="6">暂无采购订单记录</td></tr>'}</tbody></table></section>`;
+  $("#erp-open-records", target)?.addEventListener("click", () => $("#erp-records")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+
+function renderLegacyDataCenter() {
   const data = state.dataCenter, sourceTarget = $("#data-sources"), history = $("#import-history");
   if (!sourceTarget || !history) return;
   const source = data?.sources?.[0] || {};
@@ -1073,20 +1232,40 @@ function fileAsBase64(file) {
   });
 }
 
+function renderDataCenter() {
+  renderErpConnection();
+  if (ENABLE_LEGACY_FILE_IMPORT) renderLegacyDataCenter();
+}
+
 async function refreshCommonRecords() {
   if (!API_BASE) return;
   try {
-    const [items, proposals, tasks, data] = await Promise.all([api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center")]);
+    const [items, proposals, tasks, data, erp] = await Promise.all([api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center"), api("/hackathon/data-connections/erp").catch(() => ({ error: "ERP 样例数据暂不可用，请确认后端已加载比赛场景。" }))]);
     state.workItems = items.items || []; state.proposals = proposals.items || []; state.executionTasks = tasks.items || []; state.dataCenter = data;
+    state.erpConnection = erp.status === "connected" ? erp : null;
+    state.erpConnectionError = erp.error || null;
     renderSupportPages();
   } catch (error) { showToast(`协同记录读取失败：${error.message}`, "error"); }
 }
 
+async function refreshErpConnection() {
+  if (!API_BASE) return;
+  try {
+    const erp = await api("/hackathon/data-connections/erp");
+    state.erpConnection = erp.status === "connected" ? erp : null;
+    state.erpConnectionError = erp.status === "connected" ? null : "ERP 样例数据尚未入库。";
+  } catch (error) {
+    state.erpConnection = null;
+    state.erpConnectionError = `当前服务未能读取 ERP 样例数据：${error.message}`;
+  }
+  renderDataCenter();
+}
+
 async function hydrate() {
   try {
-    const [dashboard, riskPayload, casePayload, items, proposals, tasks, data] = API_BASE
-      ? await Promise.all([api("/dashboard"), api("/risks"), api("/cases"), api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center")])
-      : [null, { items: fallbackRisks }, { items: [] }, { items: [] }, { items: [] }, { items: [] }, null];
+    const [dashboard, riskPayload, casePayload, items, proposals, tasks, data, erp] = API_BASE
+      ? await Promise.all([api("/dashboard"), api("/risks"), api("/cases"), api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center"), api("/hackathon/data-connections/erp").catch(() => ({ error: "ERP 样例数据暂不可用，请确认后端已加载比赛场景。" }))])
+      : [null, { items: fallbackRisks }, { items: [] }, { items: [] }, { items: [] }, { items: [] }, null, null];
     state.dashboard = dashboard;
     const realMode = data?.mode === "real_inventory_snapshot";
     state.risks = riskPayload.items?.length ? riskPayload.items : (realMode ? [] : fallbackRisks);
@@ -1094,6 +1273,9 @@ async function hydrate() {
     state.diagnosisRisks = state.risks;
     state.diagnosisTotal = Number(riskPayload.filtered_total ?? riskPayload.total ?? state.risks.length);
     state.workItems = items.items || []; state.proposals = proposals.items || []; state.executionTasks = tasks.items || []; state.dataCenter = data;
+    state.erpConnection = erp?.status === "connected" ? erp : null;
+    state.erpConnectionError = erp?.error || null;
+    window.RetailApp?.renderOverview();
     if (!state.risks.some((risk) => Number(risk.id) === Number(state.selectedId))) state.selectedId = state.risks[0]?.id;
     renderRiskList();
     renderSupportPages();
@@ -1121,40 +1303,49 @@ function caseCategoryCount(category) {
   return category === "all" ? featuredCases.length : featuredCases.filter((item) => item.tags.includes(category)).length;
 }
 
+function caseCover(item, detail = false) {
+  return `<div class="case-snack-cover case-snack-cover-${escapeHtml(item.visual)}${detail ? " case-snack-cover-detail" : ""}">
+    <div class="case-snack-cover-copy"><span>零食仓 · 演示案例</span><strong>${escapeHtml(item.product)}</strong><small>${escapeHtml(item.category)}</small></div>
+    <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.product)}商品示意图" />
+  </div>`;
+}
+
 function renderCaseLibrary() {
   const tabs = $("#case-category-tabs");
   const target = $("#case-library");
   if (!tabs || !target) return;
   tabs.innerHTML = caseCategories.map((category) => `<button type="button" role="tab" aria-selected="${state.caseFilter === category.id}" class="${state.caseFilter === category.id ? "active" : ""}" data-case-category="${category.id}">${escapeHtml(category.label)} (${caseCategoryCount(category.id)})</button>`).join("");
   let visible = state.caseFilter === "all"
-    ? featuredCases.filter((item) => item.featured)
+    ? featuredCases
     : featuredCases.filter((item) => item.tags.includes(state.caseFilter));
-  visible = [...visible].sort((left, right) => {
-    if (state.caseSort === "impact") return Number(right.impact) - Number(left.impact);
-    if (state.caseSort === "speed") return Number(left.speed) - Number(right.speed);
-    if (state.caseSort === "amount") return Number(right.impact) - Number(left.impact);
-    return Number(Boolean(right.featured)) - Number(Boolean(left.featured));
-  }).slice(0, 6);
   target.innerHTML = visible.map((item) => `
-    <article class="success-case-card">
-      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}案例场景" />
+    <article class="success-case-card ${item.id === "CASE-TRANSFER-01" ? "case-featured" : ""}">
+      ${caseCover(item)}
       <div class="success-case-copy">
+        <div class="case-card-kicker"><span>${escapeHtml(item.category)}</span><span>${escapeHtml(item.outcome.status)}</span></div>
         <h2>${escapeHtml(item.title)}</h2>
         <p>${escapeHtml(item.summary)}</p>
-        <div class="success-case-metrics">${item.metrics.map((metric, index) => `<div class="${index === 0 && item.id !== "CASE-TRANSFER-01" && item.id !== "CASE-RETURN-01" ? "positive" : ""}"><strong>${escapeHtml(metric[0])}</strong><span>${escapeHtml(metric[1])}</span></div>`).join("")}</div>
-        <div class="success-case-footer"><p><b>适用场景：</b>${escapeHtml(item.scenario)}</p><button type="button" data-case-detail="${escapeHtml(item.id)}">查看详情 <span class="material-symbols-rounded">arrow_forward</span></button></div>
+        <div class="case-card-route" aria-label="案例处理路线"><span>${escapeHtml(item.flow[0].module)}</span><i aria-hidden="true">→</i><span>${escapeHtml(item.flow[1].module)}</span><i aria-hidden="true">→</i><span>${escapeHtml(item.flow[3].stage)}</span></div>
+        <div class="case-card-outcome"><span>${escapeHtml(item.outcome.label)}</span><strong>${escapeHtml(item.outcome.value)}</strong></div>
+        <div class="success-case-metrics">${item.metrics.map((metric) => `<div><strong>${escapeHtml(metric[0])}</strong><span>${escapeHtml(metric[1])}</span></div>`).join("")}</div>
+        <div class="success-case-footer"><p><b>适用场景：</b>${escapeHtml(item.scenario)}</p><button type="button" data-case-detail="${escapeHtml(item.id)}">查看过程与资金明细 <span class="material-symbols-rounded">arrow_forward</span></button></div>
       </div>
-    </article>`).join("") || '<div class="case-library-empty">当前分类还没有精选案例。</div>';
+    </article>`).join("") || '<div class="case-library-empty">当前分类还没有演示案例。</div>';
 }
 
 function openCaseDetail(caseId) {
   const item = featuredCases.find((entry) => entry.id === caseId);
   if (!item) return;
   state.selectedCaseId = item.id;
-  $("#case-detail-category").textContent = item.category;
+  $("#case-detail-category").textContent = `演示案例 · ${item.category}`;
   $("#case-detail-title").textContent = item.title;
   $("#case-detail-summary").textContent = item.summary;
-  $("#case-detail-body").innerHTML = `<img class="case-detail-cover" src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" /><div class="case-detail-metrics">${item.metrics.map((metric) => `<div><strong>${escapeHtml(metric[0])}</strong><span>${escapeHtml(metric[1])}</span></div>`).join("")}</div><p class="case-detail-story">该案例来自同区域门店的已完成实践，展示的是当时的业务背景、人工确认后的处置动作与实际结果。复用时仍会依据当前门店库存、销量、效期与执行约束重新计算，不会直接套用历史结论。</p><p class="case-detail-scenario"><b>适用场景：</b>${escapeHtml(item.scenario)}</p>`;
+  $("#case-detail-body").innerHTML = `
+    <section class="case-detail-result"><div><span>${escapeHtml(item.outcome.status)} · ${escapeHtml(item.outcome.label)}</span><strong>${escapeHtml(item.outcome.value)}</strong></div><p>${escapeHtml(item.outcome.note)}</p></section>
+    <section class="case-detail-section"><header><h3>从发现到结果</h3><p>每一步都写清负责模块、决策和执行状态</p></header><ol class="case-journey">${item.flow.map((step) => `<li><span class="case-journey-stage">${escapeHtml(step.stage)}</span><div><small>${escapeHtml(step.module)}</small><strong>${escapeHtml(step.title)}</strong><p>${escapeHtml(step.detail)}</p></div></li>`).join("")}</ol></section>
+    <section class="case-detail-section"><header><h3>钱是怎样流动的</h3><p>库存转移、销售回款和未来少付款分别计算</p></header><div class="case-money-path">${[...item.moneyFlow.slice(0, 2), { label: item.outcome.label, value: item.outcome.value }].map((node) => `<div><small>${escapeHtml(node.label)}</small><strong>${escapeHtml(node.value)}</strong></div>`).join('<span aria-hidden="true">→</span>')}</div><div class="case-money-flow">${item.moneyFlow.map((line) => `<div class="case-money-line is-${escapeHtml(line.type)}"><div><strong>${escapeHtml(line.label)}</strong><small>${escapeHtml(line.detail)}</small></div><b>${escapeHtml(line.value)}</b></div>`).join("")}</div><p class="case-money-formula">${escapeHtml(item.formula)}</p></section>
+    <p class="case-detail-story">以上为“零食仓”的虚构演示回放，不代表真实企业的执行记录。进入相关工作台后，请以当前数据重新核查数量、审批状态和回执。</p>`;
+  $("#case-detail-use").textContent = "打开相似场景工作台";
   const modal = $("#case-detail-modal");
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
@@ -1187,6 +1378,7 @@ function renderPageBack(route) {
 
 function renderRoute() {
   const route = currentRoute();
+  window.scrollTo({ top: 0, behavior: "instant" });
   $$(".module-view").forEach((view) => view.classList.toggle("active", view.dataset.view === route));
   $$("[data-route]").forEach((link) => link.classList.toggle("active", link.dataset.route === route));
   if (route === "risks") {
@@ -1203,9 +1395,10 @@ function renderRoute() {
     overview: "经营总览", today: "今日工作台", "slow-diagnosis": "滞销库存诊断", transfer: "跨门店智能调拨",
     "expiry-rescue": "近效期现金抢救", "procurement-brake": "采购刹车", risks: "风险案件",
     tasks: "核查任务", approvals: "方案审批", execution: "执行追踪", simulation: "现金流模拟",
-    cases: "案例库", data: "数据中心", settings: "系统设置",
+    cases: "案例库", data: "数据连接", settings: "系统设置",
   };
-  document.title = `资金活水 Agent · ${titles[route]}`;
+  document.title = `货不压钱 · ${titles[route]}`;
+  window.RetailApp?.routeChanged(route);
   if (route === "cases") renderCaseLibrary();
   if (["transfer", "expiry-rescue", "procurement-brake"].includes(route) && state.dashboard) loadWorkbench(route);
   if (route === "slow-diagnosis" && state.dashboard) {
@@ -1213,7 +1406,9 @@ function renderRoute() {
     if (diagnosisId) loadDiagnosisReport(diagnosisId);
     else renderDiagnosis();
   }
-  if (["today", "tasks", "approvals", "execution", "data"].includes(route)) refreshCommonRecords();
+  if (["today", "tasks", "approvals", "execution"].includes(route)) refreshCommonRecords();
+  if (route === "data") refreshErpConnection();
+  window.dispatchEvent(new CustomEvent("retail:route-change", { detail: { route } }));
 }
 
 function openAgent() {
@@ -1450,16 +1645,15 @@ function bindEvents() {
     state.caseFilter = tab.dataset.caseCategory;
     renderCaseLibrary();
   });
-  $("#case-sort").addEventListener("change", (event) => { state.caseSort = event.target.value; renderCaseLibrary(); });
   $("#case-library").addEventListener("click", (event) => {
     const detail = event.target.closest("[data-case-detail]");
     if (detail) openCaseDetail(detail.dataset.caseDetail);
   });
-  $("#request-case").addEventListener("click", () => showToast("案例收录申请已创建，管理员会核查事实与执行结果后入库"));
+  $("#request-case").addEventListener("click", () => showToast("当前展示演示案例；真实案例需核查事实与执行回执后收录"));
   $("#case-detail-close").addEventListener("click", closeCaseDetail);
   $("#case-detail-modal").addEventListener("click", (event) => { if (event.target === $("#case-detail-modal")) closeCaseDetail(); });
-  $("#case-detail-use").addEventListener("click", () => { closeCaseDetail(); showToast("已将案例加入参考，系统会按当前门店数据重新计算方案"); });
-  $("#case-detail-secondary").addEventListener("click", () => {
+  $("#case-detail-secondary").addEventListener("click", closeCaseDetail);
+  $("#case-detail-use").addEventListener("click", () => {
     const item = featuredCases.find((entry) => entry.id === state.selectedCaseId);
     if (!item) return;
     closeCaseDetail();
@@ -1480,7 +1674,11 @@ function bindEvents() {
   ["#simulation-target", "#simulation-days", "#simulation-constraints", "#simulation-request"].forEach((selector) => $(selector).addEventListener("input", () => {
     $("#simulation-understanding").textContent = `待确认输入：${$("#simulation-request").value.trim() || "未提供自然语言描述"}；${$("#simulation-days").value} 天内目标 ${money(Number($("#simulation-target").value || 0) * 10000)}。`;
   }));
-  $("#import-kind").addEventListener("change", renderDataCenter);
+
+}
+
+function bindLegacyImportEvents() {
+  $("#import-kind").addEventListener("change", renderLegacyDataCenter);
   $("#import-select-file").addEventListener("click", () => $("#import-file").click());
   $("#import-template").addEventListener("click", () => showToast("已打开数据模板选择；请先选择对应的数据类型"));
   $("#download-all-templates").addEventListener("click", () => showToast("全部数据模板已准备好，可按右侧数据类型逐项下载"));
@@ -1516,9 +1714,9 @@ function bindEvents() {
     input.files = transfer.files;
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  $("#analysis-search").addEventListener("input", (event) => { state.analysisSearch = event.target.value; renderDataCenter(); });
-  $("#analysis-status-filter").addEventListener("change", (event) => { state.analysisStatus = event.target.value; renderDataCenter(); });
-  $("#analysis-sort").addEventListener("change", (event) => { state.analysisSort = event.target.value; renderDataCenter(); });
+  $("#analysis-search").addEventListener("input", (event) => { state.analysisSearch = event.target.value; renderLegacyDataCenter(); });
+  $("#analysis-status-filter").addEventListener("change", (event) => { state.analysisStatus = event.target.value; renderLegacyDataCenter(); });
+  $("#analysis-sort").addEventListener("change", (event) => { state.analysisSort = event.target.value; renderLegacyDataCenter(); });
   $("#data-view-files")?.addEventListener("click", () => showToast("本次分析包含库存、销售与采购共 3 份文件"));
   $("#import-history").addEventListener("click", (event) => {
     const fileAction = event.target.closest("[data-history-files]");
@@ -1543,7 +1741,20 @@ function bindEvents() {
   });
 }
 
+function mountLegacyFileImport() {
+  if (!ENABLE_LEGACY_FILE_IMPORT) return;
+  const mount = $("#legacy-file-import");
+  const template = $("#legacy-file-import-template");
+  if (!mount || !template) return;
+  mount.replaceChildren(template.content.cloneNode(true));
+  mount.hidden = false;
+  bindLegacyImportEvents();
+  renderLegacyDataCenter();
+}
+
 bindEvents();
+mountLegacyFileImport();
+window.RetailApp?.init({ state, api, money, escapeHtml, missingLabel, agentRouteForRisk, approveProposal, executeProposal, currentRoute, renderRiskList, loadSelectedDetail, loadWorkbench, refreshCommonRecords });
 if (!window.location.hash || !validRoutes.has(window.location.hash.replace("#", ""))) window.location.hash = "overview";
 renderRoute();
 renderChat();

@@ -1,0 +1,119 @@
+{
+  "contract_version": "v1.2",
+  "synthetic": true,
+  "as_of_date": "2026-10-03",
+  "snapshot_id": "snapshot-demo-v1",
+  "reference_status": "independent_api_boundary_cases",
+  "disclaimer": "独立验收请求与前提，不会污染有效种子；状态预期必须经过真实服务测试验证。",
+  "items": [
+    {
+      "id": "invalid-period",
+      "method": "GET",
+      "path": "/api/v1/retail/overview?period=14",
+      "expected_http": 422
+    },
+    {
+      "id": "unknown-store",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 14,
+        "reduction_pct": 20,
+        "store_id": "STORE-UNKNOWN",
+        "category": null,
+        "request_text": ""
+      },
+      "expected_http": 422
+    },
+    {
+      "id": "unknown-category",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 14,
+        "reduction_pct": 20,
+        "store_id": "all",
+        "category": "未知品类",
+        "request_text": ""
+      },
+      "expected_http": 422
+    },
+    {
+      "id": "zero-horizon",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 0,
+        "reduction_pct": 20,
+        "store_id": "all",
+        "category": null,
+        "request_text": ""
+      },
+      "expected_http": 422
+    },
+    {
+      "id": "over-horizon",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 91,
+        "reduction_pct": 20,
+        "store_id": "all",
+        "category": null,
+        "request_text": ""
+      },
+      "expected_http": 422
+    },
+    {
+      "id": "negative-reduction",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 14,
+        "reduction_pct": -1,
+        "store_id": "all",
+        "category": null,
+        "request_text": ""
+      },
+      "expected_http": 422
+    },
+    {
+      "id": "over-reduction",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 14,
+        "reduction_pct": 101,
+        "store_id": "all",
+        "category": null,
+        "request_text": ""
+      },
+      "expected_http": 422
+    },
+    {
+      "id": "null-horizon",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": null,
+        "reduction_pct": 20
+      },
+      "expected_http": 422
+    },
+    {
+      "id": "real-missing",
+      "setup": "隔离真实库存模式，不提供采购、在途、需求和付款计划",
+      "method": "POST",
+      "path": "/api/v1/retail/simulate",
+      "body": {
+        "horizon_days": 14,
+        "reduction_pct": 20,
+        "store_id": "all",
+        "category": null,
+        "request_text": ""
+      },
+      "expected_http": 200,
+      "expected_status": "unavailable"
+    }
+  ]
+}

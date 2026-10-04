@@ -1,0 +1,64 @@
+{
+  "contract_version": "v1.2",
+  "synthetic": true,
+  "as_of_date": "2026-10-03",
+  "snapshot_id": "snapshot-demo-v1",
+  "reference_status": "independent_acceptance_invariants",
+  "disclaimer": "独立验收不变量；不复制后端算法、不填写固定经营总额，不作为网页运行响应。",
+  "items": [
+    {
+      "id": "cash-zero",
+      "expected": {
+        "status": "completed",
+        "metric_delta": 0,
+        "weekly_baseline_equals_scenario": true
+      },
+      "reason": "没有改变采购数量，基线和方案应一致。"
+    },
+    {
+      "id": "cash-full",
+      "expected": {
+        "status": "completed",
+        "scenario_purchase_outflow": 0,
+        "weekly_scenario": 0
+      },
+      "reason": "可调整采购减量100%，本次方案采购为零；现货、已付款在途和缺货风险仍须计算。"
+    },
+    {
+      "id": "source-units",
+      "expected": {
+        "is_demo": true,
+        "money": "CNY",
+        "percentage_range": [
+          0,
+          100
+        ],
+        "as_of_date": "2026-10-03"
+      },
+      "reason": "金额元、百分比0至100，与真实数据来源严格区分。"
+    },
+    {
+      "id": "real-missing",
+      "expected": {
+        "status": "unavailable",
+        "metrics": null,
+        "weekly": [],
+        "missing_includes": [
+          "adjustable_purchase_orders",
+          "confirmed_in_transit",
+          "forecast_demand",
+          "supplier_payment_schedule"
+        ]
+      },
+      "reason": "真实快照不足以计算时，不拼接演示数字。"
+    },
+    {
+      "id": "execution",
+      "expected": {
+        "external_write": false,
+        "task_status": "draft_pending_external_execution"
+      },
+      "reason": "生成执行任务只创建草稿，不代表出库、改价或采购调整完成。"
+    }
+  ]
+}
