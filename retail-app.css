@@ -31,11 +31,6 @@ body.retail-design .primary-nav a b, body.retail-design .settings-link b { font-
 body.retail-design .primary-nav a .material-symbols-rounded { color: inherit; font-size: 21px; }
 body.retail-design .primary-nav a i { color: var(--retail-muted); background: #edf2ee; }
 body.retail-design .primary-nav a.active i { color: var(--retail-accent-deep); background: #d1e9d8; }
-body.retail-design .retail-sidebar-footer { display: flex; align-items: center; gap: 10px; padding: 14px 22px; margin: 0 13px 4px; border-top: 1px solid var(--retail-line); color: var(--retail-muted); }
-body.retail-design .retail-sidebar-footer .material-symbols-rounded { color: var(--retail-accent); }
-body.retail-design .retail-sidebar-footer strong, body.retail-design .retail-sidebar-footer small { display: block; white-space: nowrap; }
-body.retail-design .retail-sidebar-footer strong { color: var(--retail-ink); font-size: 11px; }
-body.retail-design .retail-sidebar-footer small { margin-top: 3px; font-size: 10px; }
 body.retail-design .settings-link { margin: 0 13px 14px; }
 body.retail-design .app-main { margin-left: 248px; }
 body.retail-design .topbar { height: 69px; padding: 0 34px; border-bottom: 1px solid var(--retail-line); background: var(--retail-surface); }

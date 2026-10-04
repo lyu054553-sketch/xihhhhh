@@ -24,8 +24,6 @@ PUBLIC_FILES = {
     "index.html", "app.js", "styles.css", "favicon.svg", "README.md", "API_CONTRACT.md",
     "retail-app.js", "retail-app.css", "retail-workbenches.js", "retail-workbenches.css",
     "retail-simulation.js", "retail-simulation.css",
-    "assets/hackathon/preview.html", "assets/hackathon/decision/preview.html",
-    "assets/hackathon/followup/preview.html",
 }
 PUBLIC_DOCS = {
     "docs/API_CONTRACT_V0_3_DRAFT.md", "docs/FRONTEND_INTEGRATION.md",
@@ -40,15 +38,15 @@ DATA_SUFFIXES = {".json", ".csv", ".md", ".txt"}
 FORWARDED_REQUEST_HEADERS = ("Content-Type", "Accept", "Authorization", "X-Request-ID", "X-Tenant-Id", "Idempotency-Key")
 FORWARDED_RESPONSE_HEADERS = ("Content-Type", "Content-Encoding", "Content-Language", "Retry-After", "X-Request-ID")
 READ_ROUTE = re.compile(
-    r"/api/v1/(?:retail/(?:overview|simulation-options)|risks(?:/[0-9]+)?|"
+    r"/api/v1/(?:health|dashboard|retail/(?:overview|simulation-options)|risks(?:/[0-9]+)?|"
     r"workbenches/(?:transfer|expiry-rescue|procurement-brake)|"
     r"proposals(?:/[A-Za-z0-9_-]+/versions)?|execution-tasks|data-center|work-items|cases|"
-    r"hackathon/(?:context|proposals|overview|tasks|tasks/[A-Za-z0-9_-]+|accounting|"
+    r"hackathon/(?:data-connections/erp|context|proposals|overview|tasks|tasks/[A-Za-z0-9_-]+|accounting|"
     r"agent-runs/[A-Za-z0-9_-]+|materials/drafts/[A-Za-z0-9_-]+|"
     r"materials/[A-Za-z0-9_-]+(?:/image)?|cases/[A-Za-z0-9_-]+))\Z"
 )
 WRITE_ROUTE = re.compile(
-    r"/api/v1/(?:retail/simulate|risks/[0-9]+/(?:investigations|replan)|"
+    r"/api/v1/(?:scenarios/simulate|retail/simulate|risks/[0-9]+/(?:investigations|replan)|"
     r"investigations/[A-Za-z0-9_-]+/feedback|feedback/[A-Za-z0-9_-]+/(?:confirm|revisions)|"
     r"workbenches/(?:transfer|expiry-rescue|procurement-brake)/(?:draft|calculate|save)|"
     r"proposals/[A-Za-z0-9_-]+/(?:submit|approve|execute)|execution-tasks/[A-Za-z0-9_-]+/status|"

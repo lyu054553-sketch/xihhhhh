@@ -187,7 +187,7 @@
 
     function failureMarkup() {
       if (stage === "error") return `<div class="retail-sim-alert" role="alert">${icon("error")}<div><strong>这次没能完成计算</strong><p>${escape(error)}</p><button type="button" class="retail-sim-text-button" data-retail-sim-action="run">重新计算 ${icon("refresh")}</button></div></div>`;
-      if (stage === "unavailable") return `<div class="retail-sim-alert" role="status">${icon("info")}<div><strong>还缺少计算所需的数据</strong><p>${escape(error || "补充以下数据后，就能比较两个方案。")}</p>${missing.length ? `<ul>${missing.map((item) => `<li>${escape(typeof item === "string" ? item : item.label || item.field || JSON.stringify(item))}</li>`).join("")}</ul>` : ""}<a href="#data" class="retail-sim-text-button">去数据中心补充 ${icon("arrow_forward")}</a></div></div>`;
+      if (stage === "unavailable") return `<div class="retail-sim-alert" role="status">${icon("info")}<div><strong>还缺少计算所需的数据</strong><p>${escape(error || "补充以下数据后，就能比较两个方案。")}</p>${missing.length ? `<ul>${missing.map((item) => `<li>${escape(typeof item === "string" ? item : item.label || item.field || JSON.stringify(item))}</li>`).join("")}</ul>` : ""}<a href="#data" class="retail-sim-text-button">查看数据连接 ${icon("arrow_forward")}</a></div></div>`;
       return "";
     }
 

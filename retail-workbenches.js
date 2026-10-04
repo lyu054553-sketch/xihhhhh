@@ -81,18 +81,27 @@
     const money = (value) => value == null || value === '' ? '待确认' : ctx.money(value);
     return route === 'transfer' ? transfer(data, view, money) : route === 'expiry-rescue' ? expiry(data, view, money) : procurement(data, view, money);
   }
+  function formValues(form) {
+    const values = {};
+    new FormData(form).forEach((value, key) => {
+      const control = Array.from(form.elements || []).find((element) => element.name === key);
+      const numericValue = control?.type === 'number' && value !== '' ? control.valueAsNumber : null;
+      values[key] = Number.isFinite(numericValue) ? numericValue : value;
+    });
+    return values;
+  }
   function readInput(route, target, ctx) {
     const base = ctx.state.workbenches[route]?.input || {}, form = target.querySelector('[data-retail-wb-form]');
     if (form && !form.reportValidity()) return null;
     const next = { ...base };
-    if (form) new FormData(form).forEach((value, key) => { next[key] = value; });
+    if (form) Object.assign(next, formValues(form));
     return next;
   }
   function setDirty(route, target, ctx) {
     const view = getUI(route);
     view.dirty = true; view.error = ''; view.notice = '';
     const form = target.querySelector('[data-retail-wb-form]');
-    if (form) new FormData(form).forEach((value, key) => { ctx.state.workbenches[route].input[key] = value; });
+    if (form) Object.assign(ctx.state.workbenches[route].input, formValues(form));
     const status = target.querySelector('[data-retail-wb-status]');
     if (status) { status.textContent = '参数已修改，需重新计算'; status.classList.remove('is-warning'); status.classList.add('is-dirty'); }
     const alert = target.querySelector('[data-retail-wb-notice]');

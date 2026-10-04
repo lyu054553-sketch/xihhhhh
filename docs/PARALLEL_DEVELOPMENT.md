@@ -2,6 +2,8 @@
 
 日期：2026-10-04。编写时工作分支为 `lanyangyang`，代码参考 `fa23e91`；各任务开始时以实际目录和当前源码为准，不强制回退到该提交。
 
+> 后续调整：任务 5、6 的决策与执行跟进前端因和现有经营总览／工作台功能重合，已从主应用及源码中移除。下表和对应提示词保留为历史开发记录。
+
 本文件与 7 份提示词用于安排并行开发。本轮没有启动这些任务、创建工作树、修改业务实现或执行应用测试。公共接口由任务框 0 第一阶段产出，当前尚不能当作已存在文件或已实现接口。
 
 ## 启动方法
@@ -22,8 +24,8 @@
 | 2 | 方案比较与业务计算 | `backend/hackathon_calculations/` | 先用契约定义的事实对象开发纯计算；接入模块 1 后用真实加载数据 | [复制任务 2](./parallel-prompts/02-calculations.md) |
 | 3 | Agent 与材料识别 | `backend/hackathon_ai/`、`backend/model_config.py` | 模型适配和提取可以先做；工具通过约定接口注入模块 1、2、4 | [复制任务 3](./parallel-prompts/03-ai-materials.md) |
 | 4 | 确认、执行、渠道记录与资金核算 | `backend/hackathon_execution/` | 先按公共方案／事件对象开发；通过模块 1 的接口落库存，通过公共事务保存全套变更 | [复制任务 4](./parallel-prompts/04-execution-cash.md) |
-| 5 | 决策与材料前端 | `assets/hackathon/decision/` | 用公共响应样例制作组件，实际联调使用真实 API | [复制任务 5](./parallel-prompts/05-decision-frontend.md) |
-| 6 | 工作台、渠道与资金结果前端 | `assets/hackathon/followup/` | 用公共事项／任务／结果样例制作组件，实际联调使用模块 4 的数据 | [复制任务 6](./parallel-prompts/06-followup-frontend.md) |
+| 5 | 决策与材料前端（已移除） | 已删除 | 与现有经营总览及工作台功能重合 | [历史提示词](./parallel-prompts/05-decision-frontend.md) |
+| 6 | 工作台、渠道与资金结果前端（已移除） | 已删除 | 与今日工作台及现有执行跟进功能重合 | [历史提示词](./parallel-prompts/06-followup-frontend.md) |
 
 每个框还拥有提示词指定的验证文件和 `docs/parallel-handoff/` 下自己的交接文件。不同目录可以同时开发；依赖模块未完成时可以先推进内部实现，但完整链路必须等实际模块接入后验收。
 

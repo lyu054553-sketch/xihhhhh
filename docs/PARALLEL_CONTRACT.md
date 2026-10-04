@@ -4,9 +4,11 @@
 
 **契约版本：`hackathon.v1`** · **发布：2026-10-04**
 
+**前端状态：**任务 5、6 的方案决策与执行跟进模块已因功能重合从主应用及源码中移除。本文第 12 节仅保留原 API 适配器和组件挂载契约作为历史记录；后端接口仍然保留。
+
 **数据时钟：2026-10-03 09:30（Asia/Shanghai，来自 `retail-v2.1` manifest）**
 
-本文冻结任务 1—6 之间的数据形状、服务边界、事务约束和前端挂载方式。`/api/v1/hackathon/*` 已由 [`backend/hackathon_routes.py`](../backend/hackathon_routes.py) 注册到现有 FastAPI 应用；“已注册”只说明路由与服务图接通，不代表模型供应商已配置或业务数据自动接入。代码中可直接导入的 Python 类型和共享 SQLite 事务入口在 [`backend/hackathon_shared.py`](../backend/hackathon_shared.py) 与 [`backend/store.py`](../backend/store.py)；浏览器请求适配器在 [`assets/hackathon/shared/api-client.js`](../assets/hackathon/shared/api-client.js)。
+本文记录任务 1—6 开发时的数据形状、服务边界、事务约束和前端挂载方式。`/api/v1/hackathon/*` 已由 [`backend/hackathon_routes.py`](../backend/hackathon_routes.py) 注册到现有 FastAPI 应用；“已注册”只说明路由与服务图接通，不代表模型供应商已配置或业务数据自动接入。代码中可直接导入的 Python 类型和共享 SQLite 事务入口在 [`backend/hackathon_shared.py`](../backend/hackathon_shared.py) 与 [`backend/store.py`](../backend/store.py)。
 
 本文 JSON 请求块是按契约字段编写的请求模板；JSON 响应块均带 `"fixture_only": true`，属于**开发 fixture**，只用于制作组件和服务夹具。将响应 fixture 复制到开发预览时，必须显式启用 fixture 模式并显示“开发预览”；不能把 fixture 放进生产响应、Agent 输入或真实 API 请求，也不能在 HTTP 失败后用 fixture 代答。所有金额示例均为人民币元；未知值必须为 `null`，不等于 0。
 
@@ -567,7 +569,9 @@ S10 缺项属于不同快照／分支，不能混进 S02 响应。单独查询 S
 }
 ```
 
-## 12. 前端 API 与组件生命周期
+## 12. 前端 API 与组件生命周期（历史契约）
+
+本节描述的浏览器适配器与两个挂载组件已从源码删除，仅供追溯原并行实现，不代表当前应用入口或可运行代码。
 
 共享适配器为 `window.HackathonApiClient.createApiClient({ baseUrl, tenantId })`，默认真实 HTTP 模式，base URL 为同源 `/api/v1`；可调用 `.queryFacts/.assessRisks/.compareProposals/.saveProposal/.extractMaterial/.confirmMaterial/.startAgentRun/.getAgentRun/.confirmProposal/.listProposals/.listTasks/.getOverview/.getTask/.recordChannelAction/.recordBusinessEvents/.advanceReplay/.getAccounting/.getCase`。`extractMaterial(input, idempotencyKey)` 对 JSON／multipart 共用完整 `context`；`confirmMaterial(draftId, body, idempotencyKey)` 附带幂等键。`listProposals(params)` 读取待确认方案，`getOverview(params)` 读取首页聚合。所有错误抛出 `ApiError(status, code, message, detail, payload)`。断网、409、422 不返回成功对象，不自动重试写操作。
 

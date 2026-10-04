@@ -5,21 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="货不压钱，连锁零售库存资金决策 Agent" />
     <title>货不压钱 · 经营总览</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="assets/brand-mark-box-coin.svg?v=20261004-tape" />
     <link rel="preload" href="assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="styles.css?v=20261004-local-icons" />
-    <link rel="stylesheet" href="retail-app.css?v=20261003-right-back-links" />
+    <link rel="stylesheet" href="styles.css?v=20261004-erp-minimax" />
+    <link rel="stylesheet" href="retail-app.css?v=20261004-sidebar-cleanup" />
     <link rel="stylesheet" href="retail-workbenches.css?v=20261003-right-back-links" />
     <link rel="stylesheet" href="retail-simulation.css?v=20261003-navigation" />
-    <link rel="stylesheet" href="assets/hackathon/decision/decision-workbench.css?v=20261004-integration" />
-    <link rel="stylesheet" href="assets/hackathon/followup/followup.css?v=20261004-integration" />
-    <link rel="stylesheet" href="assets/hackathon/integration.css?v=20261004-integration" />
   </head>
   <body class="retail-design">
     <div class="app-shell">
       <aside class="sidebar" aria-label="系统导航">
         <a class="brand" href="#overview" aria-label="货不压钱经营总览">
-          <img src="assets/brand-mark.png" alt="" />
+          <img src="assets/brand-mark-box-coin.svg?v=20261004-tape" alt="" />
           <span><strong>货不压钱</strong><small>连锁零售库存资金 Agent</small></span>
         </a>
 
@@ -40,19 +37,12 @@
           </div>
 
           <div class="nav-group">
-            <span class="nav-group-label">方案与执行</span>
-            <a href="#decision-entry" data-route="decision-entry"><span class="material-symbols-rounded" aria-hidden="true">rule</span><b>方案决策</b></a>
-            <a href="#execution-followup" data-route="execution-followup"><span class="material-symbols-rounded" aria-hidden="true">receipt_long</span><b>审批与执行跟进</b></a>
-          </div>
-
-          <div class="nav-group">
             <span class="nav-group-label">数据与知识</span>
             <a href="#cases" data-route="cases"><span class="material-symbols-rounded" aria-hidden="true">menu_book</span><b>案例库</b></a>
-            <a href="#data" data-route="data"><span class="material-symbols-rounded" aria-hidden="true">database</span><b>数据中心</b></a>
+            <a href="#data" data-route="data"><span class="material-symbols-rounded" aria-hidden="true">database</span><b>数据连接</b></a>
           </div>
         </nav>
 
-        <div class="retail-sidebar-footer"><span class="material-symbols-rounded">storefront</span><span><strong id="retail-company">零食仓 · 演示企业</strong><small>零食连锁门店数据</small></span></div>
         <a class="settings-link" href="#settings" data-route="settings">
           <span class="material-symbols-rounded" aria-hidden="true">settings</span><b>系统设置</b>
         </a>
@@ -150,16 +140,6 @@
             <header class="module-header"><div><span class="agent-page-mark"><span class="material-symbols-rounded" aria-hidden="true">front_hand</span>采购 Agent</span><h1>采购刹车</h1><p>联动现有库存、在途采购和订单状态，阻止积压继续扩大。</p></div></header>
             <div class="summary-strip"><div><span>采购敞口</span><strong id="procurement-count">1</strong></div><div><span>相关库存成本</span><strong id="procurement-amount">¥0</strong></div><div><span>当前重点</span><strong class="summary-status">核对在途订单</strong></div></div>
             <section class="focused-surface agent-workbench"><div class="surface-toolbar"><div><h2>采购调整队列</h2><p>确认订单能否暂停、减量或延迟到货。</p></div><span>避免现金流出</span></div><div id="procurement-list" class="agent-case-list"></div></section>
-          </section>
-
-          <section class="module-view hackathon-module-view" data-view="decision-entry" aria-label="方案决策">
-            <p class="hackathon-host-preview-note" data-hackathon-preview-note role="note" hidden>开发预览 · 页面内容来自本地 fixture；确认、材料写入和 Agent 操作不会作为真实接口成功。</p>
-            <div id="hackathon-decision-host" class="hackathon-module-host"></div>
-          </section>
-
-          <section class="module-view hackathon-module-view" data-view="execution-followup" aria-label="审批与执行跟进">
-            <p class="hackathon-host-preview-note" data-hackathon-preview-note role="note" hidden>开发预览 · 页面内容来自本地 fixture；审批、回执、渠道和业务事件写入均已禁用。</p>
-            <div id="hackathon-followup-host" class="hackathon-module-host"></div>
           </section>
 
           <section class="module-view risk-module" data-view="risks">
@@ -345,7 +325,10 @@
           </section>
 
           <section class="module-view" data-view="data">
-            <header class="module-header data-header"><button class="page-back" type="button" data-go="overview"><span class="material-symbols-rounded">arrow_back</span>返回首页</button><div><p class="eyebrow">数据底座</p><h1>数据中心</h1><p>上传季度数据或待分析数据，完成字段校验、导入留痕和后续分析。所有数据仅用于本系统分析，不会同步到其他系统。</p></div></header>
+            <header class="module-header data-header"><button class="page-back" type="button" data-go="overview"><span class="material-symbols-rounded">arrow_back</span>返回首页</button><div><p class="eyebrow">数据底座</p><h1>数据连接</h1><p>查看已接入的业务数据、覆盖范围，以及这些数据如何支持库存风险分析。</p></div></header>
+            <div id="erp-connection" aria-live="polite"></div>
+            <template id="legacy-file-import-template">
+              <h2>文件导入与历史记录</h2>
             <div id="data-sources"></div>
             <form class="data-import-panel" id="data-import-form">
               <section class="focused-surface data-import-card">
@@ -360,6 +343,8 @@
               <aside class="focused-surface data-prep-card"><div class="data-section-heading"><div><h2>数据准备指引</h2><p>建议根据你的实际情况准备以下数据（可不全部提供）：</p></div><button id="download-all-templates" class="text-link" type="button">下载全部模板</button></div><div class="data-template-list"><div><i class="material-symbols-rounded green">table_view</i><strong>库存数据</strong><span>用于在库商品统计、门店库存对比</span><button data-template-kind="inventory" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded blue">analytics</i><strong>销售数据</strong><span>用于销量分析、滞销识别、门店对比</span><button data-template-kind="sales" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded orange">receipt_long</i><strong>采购/入库数据</strong><span>用于采购分析、补货建议</span><button data-template-kind="purchase" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded violet">event</i><strong>批次/效期数据</strong><span>用于近效期识别、处置方案</span><button data-template-kind="expiry" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div><div><i class="material-symbols-rounded red">store</i><strong>门店基础信息</strong><span>用于门店分组、区域分析（可选）</span><button data-template-kind="store" type="button">模板下载 <span class="material-symbols-rounded">download</span></button></div></div><div class="data-tip"><span class="material-symbols-rounded">lightbulb</span><div><strong>小提示</strong><p>文件列名不需要和模板完全一致，系统会自动识别并让你确认。</p><p>建议首次按季度整理时间范围，便于和历史分析对比。</p><p>如有列名无法识别，系统会在下一步提示并支持手动映射。</p></div></div></aside>
             </form>
             <section class="focused-surface data-history-card"><div class="data-history-heading"><div><h2>历史分析记录</h2><p>每次分析都会保留独立快照，便于回看结果和使用过的文件。</p></div><div class="data-history-filters"><label><span class="material-symbols-rounded">search</span><input id="analysis-search" placeholder="搜索分析名称..." /></label><select id="analysis-status-filter"><option>全部状态</option><option>已完成</option><option>待修正</option></select><select id="analysis-sort"><option>按创建时间</option><option>按销售期间</option></select></div></div><div class="analysis-history-head"><span>分析名称</span><span>销售期间</span><span>库存时点</span><span>门店范围</span><span>文件数量</span><span>状态</span><span>创建时间</span><span>操作</span></div><div id="import-history" class="analysis-history-list"></div><footer class="analysis-history-footer"><span id="analysis-count">共 5 条记录</span><span>‹</span><b>1</b><span>›</span><select><option>10 条/页</option></select></footer></section>
+            </template>
+            <div id="legacy-file-import" hidden></div>
           </section>
 
           <section class="module-view" data-view="settings">
@@ -396,12 +381,9 @@
 
     <dialog id="retail-detail" class="retail-detail-dialog" aria-labelledby="retail-detail-title"><header><h2 id="retail-detail-title">方案详情</h2><button type="button" id="retail-detail-close" data-retail="close-detail" aria-label="关闭详情"><span class="material-symbols-rounded">close</span></button></header><div id="retail-detail-content"></div></dialog>
 
-    <script src="retail-app.js?v=20261003-approval-followup"></script>
+    <script src="retail-app.js?v=20261004-sidebar-cleanup"></script>
     <script src="retail-workbenches.js?v=20261003-approval-followup"></script>
-    <script src="retail-simulation.js?v=20261003-navigation"></script>
-    <script src="app.js?v=20261003-approval-followup"></script>
-    <script src="assets/hackathon/shared/api-client.js?v=20261004-integration"></script>
-    <script src="assets/hackathon/followup/followup.js?v=20261004-integration"></script>
-    <script src="assets/hackathon/integration.js?v=20261004-context-fix"></script>
+    <script src="retail-simulation.js?v=20261004-data-connection"></script>
+    <script src="app.js?v=20261004-erp-route"></script>
   </body>
 </html>

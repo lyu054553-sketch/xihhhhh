@@ -138,10 +138,11 @@ const featuredCases = [
   },
 ];
 
+// Keep the production file-import UI and handlers available in source, but hide them for the competition.
+const ENABLE_LEGACY_FILE_IMPORT = false;
 const API_BASE = window.location.protocol === "file:" ? null : "/api/v1";
-const HACKATHON_PREVIEW = new URLSearchParams(window.location.search).get("hackathonPreview") === "1";
 const validRoutes = new Set([
-  "overview", "today", "slow-diagnosis", "transfer", "expiry-rescue", "procurement-brake", "decision-entry", "execution-followup",
+  "overview", "today", "slow-diagnosis", "transfer", "expiry-rescue", "procurement-brake",
   "risks", "tasks", "approvals", "execution", "simulation", "cases", "data", "settings",
 ]);
 const state = {
@@ -170,6 +171,8 @@ const state = {
   proposals: [],
   executionTasks: [],
   dataCenter: null,
+  erpConnection: null,
+  erpConnectionError: null,
   workbenchLoading: {},
   region: "all",
   todayFilter: "pending",
@@ -676,7 +679,11 @@ async function selectTransferTarget(storeId) {
 
 function formInput(form) {
   const input = {};
-  new FormData(form).forEach((value, key) => { input[key] = value; });
+  new FormData(form).forEach((value, key) => {
+    const control = Array.from(form.elements || []).find((element) => element.name === key);
+    const numericValue = control?.type === "number" && value !== "" ? control.valueAsNumber : null;
+    input[key] = Number.isFinite(numericValue) ? numericValue : value;
+  });
   return input;
 }
 
@@ -1138,7 +1145,38 @@ function renderExecutionList() {
   $$("[data-execution-form]", target).forEach((form) => form.addEventListener("submit", async (event) => { event.preventDefault(); const values = formInput(form); try { await api(`/execution-tasks/${form.dataset.executionForm}/status`, { method: "POST", body: JSON.stringify(values) }); await refreshCommonRecords(); showToast("执行状态与回执已记录"); } catch (error) { showToast(`状态更新失败：${error.message}`, "error"); } }));
 }
 
-function renderDataCenter() {
+function renderErpConnection() {
+  const target = $("#erp-connection");
+  if (!target) return;
+  const erp = state.erpConnection;
+  if (erp?.status !== "connected") {
+    target.innerHTML = `<section class="erp-connection-card"><div class="erp-connection-heading"><div class="erp-connection-icon"><span class="material-symbols-rounded">database</span></div><div class="erp-connection-title"><h2>零食仓 ERP</h2><p>业务数据来源</p></div><span class="erp-connection-status unavailable">尚未接入</span></div><p class="erp-connection-description">${escapeHtml(state.erpConnectionError || "当前没有可读取的 ERP 样例数据。")}</p></section>`;
+    return;
+  }
+  const count = (value) => Number(value || 0).toLocaleString("zh-CN");
+  const displayTime = (value) => value ? String(value).replace("T", " ").slice(0, 16) : "未标注";
+  const inventoryRows = (erp.preview || []).map((row) => `<tr><td>${escapeHtml(row.store_name)}</td><td><strong>${escapeHtml(row.product_name)}</strong><br><small>${escapeHtml(row.sku_id)}</small></td><td>${escapeHtml(row.lot_id)}</td><td>${count(row.quantity)} ${escapeHtml(row.unit)}</td><td>${money(row.inventory_cost_cny)}</td></tr>`).join("");
+  const orderStatus = { confirmed: "已确认", open: "待执行", partially_received: "部分收货", received: "已收货", cancelled: "已取消" };
+  const paymentStatus = { paid: "已付款", unpaid: "待付款", partially_paid: "部分付款" };
+  const purchaseRows = (erp.purchase_preview || []).map((row) => `<tr><td><strong>${escapeHtml(row.po_id)}</strong><br><small>${escapeHtml(row.po_line_id)}</small></td><td>${escapeHtml(row.store_name)}</td><td>${escapeHtml(row.product_name)}</td><td>${count(row.ordered_qty)} ${escapeHtml(row.unit)}<br><small>已收 ${count(row.received_qty)} ${escapeHtml(row.unit)}</small></td><td>${money(row.order_amount_cny)}</td><td>${escapeHtml(orderStatus[row.order_status] || row.order_status)}<br><small>${escapeHtml(paymentStatus[row.payment_status] || row.payment_status)}</small></td></tr>`).join("");
+  const ai = erp.ai || {};
+  const aiStatus = ai.text_configured && ai.vision_configured
+    ? "文本分析和单图识别已配置，发起分析时调用在线模型。"
+    : "模型已选定，等待在本地 .env 填入 API Key 后启用在线分析。";
+  target.innerHTML = `
+    <section class="erp-connection-card">
+      <div class="erp-connection-heading"><div class="erp-connection-icon"><span class="material-symbols-rounded">database</span></div><div class="erp-connection-title"><h2>${escapeHtml(erp.source_name)}</h2><p>零食连锁业务数据源 · 样例数据</p></div><span class="erp-connection-status">已接入</span></div>
+      <p class="erp-connection-description">门店、商品、库存批次和采购订单已进入本系统，库存风险识别与现有工作台可读取相关业务数据。</p>
+      <div class="erp-connection-metrics"><div><strong>${count(erp.complete_store_count)} / ${count(erp.directory_store_count)}</strong><span>有完整数据的门店</span></div><div><strong>${count(erp.sku_count)}</strong><span>商品 SKU</span></div><div><strong>${count(erp.lot_count)}</strong><span>在库批次</span></div><div><strong>${count(erp.purchase_order_count)}</strong><span>采购订单记录</span></div></div>
+      <div class="erp-connection-footer"><p>库存数据截至 ${escapeHtml(displayTime(erp.data_as_of))} · 分析基准 ${escapeHtml(displayTime(erp.analysis_as_of))}</p><div class="erp-actions"><button class="secondary-action" id="erp-open-records" type="button">查看接入数据</button><button class="primary-action" type="button" data-go="slow-diagnosis">查看库存分析</button></div></div>
+      <div class="erp-model-state"><span class="material-symbols-rounded">auto_awesome</span><span><strong>${escapeHtml(ai.model || "MiniMax-M3")}</strong> · ${escapeHtml(aiStatus)}</span></div>
+    </section>
+    <section class="erp-records-card" id="erp-records"><div class="erp-records-heading"><h2>已接入的库存明细</h2><p>供库存风险识别与商品分析查看</p></div><table class="erp-records-table"><thead><tr><th>门店</th><th>商品</th><th>批次</th><th>当前库存</th><th>库存成本</th></tr></thead><tbody>${inventoryRows || '<tr><td colspan="5">暂无在库记录</td></tr>'}</tbody></table></section>
+    <section class="erp-records-card"><div class="erp-records-heading"><h2>已接入的采购订单</h2><p>订单金额按订购数量和进货单价计算</p></div><table class="erp-records-table erp-purchase-table"><thead><tr><th>采购单</th><th>门店</th><th>商品</th><th>订购 / 已收</th><th>订单金额</th><th>订单 / 付款状态</th></tr></thead><tbody>${purchaseRows || '<tr><td colspan="6">暂无采购订单记录</td></tr>'}</tbody></table></section>`;
+  $("#erp-open-records", target)?.addEventListener("click", () => $("#erp-records")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+
+function renderLegacyDataCenter() {
   const data = state.dataCenter, sourceTarget = $("#data-sources"), history = $("#import-history");
   if (!sourceTarget || !history) return;
   const source = data?.sources?.[0] || {};
@@ -1194,27 +1232,40 @@ function fileAsBase64(file) {
   });
 }
 
+function renderDataCenter() {
+  renderErpConnection();
+  if (ENABLE_LEGACY_FILE_IMPORT) renderLegacyDataCenter();
+}
+
 async function refreshCommonRecords() {
   if (!API_BASE) return;
   try {
-    const [items, proposals, tasks, data] = await Promise.all([api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center")]);
+    const [items, proposals, tasks, data, erp] = await Promise.all([api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center"), api("/hackathon/data-connections/erp").catch(() => ({ error: "ERP 样例数据暂不可用，请确认后端已加载比赛场景。" }))]);
     state.workItems = items.items || []; state.proposals = proposals.items || []; state.executionTasks = tasks.items || []; state.dataCenter = data;
+    state.erpConnection = erp.status === "connected" ? erp : null;
+    state.erpConnectionError = erp.error || null;
     renderSupportPages();
   } catch (error) { showToast(`协同记录读取失败：${error.message}`, "error"); }
 }
 
-async function hydrate() {
-  if (HACKATHON_PREVIEW) {
-    state.dataCenter = { mode: "sample_replay" };
-    renderRiskList();
-    renderSupportPages();
-    renderCases([]);
-    return;
-  }
+async function refreshErpConnection() {
+  if (!API_BASE) return;
   try {
-    const [dashboard, riskPayload, casePayload, items, proposals, tasks, data] = API_BASE
-      ? await Promise.all([api("/dashboard"), api("/risks"), api("/cases"), api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center")])
-      : [null, { items: fallbackRisks }, { items: [] }, { items: [] }, { items: [] }, { items: [] }, null];
+    const erp = await api("/hackathon/data-connections/erp");
+    state.erpConnection = erp.status === "connected" ? erp : null;
+    state.erpConnectionError = erp.status === "connected" ? null : "ERP 样例数据尚未入库。";
+  } catch (error) {
+    state.erpConnection = null;
+    state.erpConnectionError = `当前服务未能读取 ERP 样例数据：${error.message}`;
+  }
+  renderDataCenter();
+}
+
+async function hydrate() {
+  try {
+    const [dashboard, riskPayload, casePayload, items, proposals, tasks, data, erp] = API_BASE
+      ? await Promise.all([api("/dashboard"), api("/risks"), api("/cases"), api("/work-items"), api("/proposals"), api("/execution-tasks"), api("/data-center"), api("/hackathon/data-connections/erp").catch(() => ({ error: "ERP 样例数据暂不可用，请确认后端已加载比赛场景。" }))])
+      : [null, { items: fallbackRisks }, { items: [] }, { items: [] }, { items: [] }, { items: [] }, null, null];
     state.dashboard = dashboard;
     const realMode = data?.mode === "real_inventory_snapshot";
     state.risks = riskPayload.items?.length ? riskPayload.items : (realMode ? [] : fallbackRisks);
@@ -1222,7 +1273,8 @@ async function hydrate() {
     state.diagnosisRisks = state.risks;
     state.diagnosisTotal = Number(riskPayload.filtered_total ?? riskPayload.total ?? state.risks.length);
     state.workItems = items.items || []; state.proposals = proposals.items || []; state.executionTasks = tasks.items || []; state.dataCenter = data;
-    window.RetailHackathonIntegration?.refreshContext?.();
+    state.erpConnection = erp?.status === "connected" ? erp : null;
+    state.erpConnectionError = erp?.error || null;
     window.RetailApp?.renderOverview();
     if (!state.risks.some((risk) => Number(risk.id) === Number(state.selectedId))) state.selectedId = state.risks[0]?.id;
     renderRiskList();
@@ -1235,7 +1287,6 @@ async function hydrate() {
     }
   } catch (error) {
     state.risks = [...fallbackRisks]; state.riskTotal = state.risks.length;
-    window.RetailHackathonIntegration?.refreshContext?.();
     renderRiskList();
     renderSupportPages();
     renderSelectedDetail();
@@ -1342,10 +1393,9 @@ function renderRoute() {
   renderPageBack(route);
   const titles = {
     overview: "经营总览", today: "今日工作台", "slow-diagnosis": "滞销库存诊断", transfer: "跨门店智能调拨",
-    "decision-entry": "方案决策", "execution-followup": "审批与执行跟进",
     "expiry-rescue": "近效期现金抢救", "procurement-brake": "采购刹车", risks: "风险案件",
     tasks: "核查任务", approvals: "方案审批", execution: "执行追踪", simulation: "现金流模拟",
-    cases: "案例库", data: "数据中心", settings: "系统设置",
+    cases: "案例库", data: "数据连接", settings: "系统设置",
   };
   document.title = `货不压钱 · ${titles[route]}`;
   window.RetailApp?.routeChanged(route);
@@ -1356,7 +1406,8 @@ function renderRoute() {
     if (diagnosisId) loadDiagnosisReport(diagnosisId);
     else renderDiagnosis();
   }
-  if (["today", "tasks", "approvals", "execution", "data"].includes(route)) refreshCommonRecords();
+  if (["today", "tasks", "approvals", "execution"].includes(route)) refreshCommonRecords();
+  if (route === "data") refreshErpConnection();
   window.dispatchEvent(new CustomEvent("retail:route-change", { detail: { route } }));
 }
 
@@ -1623,7 +1674,11 @@ function bindEvents() {
   ["#simulation-target", "#simulation-days", "#simulation-constraints", "#simulation-request"].forEach((selector) => $(selector).addEventListener("input", () => {
     $("#simulation-understanding").textContent = `待确认输入：${$("#simulation-request").value.trim() || "未提供自然语言描述"}；${$("#simulation-days").value} 天内目标 ${money(Number($("#simulation-target").value || 0) * 10000)}。`;
   }));
-  $("#import-kind").addEventListener("change", renderDataCenter);
+
+}
+
+function bindLegacyImportEvents() {
+  $("#import-kind").addEventListener("change", renderLegacyDataCenter);
   $("#import-select-file").addEventListener("click", () => $("#import-file").click());
   $("#import-template").addEventListener("click", () => showToast("已打开数据模板选择；请先选择对应的数据类型"));
   $("#download-all-templates").addEventListener("click", () => showToast("全部数据模板已准备好，可按右侧数据类型逐项下载"));
@@ -1659,9 +1714,9 @@ function bindEvents() {
     input.files = transfer.files;
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  $("#analysis-search").addEventListener("input", (event) => { state.analysisSearch = event.target.value; renderDataCenter(); });
-  $("#analysis-status-filter").addEventListener("change", (event) => { state.analysisStatus = event.target.value; renderDataCenter(); });
-  $("#analysis-sort").addEventListener("change", (event) => { state.analysisSort = event.target.value; renderDataCenter(); });
+  $("#analysis-search").addEventListener("input", (event) => { state.analysisSearch = event.target.value; renderLegacyDataCenter(); });
+  $("#analysis-status-filter").addEventListener("change", (event) => { state.analysisStatus = event.target.value; renderLegacyDataCenter(); });
+  $("#analysis-sort").addEventListener("change", (event) => { state.analysisSort = event.target.value; renderLegacyDataCenter(); });
   $("#data-view-files")?.addEventListener("click", () => showToast("本次分析包含库存、销售与采购共 3 份文件"));
   $("#import-history").addEventListener("click", (event) => {
     const fileAction = event.target.closest("[data-history-files]");
@@ -1686,7 +1741,19 @@ function bindEvents() {
   });
 }
 
+function mountLegacyFileImport() {
+  if (!ENABLE_LEGACY_FILE_IMPORT) return;
+  const mount = $("#legacy-file-import");
+  const template = $("#legacy-file-import-template");
+  if (!mount || !template) return;
+  mount.replaceChildren(template.content.cloneNode(true));
+  mount.hidden = false;
+  bindLegacyImportEvents();
+  renderLegacyDataCenter();
+}
+
 bindEvents();
+mountLegacyFileImport();
 window.RetailApp?.init({ state, api, money, escapeHtml, missingLabel, agentRouteForRisk, approveProposal, executeProposal, currentRoute, renderRiskList, loadSelectedDetail, loadWorkbench, refreshCommonRecords });
 if (!window.location.hash || !validRoutes.has(window.location.hash.replace("#", ""))) window.location.hash = "overview";
 renderRoute();

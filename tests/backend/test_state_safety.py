@@ -41,6 +41,17 @@ class StateSafetyTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
 
+    def test_transfer_read_normalizes_legacy_string_quantity(self):
+        data = self.store.default_workbench_input("transfer", 1)
+        data["quantity"] = "40"
+        self.store.save_workbench_draft("transfer", 1, data, None, "needs_recalculation")
+
+        response = self.client.get("/api/v1/workbenches/transfer?risk_id=1")
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["input"]["quantity"], 40)
+        self.assertIs(type(response.json()["input"]["quantity"]), int)
+
     def submit(self, proposal):
         response = self.client.post(f"/api/v1/proposals/{proposal['id']}/submit", json={"expected_version": proposal["current_version"]})
         self.assertEqual(response.status_code, 200, response.text)

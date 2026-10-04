@@ -728,6 +728,10 @@ class Store:
         for field in allowed:
             if field.endswith("qty") or field in ("quantity", "adjustment_qty"):
                 value = base.get(field)
+                # Older browser drafts persisted <input type="number"> values as strings.
+                if isinstance(value, str) and value.isascii() and value.isdigit() and len(value) <= 10:
+                    value = int(value)
+                    base[field] = value
                 if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= MAX_QUANTITY:
                     raise ValueError(field + "必须为 0 至 2147483647 的整数")
         if base["unit_cost"] is None or risk["inventory_qty"] is None or risk["sales_30"] is None:

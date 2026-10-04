@@ -89,8 +89,6 @@ window.RetailApp = (() => {
     const source = $('#retail-source');
     const real = overview?.is_demo === false || ctx.state.dataCenter?.mode === 'real_inventory_snapshot';
     if (source) source.textContent = `${real ? '当前库存快照' : '零食仓 · 演示数据'}${overview?.as_of_date ? ` · ${overview.as_of_date.replaceAll('-', '/')}` : ''}`;
-    const company = $('#retail-company');
-    if (company) company.textContent = real ? '已导入企业数据' : '零食仓 · 演示企业';
     const topDate = $('#retail-top-date');
     if (topDate) {
       const [year, month, day] = (overview?.as_of_date || '2026-10-03').split('-');

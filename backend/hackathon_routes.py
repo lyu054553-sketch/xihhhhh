@@ -6,6 +6,7 @@ tenant, idempotency handling and public DTO validation boundaries.
 from __future__ import annotations
 
 import base64
+from decimal import Decimal
 from email import policy
 from email.parser import BytesParser
 import json
@@ -224,6 +225,58 @@ def get_context(request: Request, scenario_id: str = Query(default="S01"), branc
     reference = facts.get("reference_data", {})
     return {"contract_version": CONTRACT_VERSION, "context": context,
             "selection": {"target": reference.get("target", {}), "evaluation_end": reference.get("evaluation_end")}}
+
+
+@router.get("/data-connections/erp")
+def get_sample_erp_connection(request: Request, x_tenant_id: str | None = Header(default=None)):
+    """Describe the persisted retail fixture used by the decision workspace."""
+    services, tenant = _services(request), _tenant(x_tenant_id)
+    context = _context(services, tenant, "S01", "transfer_80")
+    facts = services.facts.query({"context": context, "include": ["inventory", "procurement"]})
+    reference = facts["reference_data"]["tables"]
+    stores = {row["store_id"]: row for row in reference["stores"]}
+    products = {row["sku_id"]: row for row in reference["products"]}
+    inventory = [row for row in facts["inventory"]
+                 if row["stock_state"] == "on_hand" and stores[row["store_id"]]["include_in_summary"]]
+    purchase_orders = [row for row in facts["procurement"] if row["record_type"] == "purchase_order"]
+
+    def inventory_cost(row):
+        return (Decimal(str(row["quantity"])) * Decimal(str(row["unit_cost_cny"]))) if row["unit_cost_cny"] is not None else None
+    inventory.sort(key=lambda row: (
+        row["store_id"] != "ST-001" or row["sku_id"] != "SKU-001",
+        -(inventory_cost(row) or Decimal(0)),
+    ))
+    preview = [{"store_id": row["store_id"], "store_name": stores[row["store_id"]]["store_name"],
+                "sku_id": row["sku_id"], "product_name": products[row["sku_id"]]["product_name"],
+                "lot_id": row["lot_id"], "quantity": row["quantity"], "unit": row["base_unit"],
+                "unit_cost_cny": row["unit_cost_cny"],
+                "inventory_cost_cny": str(inventory_cost(row)) if inventory_cost(row) is not None else None}
+               for row in inventory[:5]]
+    purchase_preview = [{"po_id": row["po_id"], "po_line_id": row["po_line_id"],
+                         "store_name": stores[row["store_id"]]["store_name"],
+                         "product_name": products[row["sku_id"]]["product_name"],
+                         "ordered_qty": row["ordered_qty"], "received_qty": row["received_qty"],
+                         "unit": products[row["sku_id"]]["base_unit"],
+                         "order_amount_cny": str(Decimal(str(row["ordered_qty"])) * Decimal(str(row["unit_cost"]))) if row.get("unit_cost") is not None else None,
+                         "order_status": row["order_status"], "payment_status": row["payment_status"]}
+                        for row in purchase_orders[:5]]
+    model_config = request.app.state.model_config
+    text_model = model_config.providers.get(model_config.text_provider)
+    vision_model = model_config.providers.get(model_config.vision_provider)
+    return {"status": "connected", "source_name": "零食仓 ERP", "source_type": "sample_erp",
+            "data_as_of": max((row["source_ref"]["known_at"] for row in inventory), default=context["as_of"]),
+            "analysis_as_of": context["as_of"], "fact_version": context["fact_version"],
+            "complete_store_count": sum(bool(row["include_in_summary"]) for row in stores.values()),
+            "directory_store_count": len(stores), "sku_count": len(products),
+            "lot_count": len({row["lot_id"] for row in inventory}),
+            "inventory_row_count": len(inventory),
+            "purchase_order_count": len(purchase_orders),
+            "preview": preview, "purchase_preview": purchase_preview,
+            "ai": {"provider": model_config.text_provider,
+                   "model": text_model.model if text_model else None,
+                   "text_configured": bool(text_model and text_model.api_key.get_secret_value() and text_model.model),
+                   "vision_model": vision_model.vision_model if vision_model else None,
+                   "vision_configured": bool(vision_model and vision_model.api_key.get_secret_value() and vision_model.vision_model)}}
 
 
 @router.post("/facts/query")

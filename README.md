@@ -43,13 +43,13 @@ python -m venv .venv
 
 ## 模型 API 配置入口
 
-已预留 DeepSeek、千问、MiniMax 三组后端配置，模板见 [.env.example](./.env.example)。本机已有 `.env` 时直接编辑；首次从仓库获取项目且尚无该文件时，可复制模板：
+已提供 DeepSeek、千问、MiniMax 三组后端配置；比赛版默认选择 MiniMax-M3 处理文字分析、工具调用和单张图片材料。模板见 [.env.example](./.env.example)。本机已有 `.env` 时直接编辑；首次从仓库获取项目且尚无该文件时，可复制模板：
 
 ```bash
 cp -n .env.example .env
 ```
 
-在 `.env` 中填写所需服务的配置，修改后重启后端。API Key、模型名称允许暂时留空，不影响本地规则计算。
+在 `.env` 中填写 `MINIMAX_API_KEY`，修改后重启后端。密钥留空不影响本地规则计算，但当次模型分析和图片提取会明确返回未配置状态。
 
 | 服务 | 密钥字段 | 其他配置 |
 |---|---|---|
@@ -57,11 +57,11 @@ cp -n .env.example .env
 | 千问／阿里云百炼 | `QWEN_API_KEY` | `QWEN_BASE_URL`、`QWEN_MODEL`、`QWEN_VISION_MODEL` |
 | MiniMax | `MINIMAX_API_KEY` | `MINIMAX_BASE_URL`、`MINIMAX_MODEL`、`MINIMAX_VISION_MODEL` |
 
-`AGENT_MODEL_PROVIDER` 和 `AGENT_VISION_PROVIDER` 分别预留文本分析、图片识别的服务选择，可填 `deepseek`、`qwen`、`minimax`，未决定时留空。模型名称按账号实际可用模型填写；图片入口需对应支持图片输入的模型。千问默认地址为北京地域，其他地域或专属工作空间需要替换成与密钥匹配的地址。接口地址依据 [DeepSeek 文档](https://api-docs.deepseek.com/)、[百炼地域与接口说明](https://help.aliyun.com/en/model-studio/base-url)、[MiniMax 文档](https://platform.minimax.cn/docs/api-reference/text-openai-api) 预留，可自行修改。
+`AGENT_MODEL_PROVIDER` 和 `AGENT_VISION_PROVIDER` 分别选择文本分析、图片识别服务，比赛版均已设为 `minimax`；其他服务可按需切换。模型名称按账号实际可用模型填写；图片入口需对应支持图片输入的模型。千问默认地址为北京地域，其他地域或专属工作空间需要替换成与密钥匹配的地址。接口地址依据 [DeepSeek 文档](https://api-docs.deepseek.com/)、[百炼地域与接口说明](https://help.aliyun.com/en/model-studio/base-url)、[MiniMax 文档](https://platform.minimax.cn/docs/api-reference/text-openai-api) 配置，可自行修改。
 
 后端从项目根目录 `.env` 读取，已有环境变量优先；密钥使用 `SecretStr` 保存，配置不通过前端接口返回，`.env` 已被 Git 忽略。本次开发与比赛不设 API 总费用上限，配置中的 `api_budget_limit_cny=None` 表示不限，后续接入仍保留请求超时、有限重试与用量记录。
 
-**目前完成的是配置读取入口；尚未接入模型请求、图片识别或自动切换。** 填写配置不会触发付费调用。新增依赖 `python-dotenv`，更新后先按上面的命令安装 `requirements.txt`。
+后端已具备真实模型请求、受控工具调用和单张图片提取的调用路径；填好密钥并重启后，用户发起分析才会调用在线模型。当前未填写有效密钥，也未完成 MiniMax 实际请求验收；不能将配置状态视为调用成功。比赛版的数据连接页展示已入库的库存与采购样例，不再提供库存表格上传界面；采购／退供材料的单张截图输入仍保留。
 
 ## 数据与协作
 

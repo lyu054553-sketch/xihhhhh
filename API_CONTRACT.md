@@ -1,6 +1,6 @@
 # 货不压钱｜连锁零售库存资金 Agent API Contract
 
-版本：v1.4（导入语义去重、有效库存预留与未来动作现金窗口）
+版本：v1.6（数据连接展示采购样例与模型配置状态）
 日期：2026-10-03  
 前端负责人：朱；后端及计算负责人：魏  
 仓库：lyu054553-sketch/xihhhhh，协作分支：lanyangyang
@@ -312,6 +312,7 @@ v1.3 是接口变更。朱需按新版版本字段、导入状态、手工确认
 | 方法 | 路径 | 用途 |
 |---|---|---|
 | GET | `/hackathon/context` | 返回事实版本、选中目标和观察期 |
+| GET | `/hackathon/data-connections/erp` | 从已入库的 S01 样例事实返回 ERP 来源状态、覆盖范围、库存与采购预览、模型配置状态 |
 | POST | `/hackathon/facts/query`、`/hackathon/risks/assess` | 读取事实、评估风险 |
 | POST | `/hackathon/proposals/compare` | 根据 `business_inputs` 重算动作候选 |
 | GET / POST | `/hackathon/proposals` | 列出待确认方案、保存比较候选 |
@@ -325,4 +326,6 @@ v1.3 是接口变更。朱需按新版版本字段、导入状态、手工确认
 
 `business_inputs` 接受按 `transfer`、`promotion`、`return`、`procurement` 分组的动作字段，字段明细与观察期口径见 `docs/PARALLEL_CONTRACT.md` 第 7 节。观察期结束日为半开区间边界，起始日期必须等于当前事实时点的日期；路由转换成计算服务内部 DTO 并拒绝未声明字段。材料可使用 JSON 文字或 multipart 单张 PNG/JPG，文件上限 5 MiB、请求上限 6 MiB；未配置 vision provider 时，图片仍会保存成 `failed/manual_review` 草稿并允许人工补录，响应不得标成 AI 已识别。Agent/provider 不可用返回真实失败／不可用状态，不能改用预览 fixture。
 
-前端共享适配器为 `window.HackathonApiClient.createApiClient({baseUrl, tenantId, actorId})`。统一预览入口是 `assets/hackathon/preview.html`：它进入原版清新绿主页面，默认打开方案决策，并可通过原版左侧导航切换到审批与执行跟进。该预览模式下两个模块只使用只读 fixture，不证明真实后端成功。端到端覆盖与剩余限制记录在 `docs/parallel-handoff/05-integration.md`。
+方案决策与执行跟进前端模块已从主应用移除，对应组件、预览和共享浏览器适配器也已删除。`/api/v1/hackathon/*` 后端契约仍保留；原前端交接文档仅作为历史记录。
+
+`GET /api/v1/hackathon/data-connections/erp` 不需要请求体，省略 `X-Tenant-Id` 时读取隔离的 `hackathon-demo` 租户。成功响应包含 `status: "connected"`、`source_type: "sample_erp"`、`source_name`、`data_as_of`、`analysis_as_of`、`fact_version`、`complete_store_count`、`directory_store_count`、`sku_count`、`lot_count`、`inventory_row_count`、`purchase_order_count`，以及最多五条库存 `preview` 和最多五条采购 `purchase_preview`。库存预览含门店、商品、批次、数量、单位、单位成本与库存成本；采购预览含采购单、门店、商品、订购／已收数量、按进货价计算的订单金额及状态。`ai` 只返回提供商、模型名和文本／图片是否已配置的布尔值，绝不返回密钥；已配置不等于调用成功。无法查询 S01 已保存事实时返回错误，前端不能显示“已接入”。该接口只读，不代表连接了真实客户 ERP，也不启动实时同步。

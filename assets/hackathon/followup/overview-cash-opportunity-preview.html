@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>经营总览 · 现金机会区块开发预览</title>
+  <link rel="stylesheet" href="overview-cash-opportunity.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f7f8f5; color: #17251f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .preview-shell { width: min(1320px, calc(100% - 48px)); margin: 0 auto; padding: 26px 0 56px; }
+    .preview-banner { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 20px; margin-bottom: 17px; padding: 11px 15px; border: 1px solid #eadbb8; border-radius: 9px; background: #fffbef; color: #79652f; font-size: 12px; }
+    .preview-banner strong { font-weight: 750; }
+    .preview-legacy { margin-top: 18px; padding: 22px; border: 1px solid #e2e8e3; border-radius: 14px; background: #fff; color: #5f6e65; font-size: 13px; }
+    .preview-legacy h2 { margin: 0 0 8px; color: #24382f; font-size: 16px; }
+    .preview-legacy p { margin: 0; line-height: 1.65; }
+    .preview-route { margin-top: 10px; color: #78867e; font-size: 11px; }
+    @media (max-width: 560px) { .preview-shell { width: calc(100% - 24px); padding-top: 12px; } }
+  </style>
+</head>
+<body>
+  <main class="preview-shell">
+    <div class="preview-banner" role="note">
+      <strong>开发预览 · 本地 fixture</strong>
+      <span>仅用于检查区块样式和交互，金额不是当前经营数据，也不会在接口失败时显示。</span>
+    </div>
+    <div id="cash-opportunity-root"></div>
+    <section class="preview-legacy" aria-label="既有经营总览保留位置">
+      <h2>既有经营总览数据保留</h2>
+      <p>正式接线时，将本区块挂到原经营总览现有四张核心卡片之前。现有账户、库存、采购承诺、门店表及筛选由宿主页继续渲染，本组件不会覆盖或重新计算它们。</p>
+      <p class="preview-route" id="preview-route" aria-live="polite">选择“查看进度”或“去确认”后，正式宿主会打开对应方案或任务。</p>
+    </section>
+  </main>
+  <script src="overview-cash-opportunity.js"></script>
+  <script>
+    const previewTime = "2026-10-03T09:30:00+08:00";
+    const previewTasks = [
+      {
+        task_id: "TASK-PREVIEW-ACTIVE", proposal_id: "PROP-PREVIEW-ACTIVE", proposal_version: 2,
+        title: "古荡店库存处置 · 预计到账跟进", status: "in_transit", display_status: "following_up",
+        next_action: "核对门店签收和后续到账回执", created_at: "2026-10-03T09:34:00+08:00",
+        plan: { actions: [{ store_id: "ST-001", target_store_id: "ST-002" }] },
+        candidate_calculation: { expected_cash_in_cny: 380000, cash_flow: [{ direction: "in", amount_cny: 380000, expected_at: "2026-10-04", status: "forecast", source_ref: "已批准处置方案" }] },
+        accounting: { expected_cash_cny: 380000, actual_cash_cny: null, status_detail: "等待实际到账" },
+      },
+      {
+        task_id: "TASK-PREVIEW-PAST", proposal_id: "PROP-PREVIEW-PAST", proposal_version: 1,
+        title: "上次库存处置回款", status: "completed", display_status: "completed",
+        created_at: "2026-09-28T10:00:00+08:00", completed_at: "2026-09-30T16:45:00+08:00",
+        accounting: { expected_cash_cny: 380000, actual_cash_cny: 220000, uncollected_expected_cny: 160000 },
+      },
+    ];
+    const fixtureApi = {
+      mode: "fixture",
+      async getOverview(query) {
+        return { context: { ...query, tenant_id: "hackathon-demo", is_demo: true }, overview: { account: { balance: 620000 }, inventory: { cost: 1520000, risk_cost: 380000 }, purchase_commitments: { amount: 84000 } }, metadata: { is_demo: true, source: "versioned_retail_facts", as_of: previewTime, data_version: "retail-v2.1", fact_version: 1 } };
+      },
+      async listTasks(query) { return { tasks: previewTasks, context: { ...query, tenant_id: "hackathon-demo", is_demo: true } }; },
+      async listProposals(query) { return { proposals: [{ proposal_id: "PROP-PREVIEW-APPROVAL", proposal_version: 1, status: "pending_approval", title: "确认待处理批次的处置价格", action_lines: [{ store_id: "ST-001" }], updated_at: previewTime }], context: { ...query, tenant_id: "hackathon-demo", is_demo: true } }; },
+    };
+    const mounted = window.HackathonCashOpportunity.mount(document.querySelector("#cash-opportunity-root"), {
+      api: fixtureApi,
+      context: { tenantId: "hackathon-demo", scenarioId: "S01", branchId: "transfer_80", snapshotId: "SNAP-20261003-BASE", asOf: previewTime, dataVersion: "retail-v2.1", factVersion: 1, isDemo: true, storeId: "all" },
+      navigate(route, context) {
+        document.querySelector("#preview-route").textContent = `开发预览导航：${route} · ${context.proposalId || context.taskId || "事项编号未知"}`;
+      },
+    });
+    window.addEventListener("pagehide", () => mounted.destroy(), { once: true });
+  </script>
+</body>
+</html>

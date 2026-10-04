@@ -166,7 +166,7 @@ class FrontendServerTests(unittest.TestCase):
     def test_read_routes_preserve_query_and_tenant_without_mutating_requests(self):
         upstream = self.upstream()
         frontend = self.frontend(upstream)
-        for suffix in ("/retail/overview?period=7&store_id=STORE-001", "/retail/simulation-options", "/risks/1",
+        for suffix in ("/health", "/dashboard", "/retail/overview?period=7&store_id=STORE-001", "/retail/simulation-options", "/risks/1",
                        "/risks", "/workbenches/transfer?risk_id=1", "/proposals", "/proposals/p-1/versions",
                        "/execution-tasks", "/data-center", "/work-items", "/cases",
                        "/hackathon/context?scenario_id=S01&branch_id=transfer_80", "/hackathon/proposals",
@@ -180,7 +180,7 @@ class FrontendServerTests(unittest.TestCase):
             self.assertEqual(path, "/gateway/api/v1" + suffix)
             self.assertEqual(body, b"")
             self.assertEqual(headers["X-Tenant-Id"], "isolated")
-        self.assertEqual(upstream.methods, ["GET"] * 22)
+        self.assertEqual(upstream.methods, ["GET"] * 24)
 
     def test_hackathon_write_routes_and_multipart_payload_are_forwarded(self):
         upstream = self.upstream(payload=b'{"contract_version":"hackathon.v1"}')
@@ -223,7 +223,7 @@ class FrontendServerTests(unittest.TestCase):
                      "/api/v1/agent-runs/run-001/decisions", "/api/v1/retail/simulate/extra",
                      "/api/v1/workbenches/unknown/save", "/app.js"):
             self.assertEqual(self.request(frontend, path, "POST", b"{}")[0], 404)
-        for path in ("/api/v1/health", "/api/v1/dashboard", "/api/v1/retail/simulate", "/api/v1/anything"):
+        for path in ("/api/v1/retail/simulate", "/api/v1/anything"):
             self.assertEqual(self.request(frontend, path)[0], 404)
         for method in ("PUT", "PATCH", "DELETE"):
             self.assertEqual(self.request(frontend, "/api/v1/retail/simulate", method, b"{}")[0], 501)

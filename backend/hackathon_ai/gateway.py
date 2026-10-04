@@ -256,6 +256,13 @@ class ModelGateway:
             raise ValueError("messages 必须为非空消息列表")
         payload: dict = {"model": model, "messages": deepcopy(messages), "stream": False,
                          "max_tokens": 4096}
+        if provider == "minimax" and model == "MiniMax-M3":
+            # M3 supports this generation limit and can skip thinking for
+            # strict extraction output; tool-guided Agent runs keep thinking.
+            payload.pop("max_tokens")
+            payload["max_completion_tokens"] = 8192
+            if response_schema:
+                payload["thinking"] = {"type": "disabled"}
         if tools:
             payload.update(tools=deepcopy(tools), tool_choice="auto")
         if response_schema:
